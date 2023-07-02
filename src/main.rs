@@ -1,6 +1,6 @@
 use std::io;
 use std::io::BufRead;
-use chess_engine::EngineUCI;
+use chess_engine::engine_uci::EngineUCI;
 
 fn main() {
     let stdin = io::stdin();
