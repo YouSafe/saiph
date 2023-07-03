@@ -1,17 +1,18 @@
 use std::str::FromStr;
 
-pub mod engine_uci;
-mod player;
 mod board;
-mod move_generator;
+pub mod engine_uci;
 mod fen_parser;
+mod move_generator;
+mod player;
 
 #[derive(Debug, PartialEq)]
 struct Position {
     rank: u8,
-    file: u8
+    file: u8,
 }
 
+#[derive(Debug)]
 struct ParsePositionErr(String);
 
 impl FromStr for Position {
@@ -48,11 +49,11 @@ enum Promotion {
 }
 
 // TODO: pack move data tighter
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 struct Move {
     from: Position,
     to: Position,
-    promotion: Option<Promotion>
+    promotion: Option<Promotion>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -68,7 +69,7 @@ enum PieceKind {
     Bishop,
     Rook,
     Queen,
-    King
+    King,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
