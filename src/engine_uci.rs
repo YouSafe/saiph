@@ -1,5 +1,5 @@
-use chess::{Board, ChessMove, MoveGen};
-use rand::prelude::*;
+use crate::search::Search;
+use chess::{Board, ChessMove};
 use std::str::FromStr;
 
 #[derive(Debug, PartialEq)]
@@ -127,11 +127,9 @@ impl EngineUCI {
                 self.board = board;
             }
             Command::Go => {
-                let legal_moves = MoveGen::new_legal(&self.board).collect::<Vec<_>>();
+                let search = Search::new();
 
-                let mut rng = thread_rng();
-
-                let pick = legal_moves[rng.gen_range(0..legal_moves.len())];
+                let pick = search.find_best_move(&self.board, 6).unwrap();
 
                 println!("bestmove {}", pick);
             }
