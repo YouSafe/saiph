@@ -129,7 +129,7 @@ impl EngineUCI {
             Command::Go => {
                 let search = Search::new();
 
-                let pick = search.find_best_move(&self.board, 6).unwrap();
+                let pick = search.find_best_move(&self.board, 7).unwrap();
 
                 println!("bestmove {}", pick);
             }
