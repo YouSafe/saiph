@@ -29,11 +29,13 @@ enum StartingPosition {
 
 pub struct EngineUCI {
     board: Board,
+    search: Search,
 }
 
 impl EngineUCI {
     pub fn new() -> Self {
         EngineUCI {
+            search: Search::new(),
             board: Default::default(),
         }
     }
@@ -127,9 +129,7 @@ impl EngineUCI {
                 self.board = board;
             }
             Command::Go => {
-                let search = Search::new();
-
-                let pick = search.find_best_move(&self.board, 7).unwrap();
+                let pick = self.search.find_best_move(&self.board, 7).unwrap();
 
                 println!("bestmove {}", pick);
             }

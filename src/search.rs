@@ -1,4 +1,5 @@
-use crate::transposition_table::TranspositionTable;
+use crate::evaluation::piece_square_table;
+use crate::transposition_table::{TranspositionTable, ValueType};
 use chess::{Board, BoardStatus, ChessMove, Color, MoveGen, Piece, Square, ALL_PIECES, EMPTY};
 
 pub struct Search {
@@ -17,26 +18,24 @@ impl Search {
         }
     }
 
-    fn piece_value(piece: Piece, square: Square, piece_color: Option<Color>) -> i64 {
-        // TODO: make value depend on the position
-        let _square_index = square.to_index();
-
+    fn piece_value(piece: Piece, square: Square, piece_color: Color) -> i64 {
         let sign = match piece_color {
-            Some(Color::White) => 1,
-            Some(Color::Black) => -1,
-            None => 0,
+            Color::White => 1,
+            Color::Black => -1,
         };
 
         let piece_value = match piece {
             Piece::Pawn => 100,
-            Piece::Knight => 300,
-            Piece::Bishop => 300,
+            Piece::Knight => 320,
+            Piece::Bishop => 330,
             Piece::Rook => 500,
             Piece::Queen => 900,
-            Piece::King => 0,
+            Piece::King => 20000,
         };
 
-        sign * piece_value
+        let bonus = piece_square_table(piece, square, piece_color);
+
+        sign * (piece_value + bonus)
     }
 
     fn board_value(board: &Board) -> i64 {
@@ -55,14 +54,14 @@ impl Search {
         for piece in ALL_PIECES {
             let bitboard = *board.pieces(piece);
             for square in bitboard {
-                result += Self::piece_value(piece, square, board.color_on(square));
+                result += Self::piece_value(piece, square, board.color_on(square).unwrap());
             }
         }
         result
     }
 
     fn alpha_beta(
-        &self,
+        &mut self,
         board: &Board,
         depth: u8,
         is_maximizing: bool,
@@ -70,7 +69,10 @@ impl Search {
         beta: i64,
         visited_nodes: &mut i64,
     ) -> ScoringMove {
-        let entry = self.transposition_table.read_entry(board);
+        let entry = self
+            .transposition_table
+            .read_entry(board, depth, alpha, beta);
+
         if let Some(entry) = entry {
             return ScoringMove {
                 evaluation: entry.value,
@@ -95,7 +97,7 @@ impl Search {
         let masks = [*targets, !EMPTY];
 
         let mut best_scoring_move = ScoringMove {
-            evaluation: if is_maximizing { alpha } else { beta },
+            evaluation: if is_maximizing { i64::MIN } else { i64::MAX },
             chess_move: None,
         };
 
@@ -126,14 +128,47 @@ impl Search {
                 if is_maximizing && best_scoring_move.evaluation < scoring_move.evaluation {
                     best_scoring_move.evaluation = scoring_move.evaluation;
                     best_scoring_move.chess_move = Some(chess_move);
+                    self.transposition_table.add_entry(
+                        result,
+                        scoring_move.evaluation,
+                        ValueType::Exact,
+                        best_scoring_move.chess_move,
+                        depth,
+                    );
                     alpha = alpha.max(best_scoring_move.evaluation);
                 } else if !is_maximizing && best_scoring_move.evaluation > scoring_move.evaluation {
                     best_scoring_move.evaluation = scoring_move.evaluation;
                     best_scoring_move.chess_move = Some(chess_move);
+                    self.transposition_table.add_entry(
+                        result,
+                        scoring_move.evaluation,
+                        ValueType::Exact,
+                        best_scoring_move.chess_move,
+                        depth,
+                    );
                     beta = beta.min(best_scoring_move.evaluation);
                 }
 
-                if beta <= alpha {
+                // alpha -> lower bound
+                // beta -> upper bound
+                if is_maximizing && beta <= scoring_move.evaluation {
+                    // move too good
+                    self.transposition_table.add_entry(
+                        result,
+                        beta,
+                        ValueType::Beta,
+                        Some(chess_move),
+                        depth,
+                    );
+                    break;
+                } else if !is_maximizing && alpha >= scoring_move.evaluation {
+                    self.transposition_table.add_entry(
+                        result,
+                        alpha,
+                        ValueType::Alpha,
+                        Some(chess_move),
+                        depth,
+                    );
                     break;
                 }
             }
@@ -142,7 +177,7 @@ impl Search {
         best_scoring_move
     }
 
-    pub fn find_best_move(&self, board: &Board, max_depth: u8) -> Option<ChessMove> {
+    pub fn find_best_move(&mut self, board: &Board, max_depth: u8) -> Option<ChessMove> {
         let color_to_play = board.side_to_move();
         eprintln!("Current val: {}", Self::board_value(board));
 
@@ -174,7 +209,7 @@ mod test {
     fn take_white_queen() {
         let board = Board::from_str("8/1kQ5/8/8/8/8/8/7K b - - 0 1").unwrap();
 
-        let search = Search::new();
+        let mut search = Search::new();
         let best_move = search.find_best_move(&board, 6);
         assert_eq!(best_move, Some(ChessMove::from_str("b7c7").unwrap()))
     }
@@ -183,7 +218,7 @@ mod test {
     fn take_black_queen() {
         let board = Board::from_str("8/1Kq5/8/8/8/8/8/7k w - - 0 1").unwrap();
 
-        let search = Search::new();
+        let mut search = Search::new();
         let best_move = search.find_best_move(&board, 6);
         assert_eq!(best_move, Some(ChessMove::from_str("b7c7").unwrap()))
     }
@@ -192,7 +227,7 @@ mod test {
     fn back_rank_mate_black() {
         let board = Board::from_str("6k1/5ppp/8/8/8/8/8/K2R4 w - - 0 1").unwrap();
 
-        let search = Search::new();
+        let mut search = Search::new();
         let best_move = search.find_best_move(&board, 6);
         assert_eq!(best_move, Some(ChessMove::from_str("d1d8").unwrap()));
     }
@@ -201,7 +236,7 @@ mod test {
     fn back_rank_mate_white() {
         let board = Board::from_str("3r3k/8/8/8/8/8/5PPP/6K1 b - - 0 1").unwrap();
 
-        let search = Search::new();
+        let mut search = Search::new();
         let best_move = search.find_best_move(&board, 6);
         assert_eq!(best_move, Some(ChessMove::from_str("d8d1").unwrap()));
     }
@@ -210,7 +245,7 @@ mod test {
     fn mate_in_one() {
         let board = Board::from_str("1Q3q1k/p5pp/8/2p2P2/P1B2P1P/6K1/R7/8 w - - 4 41").unwrap();
 
-        let search = Search::new();
+        let mut search = Search::new();
         let best_move = search.find_best_move(&board, 7);
         assert_eq!(best_move, Some(ChessMove::from_str("b8f8").unwrap()))
     }
@@ -219,8 +254,9 @@ mod test {
     fn mate_in_one_corner() {
         let board = Board::from_str("5rk1/7p/3R2p1/3p4/7P/5pP1/5P1K/5q2 b - - 4 39").unwrap();
 
-        let search = Search::new();
+        let mut search = Search::new();
         let best_move = search.find_best_move(&board, 7);
+        search.find_best_move(&board, 14);
         assert_eq!(best_move, Some(ChessMove::from_str("f1g2").unwrap()));
     }
 }

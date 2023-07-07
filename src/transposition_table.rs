@@ -12,8 +12,22 @@ impl TranspositionTable {
         }
     }
 
-    pub fn read_entry(&self, board: &Board) -> Option<&Entry> {
-        self.hash_table.get(board)
+    pub fn read_entry(&self, board: &Board, depth: u8, alpha: i64, beta: i64) -> Option<&Entry> {
+        let entry = self.hash_table.get(board);
+
+        if let Some(entry) = entry {
+            if entry.depth >= depth {
+                let value = entry.value;
+                if entry.value_type == ValueType::Exact {
+                    return Some(entry);
+                } else if entry.value_type == ValueType::Alpha && value <= alpha {
+                    return Some(entry);
+                } else if entry.value_type == ValueType::Beta && value <= beta {
+                    return Some(entry);
+                }
+            }
+        }
+        None
     }
 
     pub fn add_entry(
@@ -39,6 +53,7 @@ impl TranspositionTable {
     }
 }
 
+#[derive(PartialEq)]
 #[repr(u8)]
 pub enum ValueType {
     Exact,
