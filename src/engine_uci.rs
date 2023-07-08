@@ -131,7 +131,7 @@ impl EngineUCI {
             Command::Go => {
                 let pick = self.search.find_best_move(&self.board, 7).unwrap();
 
-                println!("bestmove {}", pick);
+                println!("bestmove {}", pick.chess_move.unwrap());
             }
             Command::Stop => {}
             Command::Quit => {

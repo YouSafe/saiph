@@ -1,3 +1,4 @@
+use crate::evaluation::Evaluation;
 use chess::{Board, ChessMove};
 use std::collections::HashMap;
 
@@ -12,7 +13,13 @@ impl TranspositionTable {
         }
     }
 
-    pub fn read_entry(&self, board: &Board, depth: u8, alpha: i64, beta: i64) -> Option<&Entry> {
+    pub fn read_entry(
+        &self,
+        board: &Board,
+        depth: u8,
+        alpha: Evaluation,
+        beta: Evaluation,
+    ) -> Option<&Entry> {
         let entry = self.hash_table.get(board);
 
         if let Some(entry) = entry {
@@ -33,7 +40,7 @@ impl TranspositionTable {
     pub fn add_entry(
         &mut self,
         board: Board,
-        value: i64,
+        value: Evaluation,
         value_type: ValueType,
         best_move: Option<ChessMove>,
         depth: u8,
@@ -63,7 +70,7 @@ pub enum ValueType {
 
 pub struct Entry {
     pub best_move: Option<ChessMove>,
-    pub value: i64,
+    pub value: Evaluation,
     pub value_type: ValueType,
     pub depth: u8,
 }
