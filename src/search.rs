@@ -44,7 +44,6 @@ impl Search {
         mut alpha: Evaluation,
         mut beta: Evaluation,
         visited_nodes: &mut i64,
-        mut history_moves: &mut Vec<ChessMove>,
     ) -> ScoringMove {
         // try reading entry from transposition table
         let entry = self
@@ -102,8 +101,6 @@ impl Search {
         for chess_move in moves {
             let result = board.make_move_new(chess_move);
 
-            history_moves.push(chess_move);
-
             let scoring_move = self.minimax_search(
                 &result,
                 !is_maximizing,
@@ -112,10 +109,7 @@ impl Search {
                 alpha,
                 beta,
                 visited_nodes,
-                history_moves,
             );
-
-            history_moves.pop();
 
             if is_maximizing {
                 if scoring_move.evaluation > best_scoring_move.evaluation {
@@ -240,8 +234,6 @@ impl Search {
 
         let mut best_move = None;
         for max_depth in 0..=max_depth {
-            let mut history_moves = vec![];
-
             best_move = Some(self.minimax_search(
                 &board,
                 color_to_play == Color::White,
@@ -250,7 +242,6 @@ impl Search {
                 Evaluation::MIN,
                 Evaluation::MAX,
                 &mut visited_nodes,
-                &mut history_moves,
             ));
 
             let is_mate = best_move

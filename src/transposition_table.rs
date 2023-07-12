@@ -79,7 +79,7 @@ impl TranspositionTable {
         self.hash_table.insert(board, entry);
     }
 
-    pub fn clear(&mut self) {
+    pub fn _clear(&mut self) {
         self.hash_table.clear();
     }
 }
