@@ -26,7 +26,7 @@ fn mask_rook_relevant_occupancy(square: Square) -> BitBoard {
         Box::new((repeat(square_rank)).zip((1..square_file).rev())),
         // top
         Box::new((square_rank + 1..=6).zip(repeat(square_file))),
-        // bottom right
+        // bottom
         Box::new(((1..square_rank).rev()).zip(repeat(square_file))),
     ];
 
@@ -39,9 +39,38 @@ fn mask_rook_relevant_occupancy(square: Square) -> BitBoard {
     attacks
 }
 
+fn mask_rook_attacks_on_the_fly(square: Square, blockers: BitBoard) -> BitBoard {
+    let mut attacks = BitBoard(0);
+
+    let (square_rank, square_file) = (square.to_index() / 8, square.to_index() % 8);
+
+    let lines: [Box<dyn Iterator<Item = (u8, u8)>>; 4] = [
+        // right
+        Box::new((repeat(square_rank)).zip(square_file + 1..=7)),
+        // left
+        Box::new((repeat(square_rank)).zip((0..square_file).rev())),
+        // top
+        Box::new((square_rank + 1..=7).zip(repeat(square_file))),
+        // bottom
+        Box::new(((0..square_rank).rev()).zip(repeat(square_file))),
+    ];
+
+    for line in lines {
+        for (rank, file) in line {
+            let square_bitboard = BitBoard::from_square(Square::from_index(rank * 8 + file));
+            attacks |= square_bitboard;
+            if (blockers & square_bitboard) != BitBoard(0) {
+                break;
+            }
+        }
+    }
+
+    attacks
+}
+
 #[cfg(test)]
 mod test {
-    use crate::rook_move::mask_rook_relevant_occupancy;
+    use crate::rook_move::{mask_rook_attacks_on_the_fly, mask_rook_relevant_occupancy};
     use chess_core::bitboard::BitBoard;
     use chess_core::square::Square;
 
@@ -119,6 +148,40 @@ mod test {
             expected |= BitBoard::from_square(square);
         }
         let attacks = mask_rook_relevant_occupancy(H5);
+        println!("{attacks}");
+        assert_eq!(expected, attacks);
+    }
+
+    #[test]
+    fn test_rook_attacks_on_the_fly_e4() {
+        let mut expected = BitBoard(0);
+        use Square::*;
+        const SQUARES: [Square; 9] = [D4, E3, E2, F4, G4, H4, E5, E6, E7];
+        for square in SQUARES {
+            expected |= BitBoard::from_square(square);
+        }
+        let mut blockers = BitBoard(0);
+        blockers |= BitBoard::from_square(D4);
+        blockers |= BitBoard::from_square(E2);
+        blockers |= BitBoard::from_square(H4);
+        blockers |= BitBoard::from_square(E7);
+        let attacks = mask_rook_attacks_on_the_fly(E4, blockers);
+        println!("{attacks}");
+        assert_eq!(expected, attacks);
+    }
+
+    #[test]
+    fn test_rook_attacks_on_the_fly_a1() {
+        let mut expected = BitBoard(0);
+        use Square::*;
+        const SQUARES: [Square; 2] = [A2, B1];
+        for square in SQUARES {
+            expected |= BitBoard::from_square(square);
+        }
+        let mut blockers = BitBoard(0);
+        blockers |= BitBoard::from_square(A2);
+        blockers |= BitBoard::from_square(B1);
+        let attacks = mask_rook_attacks_on_the_fly(A1, blockers);
         println!("{attacks}");
         assert_eq!(expected, attacks);
     }
