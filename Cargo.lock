@@ -63,7 +63,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "core"
+name = "chess-core"
 version = "0.1.0"
 
 [[package]]
@@ -138,7 +138,8 @@ dependencies = [
 name = "movgen"
 version = "0.1.0"
 dependencies = [
- "core",
+ "chess-core",
+ "table-gen",
 ]
 
 [[package]]
@@ -283,6 +284,13 @@ dependencies = [
  "quote",
  "syn",
  "unicode-xid",
+]
+
+[[package]]
+name = "table-gen"
+version = "0.1.0"
+dependencies = [
+ "chess-core",
 ]
 
 [[package]]

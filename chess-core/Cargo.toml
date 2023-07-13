@@ -1,14 +1,8 @@
 [package]
-name = "movgen"
+name = "chess-core"
 version = "0.1.0"
 edition = "2021"
-build = "build.rs"
-
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-chess-core = { path = "../chess-core" }
-
-[build-dependencies]
-table-gen = { path = "../table-gen" }

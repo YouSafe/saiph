@@ -1,9 +1,8 @@
+use chess_core::bitboard::BitBoard;
+use chess_core::color::Color;
+use chess_core::square::Square;
 use std::fs::File;
 use std::io::Write;
-
-use core::bitboard::BitBoard;
-use core::color::Color;
-use core::square::Square;
 
 pub fn generate_pawn_attacks() -> [[BitBoard; 64]; 2] {
     let mut result = [[BitBoard(0); 64]; 2];
@@ -55,11 +54,10 @@ pub fn write_pawn_attacks(
 
 #[cfg(test)]
 mod test {
-    use crate::bitboard::BitBoard;
-    use crate::color::Color;
     use crate::pawn_move::mask_pawn_attacks;
-    use crate::square::Square;
-    use crate::table_gen::pawn_move::mask_pawn_attacks;
+    use chess_core::bitboard::BitBoard;
+    use chess_core::color::Color;
+    use chess_core::square::Square;
 
     #[test]
     fn test_pawn_attack_white_e4() {
