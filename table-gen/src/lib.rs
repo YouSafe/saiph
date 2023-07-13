@@ -1,6 +1,7 @@
 mod bishop_move;
 mod king_move;
 mod knight_move;
+mod magic_number;
 mod pawn_move;
 mod rook_move;
 
