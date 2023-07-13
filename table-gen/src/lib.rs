@@ -5,7 +5,7 @@ mod magic_number;
 mod pawn_move;
 mod rook_move;
 
-use crate::bishop_move::generate_bishop_relevant_occupancy;
+use crate::bishop_move::{generate_bishop_relevant_bits, generate_bishop_relevant_occupancy};
 use crate::king_move::generate_king_attacks;
 use crate::knight_move::generate_knight_attacks;
 use crate::pawn_move::generate_pawn_attacks;
@@ -27,6 +27,7 @@ pub fn generate_tables() {
     let bishop_relevant_occupancy = generate_bishop_relevant_occupancy();
     let rook_relevant_occupancy = generate_rook_relevant_occupancy();
     let rook_relevant_bits = generate_rook_relevant_bits();
+    let bishop_relevant_bits = generate_bishop_relevant_bits();
     write_bitboards_variable_2d(&mut tables, "PAWN_ATTACKS", &pawn_attacks).unwrap();
     write_bitboards_variable_1d(&mut tables, "KNIGHT_ATTACKS", &knight_attacks).unwrap();
     write_bitboards_variable_1d(&mut tables, "KING_ATTACKS", &king_attacks).unwrap();
@@ -43,6 +44,7 @@ pub fn generate_tables() {
     )
     .unwrap();
     write_u8_array_variable_1d(&mut tables, "ROOK_RELEVANT_BITS", &rook_relevant_bits).unwrap();
+    write_u8_array_variable_1d(&mut tables, "BISHOP_RELEVANT_BITS", &bishop_relevant_bits).unwrap();
 }
 
 pub fn write_bitboards_variable_2d(
