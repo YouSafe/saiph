@@ -9,7 +9,7 @@ use crate::bishop_move::generate_bishop_relevant_occupancy;
 use crate::king_move::generate_king_attacks;
 use crate::knight_move::generate_knight_attacks;
 use crate::pawn_move::generate_pawn_attacks;
-use crate::rook_move::generate_rook_relevant_occupancy;
+use crate::rook_move::{generate_rook_relevant_bits, generate_rook_relevant_occupancy};
 use chess_core::bitboard::BitBoard;
 use std::env;
 use std::fs::File;
@@ -26,6 +26,7 @@ pub fn generate_tables() {
     let knight_attacks = generate_knight_attacks();
     let bishop_relevant_occupancy = generate_bishop_relevant_occupancy();
     let rook_relevant_occupancy = generate_rook_relevant_occupancy();
+    let rook_relevant_bits = generate_rook_relevant_bits();
     write_bitboards_variable_2d(&mut tables, "PAWN_ATTACKS", &pawn_attacks).unwrap();
     write_bitboards_variable_1d(&mut tables, "KNIGHT_ATTACKS", &knight_attacks).unwrap();
     write_bitboards_variable_1d(&mut tables, "KING_ATTACKS", &king_attacks).unwrap();
@@ -41,6 +42,7 @@ pub fn generate_tables() {
         &rook_relevant_occupancy,
     )
     .unwrap();
+    write_u8_array_variable_1d(&mut tables, "ROOK_RELEVANT_BITS", &rook_relevant_bits).unwrap();
 }
 
 pub fn write_bitboards_variable_2d(
@@ -67,6 +69,23 @@ pub fn write_bitboards_variable_1d(
     writeln!(file, "const {variable_name}: [BitBoard; 64] = [")?;
     for board in attacks {
         writeln!(file, "\tBitBoard({}), ", board.0)?;
+    }
+    writeln!(file, "];\n")
+}
+
+pub fn write_u8_array_variable_1d(
+    file: &mut File,
+    variable_name: &str,
+    array: &[u8; 64],
+) -> std::io::Result<()> {
+    writeln!(file, "const {variable_name}: [u8; 64] = [")?;
+    for row in 0..8 {
+        write!(file, "\t")?;
+        for col in 0..8 {
+            let index = row * 8 + col;
+            write!(file, "{:2}, ", array[index])?;
+        }
+        writeln!(file)?;
     }
     writeln!(file, "];\n")
 }

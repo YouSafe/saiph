@@ -13,6 +13,18 @@ pub fn generate_rook_relevant_occupancy() -> [BitBoard; 64] {
     result
 }
 
+pub fn generate_rook_relevant_bits() -> [u8; 64] {
+    let mut result = [0; 64];
+
+    for square in 0..64 {
+        let sq = Square::from_index(square as u8);
+        // TODO: maybe don't calculate it again
+        result[square] = mask_rook_relevant_occupancy(sq).0.count_ones() as u8;
+    }
+
+    result
+}
+
 fn mask_rook_relevant_occupancy(square: Square) -> BitBoard {
     let mut attacks = BitBoard(0);
 
