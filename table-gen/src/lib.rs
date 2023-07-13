@@ -1,7 +1,9 @@
+mod bishop_move;
 mod king_move;
 mod knight_move;
 mod pawn_move;
 
+use crate::bishop_move::generate_bishop_relevant_occupancy;
 use crate::king_move::generate_king_attacks;
 use crate::knight_move::generate_knight_attacks;
 use crate::pawn_move::generate_pawn_attacks;
@@ -19,9 +21,16 @@ pub fn generate_tables() {
     let pawn_attacks = generate_pawn_attacks();
     let king_attacks = generate_king_attacks();
     let knight_attacks = generate_knight_attacks();
+    let bishop_relevant_occupancy = generate_bishop_relevant_occupancy();
     write_bitboards_variable_2d(&mut tables, "PAWN_ATTACKS", &pawn_attacks).unwrap();
     write_bitboards_variable_1d(&mut tables, "KNIGHT_ATTACKS", &knight_attacks).unwrap();
     write_bitboards_variable_1d(&mut tables, "KING_ATTACKS", &king_attacks).unwrap();
+    write_bitboards_variable_1d(
+        &mut tables,
+        "BISHOP_RELEVANT_OCCUPANCY",
+        &bishop_relevant_occupancy,
+    )
+    .unwrap();
 }
 
 pub fn write_bitboards_variable_2d(
