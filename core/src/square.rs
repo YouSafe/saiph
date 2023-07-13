@@ -27,11 +27,11 @@ pub enum File {
 }
 
 impl Square {
-    pub fn to_index(&self) -> u8 {
+    pub const fn to_index(&self) -> u8 {
         *self as u8
     }
 
-    pub fn from_index(index: u8) -> Square {
+    pub const fn from_index(index: u8) -> Square {
         assert!(index < 64);
         unsafe { std::mem::transmute::<u8, Square>(index) }
     }

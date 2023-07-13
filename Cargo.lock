@@ -63,7 +63,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "chess-engine"
+name = "core"
+version = "0.1.0"
+
+[[package]]
+name = "engine"
 version = "0.1.0"
 dependencies = [
  "chess",
@@ -128,6 +132,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e7810e0be55b428ada41041c41f32c9f1a42817901b4ccf45fa3d4b6561e74c7"
 dependencies = [
  "adler",
+]
+
+[[package]]
+name = "movgen"
+version = "0.1.0"
+dependencies = [
+ "core",
 ]
 
 [[package]]

@@ -1,4 +1,4 @@
-use chess_engine::engine_uci::EngineUCI;
+use engine::engine_uci::EngineUCI;
 use std::io;
 use std::io::BufRead;
 

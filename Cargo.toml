@@ -1,10 +1,19 @@
-[package]
-name = "chess-engine"
-version = "0.1.0"
-edition = "2021"
+[workspace]
+resolver = "2"
+members = [
+    "core",
+    "movgen",
+    "engine"
+]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[profile.release]
+opt-level = 3
+debug = false
 
-[dependencies]
-chess = "3.2.0"
-rand = "0.8.5"
+[profile.dev]
+opt-level = 3
+debug = true
+
+[profile.test]
+opt-level = 3
+
