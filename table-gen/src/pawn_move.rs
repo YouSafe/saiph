@@ -21,14 +21,14 @@ fn mask_pawn_attacks(square: Square, side: Color) -> BitBoard {
 
     // left and right from the point of view of the white player
     let (left_diagonal, right_diagonal) = match side {
-        Color::White => (bitboard >> 7, bitboard >> 9),
-        Color::Black => (bitboard << 9, bitboard << 7),
+        Color::White => (bitboard << 7, bitboard << 9),
+        Color::Black => (bitboard >> 9, bitboard >> 7),
     };
 
-    if (left_diagonal & BitBoard::NOT_A_FILE) != BitBoard(0) {
+    if (left_diagonal & BitBoard::NOT_H_FILE) != BitBoard(0) {
         attacks |= left_diagonal;
     }
-    if (right_diagonal & BitBoard::NOT_H_FILE) != BitBoard(0) {
+    if (right_diagonal & BitBoard::NOT_A_FILE) != BitBoard(0) {
         attacks |= right_diagonal;
     }
 

@@ -18,21 +18,21 @@ fn mask_king_attacks(square: Square) -> BitBoard {
     let bitboard = BitBoard::from_square(square);
 
     const MOVES: [(fn(BitBoard) -> BitBoard, BitBoard); 8] = [
-        // top left
+        // bottom left
         (|bb: BitBoard| bb >> 9, BitBoard::NOT_H_FILE),
-        // top
+        // bottom
         (|bb: BitBoard| bb >> 8, BitBoard(!0)),
-        // top right
+        // bottom right
         (|bb: BitBoard| bb >> 7, BitBoard::NOT_A_FILE),
         // left
         (|bb: BitBoard| bb >> 1, BitBoard::NOT_H_FILE),
         // right
         (|bb: BitBoard| bb << 1, BitBoard::NOT_A_FILE),
-        // bottom left
+        // top left
         (|bb: BitBoard| bb << 7, BitBoard::NOT_H_FILE),
-        // bottom
+        // top
         (|bb: BitBoard| bb << 8, BitBoard(!0)),
-        // bottom right
+        // top right
         (|bb: BitBoard| bb << 9, BitBoard::NOT_A_FILE),
     ];
 

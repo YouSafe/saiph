@@ -37,8 +37,8 @@ impl Iterator for BitBoard {
 impl fmt::Display for BitBoard {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "\n")?;
-        for rank in 0..8 {
-            write!(f, "{}   ", 8 - rank)?;
+        for rank in (0..8).rev() {
+            write!(f, "{}   ", rank + 1)?;
             for file in 0..8 {
                 let square = rank * 8 + file;
                 let value = (self.0 & (1 << square)) == (1 << square);
@@ -152,12 +152,12 @@ mod test {
         bitboard |= BitBoard::from_square(Square::H1);
         bitboard |= BitBoard::from_square(Square::E2);
         bitboard |= BitBoard::from_square(Square::H8);
-        assert_eq!(bitboard, BitBoard(9227875636482146432));
+        assert_eq!(bitboard, BitBoard(9223372036854780032));
     }
 
     #[test]
     fn test_get_bit() {
-        let bitboard = BitBoard(9227875636482146432);
+        let bitboard = BitBoard(9223372036854780032);
         assert!(bitboard.get_bit(Square::H1));
         assert!(bitboard.get_bit(Square::E2));
         assert!(bitboard.get_bit(Square::H8));
@@ -165,7 +165,7 @@ mod test {
 
     #[test]
     fn test_display() {
-        let bitboard = BitBoard(9227875636482146432);
+        let bitboard = BitBoard(9223372036854780032);
         let expected = "
 8   . . . . . . . X 
 7   . . . . . . . . 
@@ -178,7 +178,8 @@ mod test {
 
     a b c d e f g h 
 
-Bitboard: 9227875636482146432";
+Bitboard: 9223372036854780032";
+        println!("{bitboard}");
         assert_eq!(bitboard.to_string(), expected);
     }
 

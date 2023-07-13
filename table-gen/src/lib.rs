@@ -37,7 +37,7 @@ pub fn write_bitboards_variable_2d(
         }
         writeln!(file, "\t],")?
     }
-    writeln!(file, "];")
+    writeln!(file, "];\n")
 }
 
 pub fn write_bitboards_variable_1d(
@@ -49,5 +49,5 @@ pub fn write_bitboards_variable_1d(
     for board in attacks {
         writeln!(file, "\tBitBoard({}), ", board.0)?;
     }
-    writeln!(file, "];")
+    writeln!(file, "];\n")
 }

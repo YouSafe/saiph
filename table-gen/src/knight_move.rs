@@ -18,21 +18,21 @@ fn mask_knight_attack(square: Square) -> BitBoard {
     let bitboard = BitBoard::from_square(square);
 
     const MOVES: [(fn(BitBoard) -> BitBoard, BitBoard); 8] = [
-        // two up left
-        (|bb: BitBoard| bb >> 17, BitBoard::NOT_H_FILE),
-        // two up right
-        (|bb: BitBoard| bb >> 15, BitBoard::NOT_A_FILE),
-        // two left up
-        (|bb: BitBoard| bb >> 10, BitBoard::NOT_GH_FILE),
-        // two right up
-        (|bb: BitBoard| bb >> 6, BitBoard::NOT_AB_FILE),
-        // two left down
-        (|bb: BitBoard| bb << 6, BitBoard::NOT_GH_FILE),
-        // two right down
-        (|bb: BitBoard| bb << 10, BitBoard::NOT_AB_FILE),
-        // two down right
-        (|bb: BitBoard| bb << 15, BitBoard::NOT_H_FILE),
         // two down left
+        (|bb: BitBoard| bb >> 17, BitBoard::NOT_H_FILE),
+        // two down right
+        (|bb: BitBoard| bb >> 15, BitBoard::NOT_A_FILE),
+        // two left down
+        (|bb: BitBoard| bb >> 10, BitBoard::NOT_GH_FILE),
+        // two right down
+        (|bb: BitBoard| bb >> 6, BitBoard::NOT_AB_FILE),
+        // two left up
+        (|bb: BitBoard| bb << 6, BitBoard::NOT_GH_FILE),
+        // two right up
+        (|bb: BitBoard| bb << 10, BitBoard::NOT_AB_FILE),
+        // two up right
+        (|bb: BitBoard| bb << 15, BitBoard::NOT_H_FILE),
+        // two up left
         (|bb: BitBoard| bb << 17, BitBoard::NOT_A_FILE),
     ];
 
