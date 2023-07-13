@@ -38,9 +38,39 @@ fn mask_bishop_relevant_occupancy(square: Square) -> BitBoard {
     attacks
 }
 
+fn mask_bishop_attacks_on_the_fly(square: Square, blockers: BitBoard) -> BitBoard {
+    let mut attacks = BitBoard(0);
+
+    let (square_rank, square_file) = (square.to_index() / 8, square.to_index() % 8);
+
+    // TODO: Create iterators for rank and file structs to simplify this
+    let diagonals: [Box<dyn Iterator<Item = (u8, u8)>>; 4] = [
+        // top right
+        Box::new(((square_rank + 1)..=7).zip(square_file + 1..=7)),
+        // top left
+        Box::new(((square_rank + 1)..=7).zip((0..square_file).rev())),
+        // bottom left
+        Box::new(((0..square_rank).rev()).zip((0..square_file).rev())),
+        // bottom right
+        Box::new(((0..square_rank).rev()).zip(square_file + 1..=7)),
+    ];
+
+    for diagonal in diagonals {
+        for (rank, file) in diagonal {
+            let square_bitboard = BitBoard::from_square(Square::from_index(rank * 8 + file));
+            attacks |= square_bitboard;
+            if (blockers & square_bitboard) != BitBoard(0) {
+                break;
+            }
+        }
+    }
+
+    attacks
+}
+
 #[cfg(test)]
 mod test {
-    use crate::bishop_move::mask_bishop_relevant_occupancy;
+    use crate::bishop_move::{mask_bishop_attacks_on_the_fly, mask_bishop_relevant_occupancy};
     use chess_core::bitboard::BitBoard;
     use chess_core::square::Square;
 
@@ -118,6 +148,39 @@ mod test {
             expected |= BitBoard::from_square(square);
         }
         let attacks = mask_bishop_relevant_occupancy(H5);
+        println!("{attacks}");
+        assert_eq!(expected, attacks);
+    }
+
+    #[test]
+    fn test_bishop_attack_on_the_fly_e4() {
+        let mut expected = BitBoard(0);
+        use Square::*;
+        const SQUARES: [Square; 9] = [F5, D5, C6, B7, D3, C2, F3, G2, H1];
+        for square in SQUARES {
+            expected |= BitBoard::from_square(square);
+        }
+        let mut blockers = BitBoard(0);
+        blockers |= BitBoard::from_square(B7);
+        blockers |= BitBoard::from_square(C2);
+        blockers |= BitBoard::from_square(F5);
+        blockers |= BitBoard::from_square(H1);
+        let attacks = mask_bishop_attacks_on_the_fly(E4, blockers);
+        println!("{attacks}");
+        assert_eq!(expected, attacks);
+    }
+
+    #[test]
+    fn test_bishop_attack_on_the_fly_a1() {
+        let mut expected = BitBoard(0);
+        use Square::*;
+        const SQUARES: [Square; 1] = [B2];
+        for square in SQUARES {
+            expected |= BitBoard::from_square(square);
+        }
+        let mut blockers = BitBoard(0);
+        blockers |= BitBoard::from_square(B2);
+        let attacks = mask_bishop_attacks_on_the_fly(A1, blockers);
         println!("{attacks}");
         assert_eq!(expected, attacks);
     }
