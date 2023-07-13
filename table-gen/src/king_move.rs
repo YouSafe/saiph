@@ -1,7 +1,5 @@
 use chess_core::bitboard::BitBoard;
 use chess_core::square::Square;
-use std::fs::File;
-use std::io::Write;
 
 pub fn generate_king_attacks() -> [BitBoard; 64] {
     let mut result = [BitBoard(0); 64];
@@ -46,14 +44,6 @@ fn mask_king_attacks(square: Square) -> BitBoard {
     }
 
     attacks
-}
-
-pub fn write_king_attacks(file: &mut File, king_attacks: &[BitBoard; 64]) -> std::io::Result<()> {
-    writeln!(file, "const KING_ATTACKS: [BitBoard; 64] = [")?;
-    for board in king_attacks {
-        writeln!(file, "\tBitBoard({}), ", board.0)?;
-    }
-    writeln!(file, "];")
 }
 
 #[cfg(test)]

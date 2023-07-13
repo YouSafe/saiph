@@ -1,8 +1,6 @@
 use chess_core::bitboard::BitBoard;
 use chess_core::color::Color;
 use chess_core::square::Square;
-use std::fs::File;
-use std::io::Write;
 
 pub fn generate_pawn_attacks() -> [[BitBoard; 64]; 2] {
     let mut result = [[BitBoard(0); 64]; 2];
@@ -35,21 +33,6 @@ fn mask_pawn_attacks(square: Square, side: Color) -> BitBoard {
     }
 
     attacks
-}
-
-pub fn write_pawn_attacks(
-    file: &mut File,
-    pawn_attacks: &[[BitBoard; 64]; 2],
-) -> std::io::Result<()> {
-    writeln!(file, "const PAWN_ATTACKS: [[BitBoard; 64]; 2] = [")?;
-    for attacks_for_color in pawn_attacks {
-        writeln!(file, "\t[")?;
-        for board in attacks_for_color {
-            writeln!(file, "\t\tBitBoard({}), ", board.0)?;
-        }
-        writeln!(file, "\t],")?
-    }
-    writeln!(file, "];")
 }
 
 #[cfg(test)]
