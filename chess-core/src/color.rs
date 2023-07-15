@@ -4,3 +4,5 @@ pub enum Color {
     White,
     Black,
 }
+
+pub const NUM_COLORS: usize = 2;
