@@ -1,30 +1,60 @@
+use crate::magic_number::{
+    find_magic_number, generate_occupancy, BitBoardMapping, Magic, MagicNumberCandidateGenerator,
+};
 use chess_core::bitboard::BitBoard;
 use chess_core::square::Square;
 
-pub fn generate_bishop_relevant_occupancy() -> [BitBoard; 64] {
-    let mut result = [BitBoard(0); 64];
+// TODO: maybe think of a better design
+#[derive(Debug)]
+pub struct BishopAttacks {
+    pub magic_number_table: [Magic; 64],
+    pub attack_table: Vec<[BitBoard; 64]>,
+}
+
+// TODO: document number 512
+pub fn generate_bishop_attacks() -> BishopAttacks {
+    // TODO: maybe flatten array
+    let mut attacks = BishopAttacks {
+        magic_number_table: [Magic::default(); 64],
+        attack_table: vec![[BitBoard(0); 64]; 512],
+    };
+
+    let mut rng = MagicNumberCandidateGenerator::new(1804289383);
 
     for square in 0..64 {
         let sq = Square::from_index(square as u8);
-        result[square] = mask_bishop_relevant_occupancy(sq);
-    }
+        let relevant_occupancy_bit_mask = mask_bishop_relevant_occupancy(sq);
+        let num_relevant_occupancy_bits = relevant_occupancy_bit_mask.popcnt();
 
-    result
+        let target_mapping = (0..(1u64 << num_relevant_occupancy_bits))
+            .map(|index| {
+                let occupancy = generate_occupancy(index, relevant_occupancy_bit_mask);
+                let attacks = mask_bishop_attacks_on_the_fly(sq, occupancy);
+
+                BitBoardMapping {
+                    from: occupancy,
+                    to: attacks,
+                }
+            })
+            .collect::<Vec<_>>();
+
+        let magic = find_magic_number(
+            &mut rng,
+            relevant_occupancy_bit_mask,
+            &target_mapping,
+            num_relevant_occupancy_bits,
+        );
+
+        for mapping in target_mapping {
+            let magic_index = (mapping.from * magic.magic_number).0 >> magic.shift;
+            attacks.attack_table[magic_index as usize][square as usize] = mapping.to;
+        }
+        attacks.magic_number_table[square as usize] = magic;
+    }
+    attacks
 }
 
-pub fn generate_bishop_relevant_bits() -> [u8; 64] {
-    let mut result = [0; 64];
-
-    for square in 0..64 {
-        let sq = Square::from_index(square as u8);
-        // TODO: maybe don't calculate it again
-        result[square] = mask_bishop_relevant_occupancy(sq).0.count_ones() as u8;
-    }
-
-    result
-}
-
-fn mask_bishop_relevant_occupancy(square: Square) -> BitBoard {
+pub fn mask_bishop_relevant_occupancy(square: Square) -> BitBoard {
     let mut attacks = BitBoard(0);
 
     let (square_rank, square_file) = (square.to_index() / 8, square.to_index() % 8);
@@ -50,7 +80,18 @@ fn mask_bishop_relevant_occupancy(square: Square) -> BitBoard {
     attacks
 }
 
-fn mask_bishop_attacks_on_the_fly(square: Square, blockers: BitBoard) -> BitBoard {
+pub fn generate_bishop_relevant_occupancy() -> [BitBoard; 64] {
+    let mut result = [BitBoard(0); 64];
+
+    for square in 0..64 {
+        let sq = Square::from_index(square as u8);
+        result[square] = mask_bishop_relevant_occupancy(sq);
+    }
+
+    result
+}
+
+pub fn mask_bishop_attacks_on_the_fly(square: Square, blockers: BitBoard) -> BitBoard {
     let mut attacks = BitBoard(0);
 
     let (square_rank, square_file) = (square.to_index() / 8, square.to_index() % 8);

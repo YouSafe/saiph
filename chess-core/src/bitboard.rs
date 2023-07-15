@@ -1,9 +1,11 @@
 use crate::square::Square;
 use std::fmt;
 use std::fmt::Formatter;
-use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not, Shl, Shr};
+use std::ops::{
+    BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Mul, Not, Shl, Shr,
+};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct BitBoard(pub u64);
 
 impl BitBoard {
@@ -11,12 +13,12 @@ impl BitBoard {
         (self.0 & (1 << square.to_index())) == (1 << square.to_index())
     }
 
-    // pub const fn with_bit_set(&self, square: Square) -> BitBoard {
-    //     BitBoard(self.0 | (1 << square.to_index() as u64))
-    // }
-
     pub const fn from_square(square: Square) -> BitBoard {
         BitBoard(1 << square.to_index())
+    }
+
+    pub const fn popcnt(&self) -> u8 {
+        self.0.count_ones() as u8
     }
 
     pub const NOT_A_FILE: BitBoard = BitBoard(18374403900871474942);
@@ -138,6 +140,14 @@ impl Not for BitBoard {
 
     fn not(self) -> Self::Output {
         BitBoard(self.0.not())
+    }
+}
+
+impl Mul<u64> for BitBoard {
+    type Output = BitBoard;
+
+    fn mul(self, rhs: u64) -> Self::Output {
+        BitBoard(self.0.wrapping_mul(rhs))
     }
 }
 

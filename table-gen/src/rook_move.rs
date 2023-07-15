@@ -1,6 +1,59 @@
+use crate::magic_number::{
+    find_magic_number, generate_occupancy, BitBoardMapping, Magic, MagicNumberCandidateGenerator,
+};
 use chess_core::bitboard::BitBoard;
 use chess_core::square::Square;
 use std::iter::repeat;
+
+#[derive(Debug)]
+pub struct RookAttacks {
+    pub magic_number_table: [Magic; 64],
+    pub attack_table: Vec<[BitBoard; 64]>,
+}
+
+// TODO: document number 4060
+pub fn generate_rook_attacks() -> RookAttacks {
+    // TODO: maybe flatten array
+    let mut attacks = RookAttacks {
+        magic_number_table: [Magic::default(); 64],
+        attack_table: vec![[BitBoard(0); 64]; 4096],
+    };
+
+    let mut rng = MagicNumberCandidateGenerator::new(1804289383);
+
+    for square in 0..64 {
+        let sq = Square::from_index(square as u8);
+        let relevant_occupancy_bit_mask = mask_rook_relevant_occupancy(sq);
+        let num_relevant_occupancy_bits = relevant_occupancy_bit_mask.popcnt();
+
+        let target_mapping = (0..(1u64 << num_relevant_occupancy_bits))
+            .map(|index| {
+                let occupancy = generate_occupancy(index, relevant_occupancy_bit_mask);
+                let attacks = mask_rook_attacks_on_the_fly(sq, occupancy);
+
+                BitBoardMapping {
+                    from: occupancy,
+                    to: attacks,
+                }
+            })
+            .collect::<Vec<_>>();
+
+        let magic = find_magic_number(
+            &mut rng,
+            relevant_occupancy_bit_mask,
+            &target_mapping,
+            num_relevant_occupancy_bits,
+        );
+
+        for mapping in target_mapping {
+            let magic_index = (mapping.from * magic.magic_number).0 >> magic.shift;
+            attacks.attack_table[magic_index as usize][square as usize] = mapping.to;
+        }
+
+        attacks.magic_number_table[square as usize] = magic;
+    }
+    attacks
+}
 
 pub fn generate_rook_relevant_occupancy() -> [BitBoard; 64] {
     let mut result = [BitBoard(0); 64];
@@ -13,19 +66,7 @@ pub fn generate_rook_relevant_occupancy() -> [BitBoard; 64] {
     result
 }
 
-pub fn generate_rook_relevant_bits() -> [u8; 64] {
-    let mut result = [0; 64];
-
-    for square in 0..64 {
-        let sq = Square::from_index(square as u8);
-        // TODO: maybe don't calculate it again
-        result[square] = mask_rook_relevant_occupancy(sq).0.count_ones() as u8;
-    }
-
-    result
-}
-
-fn mask_rook_relevant_occupancy(square: Square) -> BitBoard {
+pub fn mask_rook_relevant_occupancy(square: Square) -> BitBoard {
     let mut attacks = BitBoard(0);
 
     let (square_rank, square_file) = (square.to_index() / 8, square.to_index() % 8);
@@ -51,7 +92,7 @@ fn mask_rook_relevant_occupancy(square: Square) -> BitBoard {
     attacks
 }
 
-fn mask_rook_attacks_on_the_fly(square: Square, blockers: BitBoard) -> BitBoard {
+pub fn mask_rook_attacks_on_the_fly(square: Square, blockers: BitBoard) -> BitBoard {
     let mut attacks = BitBoard(0);
 
     let (square_rank, square_file) = (square.to_index() / 8, square.to_index() % 8);
@@ -82,7 +123,9 @@ fn mask_rook_attacks_on_the_fly(square: Square, blockers: BitBoard) -> BitBoard 
 
 #[cfg(test)]
 mod test {
-    use crate::rook_move::{mask_rook_attacks_on_the_fly, mask_rook_relevant_occupancy};
+    use crate::rook_move::{
+        generate_rook_attacks, mask_rook_attacks_on_the_fly, mask_rook_relevant_occupancy,
+    };
     use chess_core::bitboard::BitBoard;
     use chess_core::square::Square;
 
@@ -194,6 +237,38 @@ mod test {
         blockers |= BitBoard::from_square(A2);
         blockers |= BitBoard::from_square(B1);
         let attacks = mask_rook_attacks_on_the_fly(A1, blockers);
+        println!("{attacks}");
+        assert_eq!(expected, attacks);
+    }
+
+    #[test]
+    pub fn test_rook_attack_table() {
+        let rook_attacks = generate_rook_attacks();
+
+        let mut expected = BitBoard(0);
+        use Square::*;
+        const SQUARES: [Square; 9] = [D4, E3, E2, F4, G4, H4, E5, E6, E7];
+        for square in SQUARES {
+            expected |= BitBoard::from_square(square);
+        }
+        let mut blockers = BitBoard(0);
+        blockers |= BitBoard::from_square(D4);
+        blockers |= BitBoard::from_square(E2);
+        blockers |= BitBoard::from_square(H4);
+        blockers |= BitBoard::from_square(E7);
+
+        println!("{blockers}");
+
+        let square = E4;
+
+        let magic = rook_attacks.magic_number_table[square as usize];
+
+        blockers &= mask_rook_relevant_occupancy(square);
+        blockers = blockers * magic.magic_number;
+        blockers = blockers >> magic.shift as i32;
+
+        let attacks = rook_attacks.attack_table[blockers.0 as usize][square as usize];
+        println!("{expected}");
         println!("{attacks}");
         assert_eq!(expected, attacks);
     }
