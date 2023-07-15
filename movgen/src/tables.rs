@@ -36,3 +36,7 @@ pub fn get_knight_attacks(square: Square) -> BitBoard {
 pub fn get_king_attacks(square: Square) -> BitBoard {
     KING_ATTACKS[square as usize]
 }
+
+pub fn get_queen_attacks(square: Square, blockers: BitBoard) -> BitBoard {
+    get_rook_attacks(square, blockers) | get_bishop_attacks(square, blockers)
+}
