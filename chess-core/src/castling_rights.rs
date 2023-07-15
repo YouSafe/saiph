@@ -1,8 +1,9 @@
 use std::fmt;
 use std::fmt::Formatter;
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
+use std::str::FromStr;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CastlingRights(u8);
 
 impl CastlingRights {
@@ -10,6 +11,10 @@ impl CastlingRights {
     pub const WHITE_QUEEN_SIDE: Self = Self(2);
     pub const BLACK_KING_SIDE: Self = Self(4);
     pub const BLACK_QUEEN_SIDE: Self = Self(8);
+
+    pub const fn empty() -> CastlingRights {
+        Self(0)
+    }
 
     pub const fn contains(&self, other: Self) -> bool {
         self.0 & other.0 == other.0
@@ -41,6 +46,28 @@ impl fmt::Display for CastlingRights {
             }
         }
         Ok(())
+    }
+}
+
+impl FromStr for CastlingRights {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        const RIGHTS: [(CastlingRights, char); 4] = [
+            (CastlingRights::WHITE_KING_SIDE, 'K'),
+            (CastlingRights::WHITE_QUEEN_SIDE, 'Q'),
+            (CastlingRights::BLACK_KING_SIDE, 'k'),
+            (CastlingRights::BLACK_QUEEN_SIDE, 'q'),
+        ];
+
+        let mut castling_rights = CastlingRights::empty();
+
+        for (right, symbol) in RIGHTS {
+            if s.contains(symbol) {
+                castling_rights |= right;
+            }
+        }
+        Ok(castling_rights)
     }
 }
 

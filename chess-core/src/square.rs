@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 #[rustfmt::skip]
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -38,5 +40,48 @@ impl Square {
 
     pub fn from(rank: Rank, file: File) -> Square {
         Self::from_index(rank as u8 * 8 + file as u8)
+    }
+}
+
+#[derive(Debug)]
+pub enum ParsePositionError {
+    InvalidLength,
+    InvalidRank,
+    InvalidFile,
+}
+
+impl FromStr for Square {
+    type Err = ParsePositionError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.len() != 2 {
+            return Err(ParsePositionError::InvalidLength);
+        }
+
+        let file = (s.chars().nth(0).unwrap().to_ascii_lowercase() as i8) - ('a' as i8);
+        let rank = (s.chars().nth(1).unwrap().to_ascii_lowercase() as i8) - ('1' as i8);
+
+        if file < 0 || file > 7 {
+            return Err(ParsePositionError::InvalidFile);
+        }
+
+        if rank < 0 || rank > 7 {
+            return Err(ParsePositionError::InvalidRank);
+        }
+
+        Ok(Square::from_index(rank as u8 * 8 + file as u8))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::square::Square;
+
+    #[test]
+    fn test_square_parsing() {
+        assert_eq!("e2".parse::<Square>().unwrap(), Square::E2);
+        assert_eq!("D4".parse::<Square>().unwrap(), Square::D4);
+        assert_eq!("a1".parse::<Square>().unwrap(), Square::A1);
+        assert_eq!("h8".parse::<Square>().unwrap(), Square::H8);
     }
 }
