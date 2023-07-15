@@ -55,17 +55,6 @@ pub fn generate_rook_attacks() -> RookAttacks {
     attacks
 }
 
-pub fn generate_rook_relevant_occupancy() -> [BitBoard; 64] {
-    let mut result = [BitBoard(0); 64];
-
-    for square in 0..64 {
-        let sq = Square::from_index(square as u8);
-        result[square] = mask_rook_relevant_occupancy(sq);
-    }
-
-    result
-}
-
 pub fn mask_rook_relevant_occupancy(square: Square) -> BitBoard {
     let mut attacks = BitBoard(0);
 

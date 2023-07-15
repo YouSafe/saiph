@@ -5,14 +5,12 @@ mod magic_number;
 mod pawn_move;
 mod rook_move;
 
-use crate::bishop_move::{
-    generate_bishop_attacks, generate_bishop_relevant_occupancy, BishopAttacks,
-};
+use crate::bishop_move::{generate_bishop_attacks, BishopAttacks};
 use crate::king_move::generate_king_attacks;
 use crate::knight_move::generate_knight_attacks;
 use crate::magic_number::Magic;
 use crate::pawn_move::generate_pawn_attacks;
-use crate::rook_move::{generate_rook_attacks, generate_rook_relevant_occupancy, RookAttacks};
+use crate::rook_move::{generate_rook_attacks, RookAttacks};
 use chess_core::bitboard::BitBoard;
 use std::env;
 use std::fs::File;
@@ -41,14 +39,6 @@ pub fn generate_tables() {
             magic_number_table,
         } = generate_bishop_attacks();
 
-        let relevant_occupancies = generate_bishop_relevant_occupancy();
-
-        write_bitboards_variable_1d(
-            &mut tables,
-            "BISHOP_RELEVANT_OCCUPANCIES",
-            &relevant_occupancies,
-        )
-        .unwrap();
         write_bitboards_variable_2d_bishop(&mut tables, "BISHOP_ATTACKS", &attack_table).unwrap();
         write_magic_number_table(&mut tables, "BISHOP_MAGIC_NUMBERS", &magic_number_table).unwrap();
     }
@@ -58,15 +48,6 @@ pub fn generate_tables() {
             magic_number_table,
             attack_table,
         } = generate_rook_attacks();
-
-        let relevant_occupancies = generate_rook_relevant_occupancy();
-
-        write_bitboards_variable_1d(
-            &mut tables,
-            "ROOK_RELEVANT_OCCUPANCIES",
-            &relevant_occupancies,
-        )
-        .unwrap();
 
         write_bitboards_variable_2d_rook(&mut tables, "ROOK_ATTACKS", &attack_table).unwrap();
         write_magic_number_table(&mut tables, "ROOK_MAGIC_NUMBERS", &magic_number_table).unwrap();
@@ -84,8 +65,8 @@ fn write_magic_number_table(
     for magic in magic_number_table {
         writeln!(
             file,
-            "\tMagic {{ magic_number: {:#018x}, shift: {}  }}, ",
-            magic.magic_number, magic.shift
+            "\tMagic {{ magic_number: {:#018x}, shift: {}, mask: BitBoard({})  }}, ",
+            magic.magic_number, magic.shift, magic.mask.0
         )?;
     }
     writeln!(file, "];\n")

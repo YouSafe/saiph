@@ -80,17 +80,6 @@ pub fn mask_bishop_relevant_occupancy(square: Square) -> BitBoard {
     attacks
 }
 
-pub fn generate_bishop_relevant_occupancy() -> [BitBoard; 64] {
-    let mut result = [BitBoard(0); 64];
-
-    for square in 0..64 {
-        let sq = Square::from_index(square as u8);
-        result[square] = mask_bishop_relevant_occupancy(sq);
-    }
-
-    result
-}
-
 pub fn mask_bishop_attacks_on_the_fly(square: Square, blockers: BitBoard) -> BitBoard {
     let mut attacks = BitBoard(0);
 

@@ -25,6 +25,7 @@ pub fn generate_occupancy(index: u64, mut attack_mask: BitBoard) -> BitBoard {
 pub struct Magic {
     pub magic_number: u64,
     pub shift: u8,
+    pub mask: BitBoard,
 }
 
 #[derive(Debug, Clone)]
@@ -69,6 +70,7 @@ pub fn find_magic_number(
             return Magic {
                 magic_number,
                 shift: (64 - relevant_bits),
+                mask: attack_mask,
             };
         }
     }
