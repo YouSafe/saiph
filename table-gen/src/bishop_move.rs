@@ -99,8 +99,7 @@ pub fn mask_bishop_attacks_on_the_fly(square: Square, blockers: BitBoard) -> Bit
 
     for diagonal in diagonals {
         for (rank, file) in diagonal {
-            let square_bitboard = BitBoard::from_square(Square::from_index(rank * 8 + file));
-            attacks |= square_bitboard;
+            attacks |= Square::from_index(rank * 8 + file);
             if (blockers & square_bitboard) != BitBoard(0) {
                 break;
             }
