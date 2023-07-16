@@ -74,7 +74,7 @@ pub fn mask_rook_relevant_occupancy(square: Square) -> BitBoard {
 
     for line in lines {
         for (rank, file) in line {
-            attacks |= BitBoard::from_square(Square::from_index(rank * 8 + file));
+            attacks |= Square::from_index(rank * 8 + file);
         }
     }
 
@@ -124,7 +124,7 @@ mod test {
         use Square::*;
         const SQUARES: [Square; 11] = [B4, C4, D4, E6, F4, G4, E6, E7, E3, E2, E5];
         for square in SQUARES {
-            expected |= BitBoard::from_square(square);
+            expected |= square;
         }
         let attacks = mask_rook_relevant_occupancy(E4);
         println!("{attacks}");
@@ -137,7 +137,7 @@ mod test {
         use Square::*;
         const SQUARES: [Square; 12] = [B8, C8, D8, E8, F8, G8, H7, H6, H5, H4, H3, H2];
         for square in SQUARES {
-            expected |= BitBoard::from_square(square);
+            expected |= square;
         }
         let attacks = mask_rook_relevant_occupancy(H8);
         println!("{attacks}");
@@ -150,7 +150,7 @@ mod test {
         use Square::*;
         const SQUARES: [Square; 12] = [B8, C8, D8, E8, F8, G8, A7, A6, A5, A4, A3, A2];
         for square in SQUARES {
-            expected |= BitBoard::from_square(square);
+            expected |= square;
         }
         let attacks = mask_rook_relevant_occupancy(A8);
         println!("{attacks}");
@@ -163,7 +163,7 @@ mod test {
         use Square::*;
         const SQUARES: [Square; 12] = [A7, A6, A5, A4, A3, A2, B1, C1, D1, E1, F1, G1];
         for square in SQUARES {
-            expected |= BitBoard::from_square(square);
+            expected |= square;
         }
         let attacks = mask_rook_relevant_occupancy(A1);
         println!("{attacks}");
@@ -176,7 +176,7 @@ mod test {
         use Square::*;
         const SQUARES: [Square; 12] = [B1, C1, D1, E1, F1, G1, H7, H6, H5, H4, H3, H2];
         for square in SQUARES {
-            expected |= BitBoard::from_square(square);
+            expected |= square;
         }
         let attacks = mask_rook_relevant_occupancy(H1);
         println!("{attacks}");
@@ -189,7 +189,7 @@ mod test {
         use Square::*;
         const SQUARES: [Square; 11] = [H7, H6, H4, H3, H2, B5, C5, D5, E5, F5, G5];
         for square in SQUARES {
-            expected |= BitBoard::from_square(square);
+            expected |= square;
         }
         let attacks = mask_rook_relevant_occupancy(H5);
         println!("{attacks}");
@@ -202,13 +202,13 @@ mod test {
         use Square::*;
         const SQUARES: [Square; 9] = [D4, E3, E2, F4, G4, H4, E5, E6, E7];
         for square in SQUARES {
-            expected |= BitBoard::from_square(square);
+            expected |= square;
         }
         let mut blockers = BitBoard(0);
-        blockers |= BitBoard::from_square(D4);
-        blockers |= BitBoard::from_square(E2);
-        blockers |= BitBoard::from_square(H4);
-        blockers |= BitBoard::from_square(E7);
+        blockers |= D4;
+        blockers |= E2;
+        blockers |= H4;
+        blockers |= E7;
         let attacks = mask_rook_attacks_on_the_fly(E4, blockers);
         println!("{attacks}");
         assert_eq!(expected, attacks);
@@ -220,11 +220,11 @@ mod test {
         use Square::*;
         const SQUARES: [Square; 2] = [A2, B1];
         for square in SQUARES {
-            expected |= BitBoard::from_square(square);
+            expected |= square;
         }
         let mut blockers = BitBoard(0);
-        blockers |= BitBoard::from_square(A2);
-        blockers |= BitBoard::from_square(B1);
+        blockers |= A2;
+        blockers |= B1;
         let attacks = mask_rook_attacks_on_the_fly(A1, blockers);
         println!("{attacks}");
         assert_eq!(expected, attacks);
@@ -238,13 +238,13 @@ mod test {
         use Square::*;
         const SQUARES: [Square; 9] = [D4, E3, E2, F4, G4, H4, E5, E6, E7];
         for square in SQUARES {
-            expected |= BitBoard::from_square(square);
+            expected |= square;
         }
         let mut blockers = BitBoard(0);
-        blockers |= BitBoard::from_square(D4);
-        blockers |= BitBoard::from_square(E2);
-        blockers |= BitBoard::from_square(H4);
-        blockers |= BitBoard::from_square(E7);
+        blockers |= D4;
+        blockers |= E2;
+        blockers |= H4;
+        blockers |= E7;
 
         println!("{blockers}");
 

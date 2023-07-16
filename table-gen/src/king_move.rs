@@ -55,9 +55,9 @@ mod test {
     #[test]
     fn test_king_attack_a1() {
         let mut expected = BitBoard(0);
-        expected |= BitBoard::from_square(Square::B1);
-        expected |= BitBoard::from_square(Square::B2);
-        expected |= BitBoard::from_square(Square::A2);
+        expected |= Square::B1;
+        expected |= Square::B2;
+        expected |= Square::A2;
         let attacks = mask_king_attacks(Square::A1);
         println!("{attacks}");
         assert_eq!(expected, attacks);
@@ -66,9 +66,9 @@ mod test {
     #[test]
     fn test_king_attack_a8() {
         let mut expected = BitBoard(0);
-        expected |= BitBoard::from_square(Square::A7);
-        expected |= BitBoard::from_square(Square::B7);
-        expected |= BitBoard::from_square(Square::B8);
+        expected |= Square::A7;
+        expected |= Square::B7;
+        expected |= Square::B8;
         let attacks = mask_king_attacks(Square::A8);
         println!("{attacks}");
         assert_eq!(expected, attacks);
@@ -77,9 +77,9 @@ mod test {
     #[test]
     fn test_king_attack_h1() {
         let mut expected = BitBoard(0);
-        expected |= BitBoard::from_square(Square::H2);
-        expected |= BitBoard::from_square(Square::G2);
-        expected |= BitBoard::from_square(Square::G1);
+        expected |= Square::H2;
+        expected |= Square::G2;
+        expected |= Square::G1;
         let attacks = mask_king_attacks(Square::H1);
         println!("{attacks}");
         assert_eq!(expected, attacks);
@@ -88,9 +88,9 @@ mod test {
     #[test]
     fn test_king_attack_h8() {
         let mut expected = BitBoard(0);
-        expected |= BitBoard::from_square(Square::H7);
-        expected |= BitBoard::from_square(Square::G8);
-        expected |= BitBoard::from_square(Square::G7);
+        expected |= Square::H7;
+        expected |= Square::G8;
+        expected |= Square::G7;
         let attacks = mask_king_attacks(Square::H8);
         println!("{attacks}");
         assert_eq!(expected, attacks);
@@ -99,14 +99,14 @@ mod test {
     #[test]
     fn test_king_attack_e4() {
         let mut expected = BitBoard(0);
-        expected |= BitBoard::from_square(Square::D5);
-        expected |= BitBoard::from_square(Square::E5);
-        expected |= BitBoard::from_square(Square::F5);
-        expected |= BitBoard::from_square(Square::D4);
-        expected |= BitBoard::from_square(Square::F4);
-        expected |= BitBoard::from_square(Square::D3);
-        expected |= BitBoard::from_square(Square::E3);
-        expected |= BitBoard::from_square(Square::F3);
+        expected |= Square::D5;
+        expected |= Square::E5;
+        expected |= Square::F5;
+        expected |= Square::D4;
+        expected |= Square::F4;
+        expected |= Square::D3;
+        expected |= Square::E3;
+        expected |= Square::F3;
         let attacks = mask_king_attacks(Square::E4);
         println!("{attacks}");
         assert_eq!(expected, attacks);
@@ -115,11 +115,11 @@ mod test {
     #[test]
     fn test_king_attack_h5() {
         let mut expected = BitBoard(0);
-        expected |= BitBoard::from_square(Square::H6);
-        expected |= BitBoard::from_square(Square::H4);
-        expected |= BitBoard::from_square(Square::G6);
-        expected |= BitBoard::from_square(Square::G5);
-        expected |= BitBoard::from_square(Square::G4);
+        expected |= Square::H6;
+        expected |= Square::H4;
+        expected |= Square::G6;
+        expected |= Square::G5;
+        expected |= Square::G4;
         let attacks = mask_king_attacks(Square::H5);
         println!("{attacks}");
         assert_eq!(expected, attacks);
