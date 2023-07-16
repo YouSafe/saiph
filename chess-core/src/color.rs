@@ -1,3 +1,5 @@
+use std::ops::Not;
+
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Color {
@@ -5,4 +7,24 @@ pub enum Color {
     Black,
 }
 
+impl Not for Color {
+    type Output = Color;
+
+    fn not(self) -> Self::Output {
+        // TODO: benchmark if this is really faster than a regular match expression
+        unsafe { std::mem::transmute::<u8, Color>(self as u8 ^ 1) }
+    }
+}
+
 pub const NUM_COLORS: usize = 2;
+
+#[cfg(test)]
+mod test {
+    use crate::color::Color;
+
+    #[test]
+    fn test_not() {
+        assert_eq!(!Color::Black, Color::White);
+        assert_eq!(!Color::White, Color::Black);
+    }
+}

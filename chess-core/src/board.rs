@@ -29,6 +29,8 @@ impl Board {
     pub const KILLER_POS_FEN: &'static str =
         "rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR w KQkq e6 0 1";
 
+    pub const EMPTY: &'static str = "8/8/8/8/8/8/8/8 w - - 0 1";
+
     pub fn piece_on_square(&self, square: Square) -> Option<Piece> {
         let bitboard = BitBoard::from_square(square);
         if (self.combined & bitboard) == BitBoard(0) {
@@ -52,6 +54,18 @@ impl Board {
         } else {
             None
         }
+    }
+
+    pub fn pieces(&self, piece: Piece) -> &BitBoard {
+        &self.pieces[piece as usize]
+    }
+
+    pub fn occupancies(&self, color: Color) -> &BitBoard {
+        &self.occupancies[color as usize]
+    }
+
+    pub fn combined(&self) -> &BitBoard {
+        &self.combined
     }
 }
 
