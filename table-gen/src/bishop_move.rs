@@ -73,7 +73,7 @@ pub fn mask_bishop_relevant_occupancy(square: Square) -> BitBoard {
 
     for diagonal in diagonals {
         for (rank, file) in diagonal {
-            attacks |= BitBoard::from_square(Square::from_index(rank * 8 + file));
+            attacks |= Square::from_index(rank * 8 + file);
         }
     }
 
@@ -122,7 +122,7 @@ mod test {
         use Square::*;
         const SQUARES: [Square; 9] = [F5, G6, D5, C6, B7, D3, C2, F3, G2];
         for square in SQUARES {
-            expected |= BitBoard::from_square(square);
+            expected |= square;
         }
         let attacks = mask_bishop_relevant_occupancy(E4);
         println!("{attacks}");
@@ -135,7 +135,7 @@ mod test {
         use Square::*;
         const SQUARES: [Square; 6] = [B2, C3, D4, E5, F6, G7];
         for square in SQUARES {
-            expected |= BitBoard::from_square(square);
+            expected |= square;
         }
         let attacks = mask_bishop_relevant_occupancy(H8);
         println!("{attacks}");
@@ -148,7 +148,7 @@ mod test {
         use Square::*;
         const SQUARES: [Square; 6] = [B7, C6, D5, E4, F3, G2];
         for square in SQUARES {
-            expected |= BitBoard::from_square(square);
+            expected |= square;
         }
         let attacks = mask_bishop_relevant_occupancy(A8);
         println!("{attacks}");
@@ -161,7 +161,7 @@ mod test {
         use Square::*;
         const SQUARES: [Square; 6] = [B2, C3, D4, E5, F6, G7];
         for square in SQUARES {
-            expected |= BitBoard::from_square(square);
+            expected |= square;
         }
         let attacks = mask_bishop_relevant_occupancy(A1);
         println!("{attacks}");
@@ -174,7 +174,7 @@ mod test {
         use Square::*;
         const SQUARES: [Square; 6] = [B7, C6, D5, E4, F3, G2];
         for square in SQUARES {
-            expected |= BitBoard::from_square(square);
+            expected |= square;
         }
         let attacks = mask_bishop_relevant_occupancy(H1);
         println!("{attacks}");
@@ -187,7 +187,7 @@ mod test {
         use Square::*;
         const SQUARES: [Square; 5] = [G6, F7, G4, F3, E2];
         for square in SQUARES {
-            expected |= BitBoard::from_square(square);
+            expected |= square;
         }
         let attacks = mask_bishop_relevant_occupancy(H5);
         println!("{attacks}");
@@ -200,13 +200,13 @@ mod test {
         use Square::*;
         const SQUARES: [Square; 9] = [F5, D5, C6, B7, D3, C2, F3, G2, H1];
         for square in SQUARES {
-            expected |= BitBoard::from_square(square);
+            expected |= square;
         }
         let mut blockers = BitBoard(0);
-        blockers |= BitBoard::from_square(B7);
-        blockers |= BitBoard::from_square(C2);
-        blockers |= BitBoard::from_square(F5);
-        blockers |= BitBoard::from_square(H1);
+        blockers |= B7;
+        blockers |= C2;
+        blockers |= F5;
+        blockers |= H1;
         let attacks = mask_bishop_attacks_on_the_fly(E4, blockers);
         println!("{attacks}");
         assert_eq!(expected, attacks);
@@ -218,10 +218,10 @@ mod test {
         use Square::*;
         const SQUARES: [Square; 1] = [B2];
         for square in SQUARES {
-            expected |= BitBoard::from_square(square);
+            expected |= square;
         }
         let mut blockers = BitBoard(0);
-        blockers |= BitBoard::from_square(B2);
+        blockers |= B2;
         let attacks = mask_bishop_attacks_on_the_fly(A1, blockers);
         println!("{attacks}");
         assert_eq!(expected, attacks);

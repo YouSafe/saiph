@@ -45,8 +45,8 @@ mod test {
     #[test]
     fn test_pawn_attack_white_e4() {
         let mut expected = BitBoard(0);
-        expected |= BitBoard::from_square(Square::D5);
-        expected |= BitBoard::from_square(Square::F5);
+        expected |= Square::D5;
+        expected |= Square::F5;
         let attacks = mask_pawn_attacks(Square::E4, Color::White);
         println!("{attacks}");
         assert_eq!(expected, attacks);
@@ -55,7 +55,7 @@ mod test {
     #[test]
     fn test_pawn_attack_white_a1() {
         let mut expected = BitBoard(0);
-        expected |= BitBoard::from_square(Square::B2);
+        expected |= Square::B2;
         let attacks = mask_pawn_attacks(Square::A1, Color::White);
         println!("{attacks}");
         assert_eq!(expected, attacks);
@@ -64,7 +64,7 @@ mod test {
     #[test]
     fn test_pawn_attack_white_h1() {
         let mut expected = BitBoard(0);
-        expected |= BitBoard::from_square(Square::G2);
+        expected |= Square::G2;
         let attacks = mask_pawn_attacks(Square::H1, Color::White);
         println!("{attacks}");
         assert_eq!(expected, attacks);
@@ -73,8 +73,8 @@ mod test {
     #[test]
     fn test_pawn_attack_black_e6() {
         let mut expected = BitBoard(0);
-        expected |= BitBoard::from_square(Square::D5);
-        expected |= BitBoard::from_square(Square::F5);
+        expected |= Square::D5;
+        expected |= Square::F5;
         let attacks = mask_pawn_attacks(Square::E6, Color::Black);
         println!("{attacks}");
         assert_eq!(expected, attacks);
@@ -83,7 +83,7 @@ mod test {
     #[test]
     fn test_pawn_attack_black_a8() {
         let mut expected = BitBoard(0);
-        expected |= BitBoard::from_square(Square::B7);
+        expected |= Square::B7;
         let attacks = mask_pawn_attacks(Square::A8, Color::Black);
         println!("{attacks}");
         assert_eq!(expected, attacks);
@@ -92,7 +92,7 @@ mod test {
     #[test]
     fn test_pawn_attack_black_h8() {
         let mut expected = BitBoard(0);
-        expected |= BitBoard::from_square(Square::G7);
+        expected |= Square::G7;
         let attacks = mask_pawn_attacks(Square::H8, Color::Black);
         println!("{attacks}");
         assert_eq!(expected, attacks);

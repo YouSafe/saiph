@@ -55,8 +55,8 @@ mod test {
     #[test]
     fn test_knight_attack_a1() {
         let mut expected = BitBoard(0);
-        expected |= BitBoard::from_square(Square::B3);
-        expected |= BitBoard::from_square(Square::C2);
+        expected |= Square::B3;
+        expected |= Square::C2;
         let attacks = mask_knight_attack(Square::A1);
         println!("{attacks}");
         assert_eq!(expected, attacks);
@@ -65,8 +65,8 @@ mod test {
     #[test]
     fn test_knight_attack_a8() {
         let mut expected = BitBoard(0);
-        expected |= BitBoard::from_square(Square::B6);
-        expected |= BitBoard::from_square(Square::C7);
+        expected |= Square::B6;
+        expected |= Square::C7;
         let attacks = mask_knight_attack(Square::A8);
         println!("{attacks}");
         assert_eq!(expected, attacks);
@@ -75,8 +75,8 @@ mod test {
     #[test]
     fn test_knight_attack_h1() {
         let mut expected = BitBoard(0);
-        expected |= BitBoard::from_square(Square::F2);
-        expected |= BitBoard::from_square(Square::G3);
+        expected |= Square::F2;
+        expected |= Square::G3;
         let attacks = mask_knight_attack(Square::H1);
         println!("{attacks}");
         assert_eq!(expected, attacks);
@@ -85,8 +85,8 @@ mod test {
     #[test]
     fn test_knight_attack_h8() {
         let mut expected = BitBoard(0);
-        expected |= BitBoard::from_square(Square::F7);
-        expected |= BitBoard::from_square(Square::G6);
+        expected |= Square::F7;
+        expected |= Square::G6;
         let attacks = mask_knight_attack(Square::H8);
         println!("{attacks}");
         assert_eq!(expected, attacks);
@@ -95,14 +95,14 @@ mod test {
     #[test]
     fn test_knight_attack_e4() {
         let mut expected = BitBoard(0);
-        expected |= BitBoard::from_square(Square::F6);
-        expected |= BitBoard::from_square(Square::G5);
-        expected |= BitBoard::from_square(Square::G3);
-        expected |= BitBoard::from_square(Square::F2);
-        expected |= BitBoard::from_square(Square::D2);
-        expected |= BitBoard::from_square(Square::C3);
-        expected |= BitBoard::from_square(Square::C5);
-        expected |= BitBoard::from_square(Square::D6);
+        expected |= Square::F6;
+        expected |= Square::G5;
+        expected |= Square::G3;
+        expected |= Square::F2;
+        expected |= Square::D2;
+        expected |= Square::C3;
+        expected |= Square::C5;
+        expected |= Square::D6;
         let attacks = mask_knight_attack(Square::E4);
         println!("{attacks}");
         assert_eq!(expected, attacks);
@@ -111,10 +111,10 @@ mod test {
     #[test]
     fn test_knight_attack_h5() {
         let mut expected = BitBoard(0);
-        expected |= BitBoard::from_square(Square::G7);
-        expected |= BitBoard::from_square(Square::F6);
-        expected |= BitBoard::from_square(Square::F4);
-        expected |= BitBoard::from_square(Square::G3);
+        expected |= Square::G7;
+        expected |= Square::F6;
+        expected |= Square::F4;
+        expected |= Square::G3;
         let attacks = mask_knight_attack(Square::H5);
         println!("{attacks}");
         assert_eq!(expected, attacks);
