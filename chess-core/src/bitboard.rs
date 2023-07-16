@@ -13,6 +13,10 @@ impl BitBoard {
         (self.0 & (1 << square.to_index())) == (1 << square.to_index())
     }
 
+    pub const fn is_empty(&self) -> bool {
+        self.0 == 0
+    }
+
     pub const fn from_square(square: Square) -> BitBoard {
         BitBoard(1 << square.to_index())
     }
@@ -21,19 +25,28 @@ impl BitBoard {
         self.0.count_ones() as u8
     }
 
+    // TODO: come up with a better name
+    /// Fetch first set square in bitboard
+    pub const fn fetch_first_square(&self) -> Square {
+        Square::from_index(self.0.trailing_zeros() as u8)
+    }
+
+    pub fn iter(&self) -> BitBoardIterator {
+        BitBoardIterator(*self)
+    }
+
+    pub fn iter_masked(&self, mask: u64) -> BitBoardIteratorMasked {
+        BitBoardIteratorMasked {
+            index: 0,
+            bitboard: *self,
+            mask,
+        }
+    }
+
     pub const NOT_A_FILE: BitBoard = BitBoard(18374403900871474942);
     pub const NOT_H_FILE: BitBoard = BitBoard(9187201950435737471);
     pub const NOT_AB_FILE: BitBoard = BitBoard(18229723555195321596);
     pub const NOT_GH_FILE: BitBoard = BitBoard(4557430888798830399);
-}
-
-impl Iterator for BitBoard {
-    type Item = Square;
-
-    #[inline]
-    fn next(&mut self) -> Option<Self::Item> {
-        todo!()
-    }
 }
 
 impl fmt::Display for BitBoard {
@@ -151,6 +164,59 @@ impl Mul<u64> for BitBoard {
     }
 }
 
+impl BitOrAssign<Square> for BitBoard {
+    fn bitor_assign(&mut self, rhs: Square) {
+        self.0 |= 1 << rhs as u64;
+    }
+}
+
+impl BitXorAssign<Square> for BitBoard {
+    fn bitxor_assign(&mut self, rhs: Square) {
+        self.0 ^= 1 << rhs as u64;
+    }
+}
+
+pub struct BitBoardIterator(BitBoard);
+
+pub struct BitBoardIteratorMasked {
+    index: u8,
+    bitboard: BitBoard,
+    mask: u64,
+}
+
+impl Iterator for BitBoardIterator {
+    type Item = Square;
+
+    fn next(&mut self) -> Option<Square> {
+        if self.0.is_empty() {
+            None
+        } else {
+            let square = self.0.fetch_first_square();
+            self.0 ^= square;
+            Some(square)
+        }
+    }
+}
+
+impl Iterator for BitBoardIteratorMasked {
+    type Item = Square;
+
+    fn next(&mut self) -> Option<Square> {
+        while !self.bitboard.is_empty() {
+            let square = self.bitboard.fetch_first_square();
+            self.bitboard ^= square;
+
+            let overlaps_mask = (self.mask & (1 << self.index)) != 0;
+            self.index += 1;
+
+            if overlaps_mask {
+                return Some(square);
+            }
+        }
+        None
+    }
+}
+
 #[cfg(test)]
 mod test {
     use crate::bitboard::BitBoard;
@@ -159,9 +225,9 @@ mod test {
     #[test]
     fn test_set_bit() {
         let mut bitboard = BitBoard(0);
-        bitboard |= BitBoard::from_square(Square::H1);
-        bitboard |= BitBoard::from_square(Square::E2);
-        bitboard |= BitBoard::from_square(Square::H8);
+        bitboard |= Square::H1;
+        bitboard |= Square::E2;
+        bitboard |= Square::H8;
         assert_eq!(bitboard, BitBoard(9223372036854780032));
     }
 
@@ -199,7 +265,7 @@ Bitboard: 9223372036854780032";
         let file = 0;
         for rank in 0..8 {
             let square = rank * 8 + file;
-            expected |= BitBoard::from_square(Square::from_index(square));
+            expected |= Square::from_index(square);
         }
         expected = !expected;
 
@@ -213,7 +279,7 @@ Bitboard: 9223372036854780032";
         let file = 7;
         for rank in 0..8 {
             let square = rank * 8 + file;
-            expected |= BitBoard::from_square(Square::from_index(square));
+            expected |= Square::from_index(square);
         }
         expected = !expected;
 
@@ -227,7 +293,7 @@ Bitboard: 9223372036854780032";
         for file in 0..2 {
             for rank in 0..8 {
                 let square = rank * 8 + file;
-                expected |= BitBoard::from_square(Square::from_index(square));
+                expected |= Square::from_index(square);
             }
         }
         expected = !expected;
@@ -242,7 +308,7 @@ Bitboard: 9223372036854780032";
         for file in 6..8 {
             for rank in 0..8 {
                 let square = rank * 8 + file;
-                expected |= BitBoard::from_square(Square::from_index(square));
+                expected |= Square::from_index(square);
             }
         }
         expected = !expected;
