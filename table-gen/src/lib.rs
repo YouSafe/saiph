@@ -3,6 +3,7 @@ mod king_move;
 mod knight_move;
 mod magic_number;
 mod pawn_move;
+mod rays_between;
 mod rook_move;
 
 use crate::bishop_move::{generate_bishop_attacks, BishopAttacks};
@@ -10,6 +11,7 @@ use crate::king_move::generate_king_attacks;
 use crate::knight_move::generate_knight_attacks;
 use crate::magic_number::Magic;
 use crate::pawn_move::generate_pawn_attacks;
+use crate::rays_between::generate_rays_between;
 use crate::rook_move::{generate_rook_attacks, RookAttacks};
 use chess_core::bitboard::BitBoard;
 use std::env;
@@ -51,6 +53,11 @@ pub fn generate_tables() {
 
         write_bitboards_variable_2d_rook(&mut tables, "ROOK_ATTACKS", &attack_table).unwrap();
         write_magic_number_table(&mut tables, "ROOK_MAGIC_NUMBERS", &magic_number_table).unwrap();
+    }
+
+    {
+        let between = generate_rays_between();
+        write_bitboards_variable_between(&mut tables, "SQUARES_BETWEEN", &between).unwrap();
     }
 }
 
@@ -97,6 +104,22 @@ pub fn write_bitboards_variable_2d_bishop(
     for attacks_for_color in attacks {
         writeln!(file, "\t[")?;
         for board in attacks_for_color {
+            writeln!(file, "\t\tBitBoard({}), ", board.0)?;
+        }
+        writeln!(file, "\t],")?
+    }
+    writeln!(file, "];\n")
+}
+
+pub fn write_bitboards_variable_between(
+    file: &mut BufWriter<File>,
+    variable_name: &str,
+    between: &[[BitBoard; 64]; 64],
+) -> std::io::Result<()> {
+    writeln!(file, "const {variable_name}: [[BitBoard; 64]; 64] = [")?;
+    for between_from_square in between {
+        writeln!(file, "\t[")?;
+        for board in between_from_square {
             writeln!(file, "\t\tBitBoard({}), ", board.0)?;
         }
         writeln!(file, "\t],")?

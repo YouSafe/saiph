@@ -40,3 +40,7 @@ pub fn get_king_attacks(square: Square) -> BitBoard {
 pub fn get_queen_attacks(square: Square, blockers: BitBoard) -> BitBoard {
     get_rook_attacks(square, blockers) | get_bishop_attacks(square, blockers)
 }
+
+pub fn between(from: Square, to: Square) -> BitBoard {
+    SQUARES_BETWEEN[from as usize][to as usize]
+}

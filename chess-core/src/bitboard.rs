@@ -25,9 +25,7 @@ impl BitBoard {
         self.0.count_ones() as u8
     }
 
-    // TODO: come up with a better name
-    /// Fetch first set square in bitboard
-    pub const fn fetch_first_square(&self) -> Square {
+    pub const fn bit_scan(&self) -> Square {
         Square::from_index(self.0.trailing_zeros() as u8)
     }
 
@@ -42,6 +40,8 @@ impl BitBoard {
             mask,
         }
     }
+
+    pub const EMPTY: BitBoard = BitBoard(0);
 
     pub const NOT_A_FILE: BitBoard = BitBoard(18374403900871474942);
     pub const NOT_H_FILE: BitBoard = BitBoard(9187201950435737471);
@@ -191,7 +191,7 @@ impl Iterator for BitBoardIterator {
         if self.0.is_empty() {
             None
         } else {
-            let square = self.0.fetch_first_square();
+            let square = self.0.bit_scan();
             self.0 ^= square;
             Some(square)
         }
@@ -203,7 +203,7 @@ impl Iterator for BitBoardIteratorMasked {
 
     fn next(&mut self) -> Option<Square> {
         while !self.bitboard.is_empty() {
-            let square = self.bitboard.fetch_first_square();
+            let square = self.bitboard.bit_scan();
             self.bitboard ^= square;
 
             let overlaps_mask = (self.mask & (1 << self.index)) != 0;
