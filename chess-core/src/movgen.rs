@@ -116,7 +116,7 @@ pub fn build_attacked_bitboard(board: &Board, attacking_side: Color) -> BitBoard
         for file in 0..8 {
             let square = Square::from_index(rank * 8 + file);
 
-            if is_square_attacked(&board, square, attacking_side) {
+            if is_square_attacked(board, square, attacking_side) {
                 bitboard |= square;
             }
         }

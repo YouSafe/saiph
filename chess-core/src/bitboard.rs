@@ -54,7 +54,7 @@ impl BitBoard {
 
 impl fmt::Display for BitBoard {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "\n")?;
+        writeln!(f)?;
         for rank in (0..8).rev() {
             write!(f, "{}   ", rank + 1)?;
             for file in 0..8 {
@@ -63,7 +63,7 @@ impl fmt::Display for BitBoard {
                 let symbol = if value { 'X' } else { '.' };
                 write!(f, "{} ", symbol)?;
             }
-            write!(f, "\n")?;
+            writeln!(f)?;
         }
         write!(f, "\n    ")?;
         for file in 'a'..='h' {

@@ -10,8 +10,8 @@ pub enum Square {
     A5=32, B5, C5, D5, E5, F5, G5, H5,  
     A4=24, B4, C4, D4, E4, F4, G4, H4,  
     A3=16, B3, C3, D3, E3, F3, G3, H3, 
-    A2=08, B2, C2, D2, E2, F2, G2, H2,  
-    A1=00, B1, C1, D1, E1, F1, G1, H1, 
+    A2= 8, B2, C2, D2, E2, F2, G2, H2,  
+    A1= 0, B1, C1, D1, E1, F1, G1, H1, 
 }
 
 #[rustfmt::skip]
@@ -57,15 +57,16 @@ impl FromStr for Square {
         if s.len() != 2 {
             return Err(ParsePositionError::InvalidLength);
         }
+        let mut chars = s.chars();
 
-        let file = (s.chars().nth(0).unwrap().to_ascii_lowercase() as i8) - ('a' as i8);
-        let rank = (s.chars().nth(1).unwrap().to_ascii_lowercase() as i8) - ('1' as i8);
+        let file = (chars.next().unwrap().to_ascii_lowercase() as i8) - ('a' as i8);
+        let rank = (chars.next().unwrap().to_ascii_lowercase() as i8) - ('1' as i8);
 
-        if file < 0 || file > 7 {
+        if !(0..=7).contains(&file) {
             return Err(ParsePositionError::InvalidFile);
         }
 
-        if rank < 0 || rank > 7 {
+        if !(0..=7).contains(&rank) {
             return Err(ParsePositionError::InvalidRank);
         }
 
