@@ -1,13 +1,21 @@
-use chess_core::bitboard::BitBoard;
+use crate::bitboard::BitBoard;
 
-pub fn generate_occupancy(index: u64, attack_mask: BitBoard) -> BitBoard {
-    let mut occupancy = BitBoard(0);
+pub const fn generate_occupancy(index: u64, attack_mask: BitBoard) -> BitBoard {
+    let mut occupancy = BitBoard(0).0;
+    let BitBoard(mut attack_mask) = attack_mask;
 
-    for square in attack_mask.iter_masked(index) {
-        occupancy |= square;
+    let mut i = 0;
+    while attack_mask != 0 {
+        let square = attack_mask.trailing_zeros();
+        attack_mask ^= 1 << square;
+
+        if (index & (1 << i)) != 0 {
+            occupancy |= 1 << square;
+        }
+        i += 1;
     }
 
-    occupancy
+    BitBoard(occupancy)
 }
 
 #[derive(Debug, Default, Clone, Copy)]
@@ -17,7 +25,7 @@ pub struct Magic {
     pub mask: BitBoard,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct BitBoardMapping {
     pub from: BitBoard,
     pub to: BitBoard,
@@ -93,12 +101,12 @@ impl MagicNumberCandidateGenerator {
 
 #[cfg(test)]
 mod test {
-    use crate::magic_number::{
+    use crate::bitboard::BitBoard;
+    use crate::square::Square;
+    use crate::tables::magic_number::{
         find_magic_number, generate_occupancy, BitBoardMapping, MagicNumberCandidateGenerator,
     };
-    use crate::rook_move::{mask_rook_attacks_on_the_fly, mask_rook_relevant_occupancy};
-    use chess_core::bitboard::BitBoard;
-    use chess_core::square::Square;
+    use crate::tables::rook_move::{mask_rook_attacks_on_the_fly, mask_rook_relevant_occupancy};
 
     #[test]
     fn test_generate_occupancy() {

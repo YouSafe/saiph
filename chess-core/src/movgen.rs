@@ -1,13 +1,13 @@
+use crate::bitboard::BitBoard;
+use crate::board::Board;
+use crate::chess_move::Move;
+use crate::color::Color;
+use crate::piece::{Piece, ALL_PIECES};
+use crate::square::Square;
 use crate::tables::{
     get_bishop_attacks, get_king_attacks, get_knight_attacks, get_pawn_attacks, get_queen_attacks,
     get_rook_attacks,
 };
-use chess_core::bitboard::BitBoard;
-use chess_core::board::Board;
-use chess_core::chess_move::Move;
-use chess_core::color::Color;
-use chess_core::piece::{Piece, ALL_PIECES};
-use chess_core::square::Square;
 
 type MoveList = Vec<Move>;
 
@@ -126,14 +126,11 @@ pub fn build_attacked_bitboard(board: &Board, attacking_side: Color) -> BitBoard
 
 #[cfg(test)]
 mod test {
-    use crate::movgen::{
-        build_attacked_bitboard, generate_attack_bitboard, generate_pinned_bitboard,
-        is_square_attacked,
-    };
-    use chess_core::bitboard::BitBoard;
-    use chess_core::board::Board;
-    use chess_core::color::Color;
-    use chess_core::square::Square;
+    use crate::bitboard::BitBoard;
+    use crate::board::Board;
+    use crate::color::Color;
+    use crate::movgen::{build_attacked_bitboard, generate_attack_bitboard, is_square_attacked};
+    use crate::square::Square;
     use std::str::FromStr;
 
     #[test]

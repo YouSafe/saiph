@@ -1,56 +1,70 @@
-use chess_core::bitboard::BitBoard;
-use chess_core::square::Square;
+use crate::bitboard::BitBoard;
+use crate::square::Square;
 
-pub fn generate_king_attacks() -> [BitBoard; 64] {
+pub const fn generate_king_attacks() -> [BitBoard; 64] {
     let mut result = [BitBoard(0); 64];
 
-    for square in 0..64 {
+    let mut square = 0;
+    while square < 64 {
         let sq = Square::from_index(square as u8);
         result[square] = mask_king_attacks(sq);
+        square += 1;
     }
 
     result
 }
 
-fn mask_king_attacks(square: Square) -> BitBoard {
-    let mut attacks = BitBoard(0);
+const fn mask_king_attacks(square: Square) -> BitBoard {
+    let mut attacks = BitBoard(0).0;
 
-    let bitboard = BitBoard::from_square(square);
+    let BitBoard(bitboard) = BitBoard::from_square(square);
 
-    const MOVES: [(fn(BitBoard) -> BitBoard, BitBoard); 8] = [
+    // right shift, mask
+    const MOVES: [(i8, BitBoard); 8] = [
         // bottom left
-        (|bb: BitBoard| bb >> 9, BitBoard::NOT_H_FILE),
+        (9, BitBoard::NOT_H_FILE),
         // bottom
-        (|bb: BitBoard| bb >> 8, BitBoard(!0)),
+        (8, BitBoard(!0)),
         // bottom right
-        (|bb: BitBoard| bb >> 7, BitBoard::NOT_A_FILE),
+        (7, BitBoard::NOT_A_FILE),
         // left
-        (|bb: BitBoard| bb >> 1, BitBoard::NOT_H_FILE),
+        (1, BitBoard::NOT_H_FILE),
         // right
-        (|bb: BitBoard| bb << 1, BitBoard::NOT_A_FILE),
+        (-1, BitBoard::NOT_A_FILE),
         // top left
-        (|bb: BitBoard| bb << 7, BitBoard::NOT_H_FILE),
+        (-7, BitBoard::NOT_H_FILE),
         // top
-        (|bb: BitBoard| bb << 8, BitBoard(!0)),
+        (-8, BitBoard(!0)),
         // top right
-        (|bb: BitBoard| bb << 9, BitBoard::NOT_A_FILE),
+        (-9, BitBoard::NOT_A_FILE),
     ];
 
-    for (shifter, mask) in MOVES {
-        let shifted = shifter(bitboard);
-        if (shifted & mask) != BitBoard(0) {
+    let mut moves_index = 0;
+    while moves_index < MOVES.len() {
+        let (shift, BitBoard(mask)) = MOVES[moves_index];
+
+        let shifted = if shift > 0 {
+            bitboard >> shift as i32
+        } else {
+            bitboard << shift.abs() as i32
+        };
+
+        if (shifted & mask) != BitBoard(0).0 {
             attacks |= shifted;
         }
+
+        moves_index += 1;
     }
 
-    attacks
+    BitBoard(attacks)
 }
 
 #[cfg(test)]
 mod test {
-    use crate::king_move::mask_king_attacks;
-    use chess_core::bitboard::BitBoard;
-    use chess_core::square::Square;
+
+    use crate::bitboard::BitBoard;
+    use crate::square::Square;
+    use crate::tables::king_move::mask_king_attacks;
 
     #[test]
     fn test_king_attack_a1() {

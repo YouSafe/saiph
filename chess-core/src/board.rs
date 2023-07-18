@@ -14,6 +14,9 @@ pub struct Board {
     side_to_move: Color,
     en_passant_target: Option<Square>,
     castling_rights: CastlingRights,
+    pinned: BitBoard,
+    checkers: BitBoard,
+    attacked: BitBoard,
 }
 
 impl Default for Board {
@@ -66,6 +69,10 @@ impl Board {
 
     pub fn combined(&self) -> &BitBoard {
         &self.combined
+    }
+
+    pub fn side_to_move(&self) -> Color {
+        self.side_to_move
     }
 }
 
@@ -172,12 +179,11 @@ impl FromStr for Board {
                         };
 
                         let square = Square::from_index(rank * 8 + file);
-                        let square_bitboard = BitBoard::from_square(square);
 
                         // place piece
-                        pieces[piece as usize] |= square_bitboard;
-                        occupancies[color as usize] |= square_bitboard;
-                        combined |= square_bitboard;
+                        pieces[piece as usize] |= square;
+                        occupancies[color as usize] |= square;
+                        combined |= square;
 
                         file += 1;
                     }
@@ -212,14 +218,21 @@ impl FromStr for Board {
             .parse::<u64>()
             .map_err(|_| ParseFenError::BadHalfMoveClock)?;
 
-        Ok(Board {
+        let mut board = Board {
             pieces,
             occupancies,
             combined,
             side_to_move,
             en_passant_target,
             castling_rights,
-        })
+            pinned: Default::default(),
+            checkers: Default::default(),
+            attacked: Default::default(),
+        };
+
+        // board.update_safety_bitboards();
+
+        Ok(board)
     }
 }
 

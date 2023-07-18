@@ -1,51 +1,64 @@
-use chess_core::bitboard::BitBoard;
-use chess_core::square::Square;
+use crate::bitboard::BitBoard;
 
-pub fn generate_rays_between() -> [[BitBoard; 64]; 64] {
+pub const fn generate_rays_between() -> [[BitBoard; 64]; 64] {
     let mut result = [[BitBoard(0); 64]; 64];
 
-    for from in 0i8..64 {
-        for to in 0i8..64 {
-            let (from_rank, from_file) = (from / 8, from % 8);
-            let (to_rank, to_file) = (to / 8, to % 8);
+    const fn to_square_bitboard(rank: i8, file: i8) -> u64 {
+        1 << (rank * 8 + file)
+    }
+
+    const fn max(a: i8, b: i8) -> i8 {
+        [a, b][(a < b) as usize]
+    }
+
+    let mut from: i8 = 0;
+    while from < 64 {
+        let mut to: i8 = 0;
+        while to < 64 {
+            let from_indices @ (from_rank, from_file) = (from / 8, from % 8);
+            let to_indices @ (to_rank, to_file) = (to / 8, to % 8);
             let (dir_rank, dir_file) = (
                 (to_rank - from_rank).signum(),
                 (to_file - from_file).signum(),
             );
 
-            let man_dist = (from_file - to_file).abs() + (from_rank - to_rank).abs();
+            const fn share_diagonal(
+                (from_rank, from_file): (i8, i8),
+                (to_rank, to_file): (i8, i8),
+            ) -> bool {
+                (from_file - to_file).abs() == (from_rank - to_rank).abs()
+            }
 
-            if (from_file - to_file).abs() == (from_rank - to_rank).abs() {
-                // shares a diagonal
-                // one diagonal move is one horizontal and vertical move
-                let length = man_dist / 2;
+            const fn share_line(
+                (from_rank, from_file): (i8, i8),
+                (to_rank, to_file): (i8, i8),
+            ) -> bool {
+                ((from_file == to_file) && (from_rank != to_rank))
+                    || ((from_rank == to_rank) && (from_file != to_file))
+            }
 
-                for marching in 1..length {
+            if share_diagonal(from_indices, to_indices) || share_line(from_indices, to_indices) {
+                let chebyshev_dist = max((from_file - to_file).abs(), (from_rank - to_rank).abs());
+
+                let mut marching_index = 1;
+                while marching_index < chebyshev_dist {
                     let (march_rank, march_file) = (
-                        from_rank + marching * dir_rank,
-                        from_file + marching * dir_file,
+                        from_rank + marching_index * dir_rank,
+                        from_file + marching_index * dir_file,
                     );
 
-                    result[from as usize][to as usize] |=
-                        Square::from_index(march_rank as u8 * 8 + march_file as u8);
-                }
-            } else if ((from_file == to_file) && (from_rank != to_rank))
-                || ((from_rank == to_rank) && (from_file != to_file))
-            {
-                // shares a line
-                let length = man_dist;
-
-                for marching in 1..length {
-                    let (march_rank, march_file) = (
-                        from_rank + marching * dir_rank,
-                        from_file + marching * dir_file,
+                    result[from as usize][to as usize] = BitBoard(
+                        result[from as usize][to as usize].0
+                            | to_square_bitboard(march_rank, march_file),
                     );
 
-                    result[from as usize][to as usize] |=
-                        Square::from_index(march_rank as u8 * 8 + march_file as u8);
+                    marching_index += 1;
                 }
             }
+
+            to += 1;
         }
+        from += 1;
     }
 
     result
@@ -53,9 +66,9 @@ pub fn generate_rays_between() -> [[BitBoard; 64]; 64] {
 
 #[cfg(test)]
 mod test {
-    use crate::rays_between::generate_rays_between;
-    use chess_core::bitboard::BitBoard;
-    use chess_core::square::Square;
+    use crate::bitboard::BitBoard;
+    use crate::square::Square;
+    use crate::tables::rays_between::generate_rays_between;
 
     #[test]
     fn test_generate_rays_between_negative_diagonal() {
