@@ -1,11 +1,65 @@
 use crate::tables::{
-    get_bishop_attacks, get_king_attacks, get_knight_attacks, get_pawn_attacks, get_rook_attacks,
+    get_bishop_attacks, get_king_attacks, get_knight_attacks, get_pawn_attacks, get_queen_attacks,
+    get_rook_attacks,
 };
 use chess_core::bitboard::BitBoard;
 use chess_core::board::Board;
+use chess_core::chess_move::Move;
 use chess_core::color::Color;
-use chess_core::piece::Piece;
+use chess_core::piece::{Piece, ALL_PIECES};
 use chess_core::square::Square;
+
+type MoveList = Vec<Move>;
+
+pub fn generate_attack_bitboard(board: &Board, attacking_color: Color) -> BitBoard {
+    let mut attacked = BitBoard(0);
+
+    let king = board.pieces(Piece::King) & board.occupancies(!attacking_color);
+
+    // remove opponent king from blockers to simulate xray attack
+    let blockers = *board.combined() & !king;
+
+    for piece in ALL_PIECES {
+        let piece_bitboard = *board.pieces(piece) & board.occupancies(attacking_color);
+        for square in piece_bitboard.iter() {
+            let piece = board
+                .piece_on_square(square)
+                .expect("piece must not be none");
+
+            attacked |= match piece {
+                Piece::Pawn => get_pawn_attacks(square, attacking_color),
+                Piece::Knight => get_knight_attacks(square),
+                Piece::Bishop => get_bishop_attacks(square, blockers),
+                Piece::Rook => get_rook_attacks(square, blockers),
+                Piece::Queen => get_queen_attacks(square, blockers),
+                Piece::King => get_king_attacks(square),
+            };
+        }
+    }
+
+    attacked
+}
+
+pub fn calculate_pinned_checkers_attacks(board: &Board) {
+    // let king_square =
+    //     (board.pieces(Piece::King) & board.occupancies(board.side_to_move)).bit_scan();
+    //
+    // // let pinners =
+    //
+    // let pinned = BitBoard(0);
+}
+
+pub fn generate_pinned_bitboard(board: &Board, side: Color) -> BitBoard {
+    let pinned = BitBoard(0);
+    todo!();
+    pinned
+}
+
+pub fn generate_moves(board: &Board) -> MoveList {
+    let move_list = vec![];
+
+    move_list
+}
 
 pub fn is_square_attacked(board: &Board, attacked_square: Square, attacking_side: Color) -> bool {
     // attacked by pawns?
@@ -63,7 +117,7 @@ pub fn build_attacked_bitboard(board: &Board, attacking_side: Color) -> BitBoard
             let square = Square::from_index(rank * 8 + file);
 
             if is_square_attacked(&board, square, attacking_side) {
-                bitboard |= BitBoard::from_square(square);
+                bitboard |= square;
             }
         }
     }
@@ -72,7 +126,10 @@ pub fn build_attacked_bitboard(board: &Board, attacking_side: Color) -> BitBoard
 
 #[cfg(test)]
 mod test {
-    use crate::movgen::{build_attacked_bitboard, is_square_attacked};
+    use crate::movgen::{
+        build_attacked_bitboard, generate_attack_bitboard, generate_pinned_bitboard,
+        is_square_attacked,
+    };
     use chess_core::bitboard::BitBoard;
     use chess_core::board::Board;
     use chess_core::color::Color;
@@ -159,5 +216,18 @@ mod test {
         let expected = BitBoard(16777086);
         println!("expected: {expected}");
         assert_eq!(attacked, expected);
+    }
+
+    #[test]
+    fn test_generate_attack_bitboard() {
+        let board = Board::default();
+        let attacked = generate_attack_bitboard(&board, Color::White);
+
+        println!("{}", board.combined());
+        println!("{attacked}");
+
+        let test = build_attacked_bitboard(&board, Color::White);
+        println!("{test}");
+        assert_eq!(attacked, test);
     }
 }
