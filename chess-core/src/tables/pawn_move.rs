@@ -17,7 +17,7 @@ pub const fn generate_pawn_attacks() -> [[BitBoard; 64]; 2] {
 }
 
 const fn mask_pawn_attacks(square: Square, side: Color) -> BitBoard {
-    let mut attacks = BitBoard(0).0;
+    let BitBoard(mut attacks) = BitBoard(0);
 
     let BitBoard(bitboard) = BitBoard::from_square(square);
 

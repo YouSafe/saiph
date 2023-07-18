@@ -1,6 +1,6 @@
 use crate::bitboard::BitBoard;
 use crate::square::Square;
-use crate::tables::magic_number::{generate_occupancy, BitBoardMapping, Magic};
+use crate::tables::magic_number::{generate_occupancy, Magic};
 
 #[rustfmt::skip]
 pub const BISHOP_MAGIC_NUMBERS: [Magic; 64] = [
@@ -75,11 +75,6 @@ pub fn generate_bishop_attacks() -> Vec<[BitBoard; 64]> {
     // TODO: maybe flatten array
     let mut attacks = vec![[BitBoard(0); 64]; 512];
 
-    let mut target_mapping: [BitBoardMapping; 512] = [BitBoardMapping {
-        from: BitBoard(0),
-        to: BitBoard(0),
-    }; 512];
-
     let mut square = 0;
     while square < 64 {
         let sq = Square::from_index(square as u8);
@@ -88,26 +83,17 @@ pub fn generate_bishop_attacks() -> Vec<[BitBoard; 64]> {
 
         let num = 1 << num_relevant_occupancy_bits;
 
+        let magic = BISHOP_MAGIC_NUMBERS[square];
+
         let mut target_mapping_index = 0;
         while target_mapping_index < num {
             let occupancy = generate_occupancy(target_mapping_index, relevant_occupancy_bit_mask);
-            let attacks = mask_bishop_attacks_on_the_fly(sq, occupancy);
+            let attack = mask_bishop_attacks_on_the_fly(sq, occupancy);
 
-            target_mapping[target_mapping_index as usize] = BitBoardMapping {
-                from: occupancy,
-                to: attacks,
-            };
+            let magic_index = (occupancy.0.wrapping_mul(magic.magic_number)) >> magic.shift;
+            attacks[magic_index as usize][square] = attack;
+
             target_mapping_index += 1;
-        }
-
-        let magic = BISHOP_MAGIC_NUMBERS[square];
-
-        let mut mapping_index = 0;
-        while mapping_index < num {
-            let mapping = target_mapping[mapping_index as usize];
-            let magic_index = (mapping.from.0.wrapping_mul(magic.magic_number)) >> magic.shift;
-            attacks[magic_index as usize][square] = mapping.to;
-            mapping_index += 1;
         }
 
         square += 1;
@@ -184,20 +170,10 @@ pub const fn mask_bishop_attacks_on_the_fly(square: Square, blockers: BitBoard) 
         (-1, 1),
     ];
 
-    // same order as DIAGONAL_CONFIGS
-    let mut blocked_diagonal = [false; 4];
-
-    let mut distance = 1;
-    while distance <= 7 {
-        let mut diagonal_index = 0;
-
-        while diagonal_index < DIAGONAL_CONFIGS.len() {
-            if blocked_diagonal[diagonal_index] {
-                // skip blocked diagonal
-                diagonal_index += 1;
-                continue;
-            }
-
+    let mut diagonal_index = 0;
+    while diagonal_index < DIAGONAL_CONFIGS.len() {
+        let mut distance = 1;
+        while distance <= 7 {
             let (dir_rank, dir_file) = DIAGONAL_CONFIGS[diagonal_index];
 
             let (rank, file) = (
@@ -210,14 +186,15 @@ pub const fn mask_bishop_attacks_on_the_fly(square: Square, blockers: BitBoard) 
                 let square_bitboard = to_square_bitboard(rank, file);
                 attacks |= square_bitboard;
                 if (blockers.0 & square_bitboard) != BitBoard(0).0 {
-                    blocked_diagonal[diagonal_index] = true;
+                    break;
                 }
+            } else {
+                break;
             }
 
-            diagonal_index += 1;
+            distance += 1;
         }
-
-        distance += 1;
+        diagonal_index += 1;
     }
 
     BitBoard(attacks)

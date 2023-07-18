@@ -1,6 +1,6 @@
 use crate::bitboard::BitBoard;
 use crate::square::Square;
-use crate::tables::magic_number::{generate_occupancy, BitBoardMapping, Magic};
+use crate::tables::magic_number::{generate_occupancy, Magic};
 
 #[rustfmt::skip]
 pub const ROOK_MAGIC_NUMBERS: [Magic; 64] = [
@@ -70,59 +70,31 @@ pub const ROOK_MAGIC_NUMBERS: [Magic; 64] = [
     Magic { magic_number: 0x1011cc0100205082, shift: 52, mask: BitBoard(9115426935197958144)  },
 ];
 
-const ROOK_RELEVANT_OCCUPANCIES: [BitBoard; 64] = generate_rook_relevant_occupancies();
-
-pub const fn generate_rook_relevant_occupancies() -> [BitBoard; 64] {
-    let mut result = [BitBoard(0); 64];
-    let mut square = 0;
-    while square < 64 {
-        let sq = Square::from_index(square as u8);
-        result[square] = mask_rook_relevant_occupancy(sq);
-        square += 1;
-    }
-    result
-}
-
-// TODO: document number 4060
+// TODO: document number 4096
 pub fn generate_rook_attacks() -> Vec<[BitBoard; 64]> {
     // TODO: maybe flatten array
     let mut attacks = vec![[BitBoard(0); 64]; 4096];
 
-    let mut target_mapping: [BitBoardMapping; 4096] = [BitBoardMapping {
-        from: BitBoard(0),
-        to: BitBoard(0),
-    }; 4096];
-
     let mut square = 0;
     while square < 64 {
         let sq = Square::from_index(square as u8);
-        let relevant_occupancy_bit_mask = ROOK_RELEVANT_OCCUPANCIES[square];
+        let relevant_occupancy_bit_mask = mask_rook_relevant_occupancy(sq);
         let num_relevant_occupancy_bits = relevant_occupancy_bit_mask.popcnt();
 
         let num = 1 << num_relevant_occupancy_bits;
 
+        let magic = ROOK_MAGIC_NUMBERS[square];
+
         let mut target_mapping_index = 0;
         while target_mapping_index < num {
             let occupancy = generate_occupancy(target_mapping_index, relevant_occupancy_bit_mask);
-            let attacks = mask_rook_attacks_on_the_fly(sq, occupancy);
+            let attack = mask_rook_attacks_on_the_fly(sq, occupancy);
 
-            target_mapping[target_mapping_index as usize] = BitBoardMapping {
-                from: occupancy,
-                to: attacks,
-            };
+            let magic_index = (occupancy.0.wrapping_mul(magic.magic_number)) >> magic.shift;
+            attacks[magic_index as usize][square] = attack;
+
             target_mapping_index += 1;
         }
-
-        let magic = ROOK_MAGIC_NUMBERS[square];
-
-        let mut mapping_index = 0;
-        while mapping_index < num {
-            let mapping = target_mapping[mapping_index as usize];
-            let magic_index = (mapping.from.0.wrapping_mul(magic.magic_number)) >> magic.shift;
-            attacks[magic_index as usize][square] = mapping.to;
-            mapping_index += 1;
-        }
-
         square += 1;
     }
 
@@ -130,7 +102,7 @@ pub fn generate_rook_attacks() -> Vec<[BitBoard; 64]> {
 }
 
 pub const fn mask_rook_relevant_occupancy(square: Square) -> BitBoard {
-    let mut attacks = BitBoard(0).0;
+    let BitBoard(mut attacks) = BitBoard(0);
 
     let (source_rank, source_file) = ((square.to_index() / 8) as i8, (square.to_index() % 8) as i8);
 

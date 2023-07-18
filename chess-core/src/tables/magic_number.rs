@@ -1,7 +1,7 @@
 use crate::bitboard::BitBoard;
 
 pub const fn generate_occupancy(index: u64, attack_mask: BitBoard) -> BitBoard {
-    let mut occupancy = BitBoard(0).0;
+    let BitBoard(mut occupancy) = BitBoard(0);
     let BitBoard(mut attack_mask) = attack_mask;
 
     let mut i = 0;
