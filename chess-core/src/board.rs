@@ -87,6 +87,10 @@ impl Board {
     pub fn pinners(&self) -> BitBoard {
         self.pinners
     }
+
+    pub fn castling_rights(&self) -> CastlingRights {
+        self.castling_rights
+    }
 }
 
 impl fmt::Display for Board {

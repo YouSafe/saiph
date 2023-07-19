@@ -10,6 +10,7 @@ use crate::bitboard::BitBoard;
 use crate::board::Board;
 use crate::chess_move::Move;
 use crate::color::Color;
+use crate::movgen::castling::CastlingMoveGenerator;
 use crate::movgen::pawn_capture::PawnCaptureMoveGenerator;
 use crate::movgen::quiet_pawn::QuietPawnMoveGenerator;
 use crate::piece::{Piece, ALL_PIECES};
@@ -135,6 +136,8 @@ pub fn generate_moves(board: &Board) -> MoveList {
         // SLIDERS MOVES
 
         // KING MOVES
+        CastlingMoveGenerator::generate::<NotInCheck>(board, &mut move_list);
+        
     } else if checkers.popcnt() == 1 {
         // a single check can be evaded by capturing the checker
 
