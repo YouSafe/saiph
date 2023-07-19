@@ -15,6 +15,7 @@ use crate::movgen::king::KingMoveGenerator;
 use crate::movgen::knight::KnightMoveGenerator;
 use crate::movgen::pawn_capture::PawnCaptureMoveGenerator;
 use crate::movgen::quiet_pawn::QuietPawnMoveGenerator;
+use crate::movgen::slider::SliderMoveGenerator;
 use crate::piece::{Piece, ALL_PIECES};
 use crate::square::Square;
 use crate::tables::{
@@ -137,6 +138,7 @@ pub fn generate_moves(board: &Board) -> MoveList {
         KnightMoveGenerator::generate::<NotInCheck>(board, &mut move_list);
 
         // SLIDERS MOVES
+        SliderMoveGenerator::generate::<NotInCheck>(board, &mut move_list);
 
         // KING MOVES
         CastlingMoveGenerator::generate::<NotInCheck>(board, &mut move_list);
@@ -152,6 +154,7 @@ pub fn generate_moves(board: &Board) -> MoveList {
         KnightMoveGenerator::generate::<InCheck>(board, &mut move_list);
 
         // SLIDERS MOVES
+        SliderMoveGenerator::generate::<InCheck>(board, &mut move_list);
 
         // KING MOVES
         // castling is not allowed when the king is in check
@@ -343,9 +346,7 @@ mod test {
         let (pinned, checkers, _pinners) = calculate_pinned_checkers_pinners(&board);
 
         println!("{board}");
-
         println!("pinned: {pinned}");
-
         println!("checkers: {checkers}");
     }
 
@@ -364,5 +365,17 @@ mod test {
         println!("{:#?}", moves);
 
         assert_eq!(moves.len(), 20);
+    }
+
+    #[test]
+    fn moves_at_kiwipete() {
+        let board = Board::from_str(
+            "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",
+        )
+        .unwrap();
+        let moves = generate_moves(&board);
+        println!("{:#?}", moves);
+
+        assert_eq!(moves.len(), 46);
     }
 }
