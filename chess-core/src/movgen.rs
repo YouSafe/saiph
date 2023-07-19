@@ -1,12 +1,21 @@
+mod castling;
+mod en_passant;
+mod king;
+mod knight;
+mod quiet_pawn;
+mod slider;
+mod pawn_capture;
+
 use crate::bitboard::BitBoard;
 use crate::board::Board;
 use crate::chess_move::Move;
 use crate::color::Color;
+use crate::movgen::quiet_pawn::QuietPawnMoveGenerator;
 use crate::piece::{Piece, ALL_PIECES};
 use crate::square::Square;
 use crate::tables::{
-    get_bishop_attacks, get_king_attacks, get_knight_attacks, get_pawn_attacks, get_queen_attacks,
-    get_rook_attacks,
+    between, get_bishop_attacks, get_king_attacks, get_knight_attacks, get_pawn_attacks,
+    get_queen_attacks, get_rook_attacks,
 };
 
 type MoveList = Vec<Move>;
@@ -40,23 +49,127 @@ pub fn generate_attack_bitboard(board: &Board, attacking_color: Color) -> BitBoa
     attacked
 }
 
-pub fn calculate_pinned_checkers_attacks(board: &Board) {
-    // let king_square =
-    //     (board.pieces(Piece::King) & board.occupancies(board.side_to_move)).bit_scan();
-    //
-    // // let pinners =
-    //
-    // let pinned = BitBoard(0);
+pub fn calculate_pinned_checkers_pinners(board: &Board) -> (BitBoard, BitBoard, BitBoard) {
+    let king_square =
+        (board.pieces(Piece::King) & board.occupancies(board.side_to_move())).bit_scan();
+
+    let mut potential_pinners = BitBoard(0);
+    let mut pinned = BitBoard(0);
+
+    let mut checkers = BitBoard(0);
+
+    // pretend king is a bishop and see if any other bishop OR queen is attacked by that
+    potential_pinners |= get_bishop_attacks(king_square, BitBoard(0))
+        & (board.pieces(Piece::Bishop) | board.pieces(Piece::Queen));
+
+    // now pretend the king is a rook and so the same procedure
+    potential_pinners |= get_rook_attacks(king_square, BitBoard(0))
+        & (board.pieces(Piece::Rook) | board.pieces(Piece::Queen));
+
+    // limit to opponent's pieces
+    potential_pinners &= board.occupancies(!board.side_to_move());
+
+    let mut pinners = BitBoard(0);
+
+    for square in potential_pinners.iter() {
+        let potentially_pinned = between(square, king_square) & board.combined();
+        if potentially_pinned.is_empty() {
+            checkers |= square;
+        } else if potentially_pinned.popcnt() == 1 {
+            pinned |= potentially_pinned;
+            pinners |= potential_pinners;
+        }
+    }
+
+    // now pretend the king is a knight and check if it attacks an enemy knight
+    checkers |= get_knight_attacks(king_square)
+        & board.pieces(Piece::Knight)
+        & board.occupancies(!board.side_to_move());
+
+    // do the same thing for pawns
+    checkers |= get_pawn_attacks(king_square, board.side_to_move())
+        & board.pieces(Piece::Pawn)
+        & board.occupancies(!board.side_to_move());
+
+    (pinned, checkers, pinners)
 }
 
-pub fn generate_pinned_bitboard(board: &Board, side: Color) -> BitBoard {
-    let pinned = BitBoard(0);
-    todo!();
-    pinned
+trait CheckState {}
+
+struct InCheck;
+struct NotInCheck;
+
+impl CheckState for InCheck {}
+impl CheckState for NotInCheck {}
+
+trait PieceMoveGenerator {
+    fn generate<T: CheckState + 'static>(board: &Board, move_list: &mut MoveList);
 }
 
 pub fn generate_moves(board: &Board) -> MoveList {
-    let move_list = vec![];
+    let mut move_list = vec![];
+
+    // squares that need to be captured
+    let mut capture_mask = !BitBoard::EMPTY;
+
+    // squares that need to be moved to (to block a check)
+    let mut push_mask = !BitBoard::EMPTY;
+
+    let king_square =
+        (board.pieces(Piece::King) & board.occupancies(board.side_to_move())).bit_scan();
+
+    let checkers = board.checkers();
+    let pinned = board.pinned();
+
+    if checkers.popcnt() == 0 {
+        // differentiate between pinned and not pinned
+        // if not pinned create all the moves
+        // if pinned calculate mask where piece can go to
+        // pinned means masking the to squares to those between the pinner and the king
+
+        // king can only go to squares that are not attacked (only the squares 1 away from the
+        // king need to be considered)
+
+        // pinned pieces can only move towards or away from the pinner
+        // if pinned
+        // finally get the bitboard for the squares between the king and the pinner and use it as a mask
+
+        // edge-case en-passant move that leads to a discovered attack (deal with this separately)
+
+        // PAWN MOVES
+        QuietPawnMoveGenerator::generate::<NotInCheck>(board, &mut move_list);
+
+        // KNIGHT MOVES
+
+        // SLIDERS MOVES
+
+        // KING MOVES
+    } else if checkers.popcnt() == 1 {
+        // a single check can be evaded by capturing the checker
+        capture_mask = checkers;
+
+        let checker = checkers.bit_scan();
+        push_mask = between(king_square, checker);
+
+        // stop castling when king is in check
+
+        println!("push: {push_mask}");
+        println!("capture: {capture_mask}");
+
+        // PAWN MOVES
+        QuietPawnMoveGenerator::generate::<InCheck>(board, &mut move_list);
+
+        // KNIGHT MOVES
+
+        // SLIDERS MOVES
+
+        // KING MOVES
+    } else {
+        // double and more checkers
+        // only the king can move
+
+        // KING MOVES
+    }
 
     move_list
 }
@@ -129,7 +242,10 @@ mod test {
     use crate::bitboard::BitBoard;
     use crate::board::Board;
     use crate::color::Color;
-    use crate::movgen::{build_attacked_bitboard, generate_attack_bitboard, is_square_attacked};
+    use crate::movgen::{
+        build_attacked_bitboard, calculate_pinned_checkers_pinners, generate_attack_bitboard,
+        generate_moves, is_square_attacked,
+    };
     use crate::square::Square;
     use std::str::FromStr;
 
@@ -226,5 +342,25 @@ mod test {
         let test = build_attacked_bitboard(&board, Color::White);
         println!("{test}");
         assert_eq!(attacked, test);
+    }
+
+    #[test]
+    fn test_generate_pinned_checkers() {
+        let board = Board::from_str("Q2k3Q/1N2PN2/1QN1NQ2/8/3R4/3K4/8/8 b - - 0 1").unwrap();
+
+        let (pinned, checkers, pinners) = calculate_pinned_checkers_pinners(&board);
+
+        println!("{board}");
+
+        println!("pinned: {pinned}");
+
+        println!("checkers: {checkers}");
+    }
+
+    #[test]
+    fn test_mov() {
+        let board = Board::from_str("4k3/8/6n1/4R3/8/8/8/4K3 b - - 0 1").unwrap();
+        // let board = Board::default();
+        generate_moves(&board);
     }
 }

@@ -1,3 +1,6 @@
+use crate::bitboard::BitBoard;
+use crate::color::Color;
+use crate::square::Square::{A1, A2, A7, A8, H1, H2, H7, H8};
 use std::str::FromStr;
 
 #[rustfmt::skip]
@@ -36,6 +39,37 @@ impl Square {
     pub const fn from_index(index: u8) -> Square {
         assert!(index < 64);
         unsafe { std::mem::transmute::<u8, Square>(index) }
+    }
+
+    pub const fn forward(&self, color: Color) -> Option<Square> {
+        let new_index = match color {
+            Color::White => self.to_index() as i8 + 8,
+            Color::Black => self.to_index() as i8 - 8,
+        };
+
+        if new_index < 0 || new_index > 63 {
+            None
+        } else {
+            Some(Square::from_index(new_index as u8))
+        }
+    }
+
+    pub const fn on_promotion_rank(&self, color: Color) -> bool {
+        match color {
+            Color::White => self.to_index() >= A8.to_index() && self.to_index() <= H8.to_index(),
+            Color::Black => self.to_index() >= A1.to_index() && self.to_index() <= H1.to_index(),
+        }
+    }
+
+    pub const fn on_initial_pawn_rank(&self, color: Color) -> bool {
+        match color {
+            Color::White => self.to_index() >= A2.to_index() && self.to_index() <= H2.to_index(),
+            Color::Black => self.to_index() >= A7.to_index() && self.to_index() <= H7.to_index(),
+        }
+    }
+
+    pub const fn file_mask(&self) -> BitBoard {
+        BitBoard(!BitBoard::NOT_A_FILE.0 << (*self as i32 & 7))
     }
 
     pub fn from(rank: Rank, file: File) -> Square {

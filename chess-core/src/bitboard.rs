@@ -10,7 +10,7 @@ pub struct BitBoard(pub u64);
 
 impl BitBoard {
     pub fn get_bit(&self, square: Square) -> bool {
-        (self.0 & (1 << square.to_index())) == (1 << square.to_index())
+        (self.0 & (1 << square.to_index())) != 0
     }
 
     pub const fn is_empty(&self) -> bool {
@@ -240,6 +240,7 @@ mod test {
         assert!(bitboard.get_bit(Square::H1));
         assert!(bitboard.get_bit(Square::E2));
         assert!(bitboard.get_bit(Square::H8));
+        assert!(!bitboard.get_bit(Square::F4))
     }
 
     #[test]

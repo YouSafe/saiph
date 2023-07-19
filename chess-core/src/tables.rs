@@ -7,6 +7,7 @@ use crate::tables::knight_move::generate_knight_attacks;
 use crate::tables::pawn_move::generate_pawn_attacks;
 use crate::tables::rays_between::generate_rays_between;
 use crate::tables::rook_move::{generate_rook_attacks, ROOK_MAGIC_NUMBERS};
+use crate::tables::xray_line::generate_xray_lines;
 use lazy_static::lazy_static;
 
 pub mod bishop_move;
@@ -17,10 +18,12 @@ pub mod pawn_move;
 
 pub mod rays_between;
 pub mod rook_move;
+pub mod xray_line;
 
 static PAWN_ATTACKS: [[BitBoard; 64]; 2] = generate_pawn_attacks();
 static KING_ATTACKS: [BitBoard; 64] = generate_king_attacks();
 static SQUARES_BETWEEN: [[BitBoard; 64]; 64] = generate_rays_between();
+static SQUARES_LINE: [[BitBoard; 64]; 64] = generate_xray_lines();
 static KNIGHT_ATTACKS: [BitBoard; 64] = generate_knight_attacks();
 
 lazy_static! {
@@ -60,6 +63,10 @@ pub fn get_queen_attacks(square: Square, blockers: BitBoard) -> BitBoard {
 
 pub fn between(from: Square, to: Square) -> BitBoard {
     SQUARES_BETWEEN[from as usize][to as usize]
+}
+
+pub fn line(from: Square, target: Square) -> BitBoard {
+    SQUARES_LINE[from as usize][target as usize]
 }
 
 #[cfg(test)]

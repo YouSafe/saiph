@@ -1,6 +1,7 @@
 use crate::bitboard::BitBoard;
 use crate::castling_rights::CastlingRights;
 use crate::color::{Color, NUM_COLORS};
+use crate::movgen::calculate_pinned_checkers_pinners;
 use crate::piece::{Piece, ALL_PIECES, NUM_PIECES};
 use crate::square::Square;
 use std::fmt;
@@ -16,7 +17,7 @@ pub struct Board {
     castling_rights: CastlingRights,
     pinned: BitBoard,
     checkers: BitBoard,
-    attacked: BitBoard,
+    pinners: BitBoard,
 }
 
 impl Default for Board {
@@ -73,6 +74,18 @@ impl Board {
 
     pub fn side_to_move(&self) -> Color {
         self.side_to_move
+    }
+
+    pub fn checkers(&self) -> BitBoard {
+        self.checkers
+    }
+
+    pub fn pinned(&self) -> BitBoard {
+        self.pinned
+    }
+
+    pub fn pinners(&self) -> BitBoard {
+        self.pinners
     }
 }
 
@@ -227,10 +240,14 @@ impl FromStr for Board {
             castling_rights,
             pinned: Default::default(),
             checkers: Default::default(),
-            attacked: Default::default(),
+            pinners: Default::default(),
         };
 
-        // board.update_safety_bitboards();
+        let (pinned, checkers, pinners) = calculate_pinned_checkers_pinners(&board);
+
+        board.pinned = pinned;
+        board.checkers = checkers;
+        board.pinners = pinners;
 
         Ok(board)
     }

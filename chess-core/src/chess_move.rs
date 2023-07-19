@@ -4,6 +4,7 @@ use crate::square::Square;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MoveFlag {
+    Normal,
     DoublePawnPush,
     Checking,
     Capture,
@@ -14,11 +15,11 @@ pub enum MoveFlag {
 // TODO: pack data into a single u32 or even better: u16
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Move {
-    from: Square,
-    to: Square,
-    promotion: Option<Promotion>,
-    piece: Piece,
-    flags: MoveFlag,
+    pub from: Square,
+    pub to: Square,
+    pub promotion: Option<Promotion>,
+    pub piece: Piece,
+    pub flags: MoveFlag,
 }
 
 #[cfg(test)]
