@@ -2,14 +2,15 @@ mod castling;
 mod en_passant;
 mod king;
 mod knight;
+mod pawn_capture;
 mod quiet_pawn;
 mod slider;
-mod pawn_capture;
 
 use crate::bitboard::BitBoard;
 use crate::board::Board;
 use crate::chess_move::Move;
 use crate::color::Color;
+use crate::movgen::pawn_capture::PawnCaptureMoveGenerator;
 use crate::movgen::quiet_pawn::QuietPawnMoveGenerator;
 use crate::piece::{Piece, ALL_PIECES};
 use crate::square::Square;
@@ -109,18 +110,7 @@ trait PieceMoveGenerator {
 pub fn generate_moves(board: &Board) -> MoveList {
     let mut move_list = vec![];
 
-    // squares that need to be captured
-    let mut capture_mask = !BitBoard::EMPTY;
-
-    // squares that need to be moved to (to block a check)
-    let mut push_mask = !BitBoard::EMPTY;
-
-    let king_square =
-        (board.pieces(Piece::King) & board.occupancies(board.side_to_move())).bit_scan();
-
     let checkers = board.checkers();
-    let pinned = board.pinned();
-
     if checkers.popcnt() == 0 {
         // differentiate between pinned and not pinned
         // if not pinned create all the moves
@@ -138,6 +128,7 @@ pub fn generate_moves(board: &Board) -> MoveList {
 
         // PAWN MOVES
         QuietPawnMoveGenerator::generate::<NotInCheck>(board, &mut move_list);
+        PawnCaptureMoveGenerator::generate::<NotInCheck>(board, &mut move_list);
 
         // KNIGHT MOVES
 
@@ -146,18 +137,12 @@ pub fn generate_moves(board: &Board) -> MoveList {
         // KING MOVES
     } else if checkers.popcnt() == 1 {
         // a single check can be evaded by capturing the checker
-        capture_mask = checkers;
-
-        let checker = checkers.bit_scan();
-        push_mask = between(king_square, checker);
 
         // stop castling when king is in check
 
-        println!("push: {push_mask}");
-        println!("capture: {capture_mask}");
-
         // PAWN MOVES
         QuietPawnMoveGenerator::generate::<InCheck>(board, &mut move_list);
+        PawnCaptureMoveGenerator::generate::<InCheck>(board, &mut move_list);
 
         // KNIGHT MOVES
 
@@ -251,7 +236,7 @@ mod test {
 
     #[test]
     fn test_is_square_attacked_pawn_attack() {
-        let board = Board::from_str("8/8/8/3p4/8/8/8/8 w - - 0 1").unwrap();
+        let board = Board::from_str("k7/8/8/3p4/8/8/8/K7 w - - 0 1").unwrap();
         println!("board: {board}");
 
         let is_e4_attacked_by_black = is_square_attacked(&board, Square::E4, Color::Black);
@@ -348,7 +333,7 @@ mod test {
     fn test_generate_pinned_checkers() {
         let board = Board::from_str("Q2k3Q/1N2PN2/1QN1NQ2/8/3R4/3K4/8/8 b - - 0 1").unwrap();
 
-        let (pinned, checkers, pinners) = calculate_pinned_checkers_pinners(&board);
+        let (pinned, checkers, _pinners) = calculate_pinned_checkers_pinners(&board);
 
         println!("{board}");
 

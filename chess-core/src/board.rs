@@ -243,6 +243,8 @@ impl FromStr for Board {
             pinners: Default::default(),
         };
 
+        // TODO: check if board is sane
+
         let (pinned, checkers, pinners) = calculate_pinned_checkers_pinners(&board);
 
         board.pinned = pinned;
