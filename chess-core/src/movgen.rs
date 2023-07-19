@@ -11,6 +11,7 @@ use crate::board::Board;
 use crate::chess_move::Move;
 use crate::color::Color;
 use crate::movgen::castling::CastlingMoveGenerator;
+use crate::movgen::knight::KnightMoveGenerator;
 use crate::movgen::pawn_capture::PawnCaptureMoveGenerator;
 use crate::movgen::quiet_pawn::QuietPawnMoveGenerator;
 use crate::piece::{Piece, ALL_PIECES};
@@ -132,12 +133,12 @@ pub fn generate_moves(board: &Board) -> MoveList {
         PawnCaptureMoveGenerator::generate::<NotInCheck>(board, &mut move_list);
 
         // KNIGHT MOVES
+        KnightMoveGenerator::generate::<NotInCheck>(board, &mut move_list);
 
         // SLIDERS MOVES
 
         // KING MOVES
         CastlingMoveGenerator::generate::<NotInCheck>(board, &mut move_list);
-        
     } else if checkers.popcnt() == 1 {
         // a single check can be evaded by capturing the checker
 
@@ -148,6 +149,7 @@ pub fn generate_moves(board: &Board) -> MoveList {
         PawnCaptureMoveGenerator::generate::<InCheck>(board, &mut move_list);
 
         // KNIGHT MOVES
+        KnightMoveGenerator::generate::<InCheck>(board, &mut move_list);
 
         // SLIDERS MOVES
 
@@ -350,5 +352,15 @@ mod test {
         let board = Board::from_str("4k3/8/6n1/4R3/8/8/8/4K3 b - - 0 1").unwrap();
         // let board = Board::default();
         generate_moves(&board);
+    }
+
+    #[test]
+    fn moves_at_startpos() {
+        let board = Board::default();
+        let moves = generate_moves(&board);
+
+        println!("{:#?}", moves);
+
+        assert_eq!(moves.len(), 20);
     }
 }

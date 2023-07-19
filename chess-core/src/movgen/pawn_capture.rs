@@ -31,6 +31,7 @@ impl PieceMoveGenerator for PawnCaptureMoveGenerator {
             } else {
                 capture_mask
             };
+            // TODO: check if i feel like it should be !board.occupancies(side_to_move)
             let attacks = get_pawn_attacks(source, side_to_move)
                 & board.occupancies(!side_to_move)
                 & capture_mask;
