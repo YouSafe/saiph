@@ -29,7 +29,10 @@ impl PieceMoveGenerator for KnightMoveGenerator {
 
         let pinned = board.pinned();
 
+        // limit captures to the opponent pieces
         capture_mask &= board.occupancies(!side_to_move);
+        // avoid opponent pieces on quiet moves
+        push_mask &= !*board.occupancies(!side_to_move);
 
         // pinned knights can't move at all
         for source in (current_sides_knights & !pinned).iter() {
@@ -139,5 +142,23 @@ mod test {
             piece: Piece::Knight,
             flags: MoveFlag::Normal,
         }));
+    }
+
+    #[test]
+    fn test_capture_marked_as_quiet() {
+        let board = Board::from_str("3BkB2/2P3P1/4n3/2P3P1/3P4/8/8/K7 b - - 0 1").unwrap();
+        let mut move_list = vec![];
+        KnightMoveGenerator::generate::<NotInCheck>(&board, &mut move_list);
+        println!("{:#?}", move_list);
+
+        assert_eq!(move_list.len(), 8);
+
+        assert!(!move_list.contains(&Move {
+            from: E6,
+            to: D4,
+            promotion: None,
+            piece: Piece::Knight,
+            flags: MoveFlag::Normal,
+        }))
     }
 }
