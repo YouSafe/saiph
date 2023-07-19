@@ -91,6 +91,10 @@ impl Board {
     pub fn castling_rights(&self) -> CastlingRights {
         self.castling_rights
     }
+
+    pub fn en_passant_target(&self) -> Option<Square> {
+        self.en_passant_target
+    }
 }
 
 impl fmt::Display for Board {

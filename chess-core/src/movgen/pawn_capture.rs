@@ -164,4 +164,13 @@ mod test {
             flags: MoveFlag::Capture,
         }));
     }
+
+    #[test]
+    fn test_capture_own_pawn() {
+        let board = Board::from_str("8/8/k7/8/8/2N1P3/3P4/3K4 w - - 0 1").unwrap();
+        let mut move_list = vec![];
+        PawnCaptureMoveGenerator::generate::<NotInCheck>(&board, &mut move_list);
+        println!("{:#?}", move_list);
+        assert_eq!(move_list.len(), 0);
+    }
 }
