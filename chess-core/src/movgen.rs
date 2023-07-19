@@ -11,6 +11,7 @@ use crate::board::Board;
 use crate::chess_move::Move;
 use crate::color::Color;
 use crate::movgen::castling::CastlingMoveGenerator;
+use crate::movgen::king::KingMoveGenerator;
 use crate::movgen::knight::KnightMoveGenerator;
 use crate::movgen::pawn_capture::PawnCaptureMoveGenerator;
 use crate::movgen::quiet_pawn::QuietPawnMoveGenerator;
@@ -139,10 +140,9 @@ pub fn generate_moves(board: &Board) -> MoveList {
 
         // KING MOVES
         CastlingMoveGenerator::generate::<NotInCheck>(board, &mut move_list);
+        KingMoveGenerator::generate::<NotInCheck>(board, &mut move_list);
     } else if checkers.popcnt() == 1 {
         // a single check can be evaded by capturing the checker
-
-        // stop castling when king is in check
 
         // PAWN MOVES
         QuietPawnMoveGenerator::generate::<InCheck>(board, &mut move_list);
@@ -154,11 +154,13 @@ pub fn generate_moves(board: &Board) -> MoveList {
         // SLIDERS MOVES
 
         // KING MOVES
+        // castling is not allowed when the king is in check
+        KingMoveGenerator::generate::<InCheck>(board, &mut move_list);
     } else {
         // double and more checkers
         // only the king can move
-
         // KING MOVES
+        KingMoveGenerator::generate::<InCheck>(board, &mut move_list);
     }
 
     move_list
