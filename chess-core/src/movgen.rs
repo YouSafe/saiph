@@ -117,20 +117,6 @@ pub fn generate_moves(board: &Board) -> MoveList {
 
     let checkers = board.checkers();
     if checkers.popcnt() == 0 {
-        // differentiate between pinned and not pinned
-        // if not pinned create all the moves
-        // if pinned calculate mask where piece can go to
-        // pinned means masking the to squares to those between the pinner and the king
-
-        // king can only go to squares that are not attacked (only the squares 1 away from the
-        // king need to be considered)
-
-        // pinned pieces can only move towards or away from the pinner
-        // if pinned
-        // finally get the bitboard for the squares between the king and the pinner and use it as a mask
-
-        // edge-case en-passant move that leads to a discovered attack (deal with this separately)
-
         // PAWN MOVES
         QuietPawnMoveGenerator::generate::<NotInCheck>(board, &mut move_list);
         PawnCaptureMoveGenerator::generate::<NotInCheck>(board, &mut move_list);
@@ -243,20 +229,25 @@ pub fn perf_test(board: &Board, depth: u8) {
         let mut nodes = 0;
         let result = board.make_move(mov);
         perf_driver(&result, depth - 1, &mut nodes);
-        println!("{}: {}", mov, nodes);
+        println!("{} {}", mov, nodes);
         total_nodes += nodes;
     }
 
-    println!("total_nodes: {}", total_nodes);
+    println!();
+    println!("{}", total_nodes);
 }
 
 pub fn perf_driver(board: &Board, depth: u8, nodes: &mut u64) {
+    if depth == 0 {
+        *nodes += 1;
+        return;
+    }
+
     let moves = generate_moves(&board);
     if depth == 1 {
         *nodes += moves.len() as u64;
         return;
     }
-
     for mov in moves {
         let result = board.make_move(mov);
         perf_driver(&result, depth - 1, nodes);
@@ -270,11 +261,10 @@ mod test {
     use crate::color::Color;
     use crate::movgen::{
         build_attacked_bitboard, calculate_pinned_checkers_pinners, generate_attack_bitboard,
-        generate_moves, is_square_attacked, perf_test,
+        generate_moves, is_square_attacked,
     };
     use crate::square::Square;
     use std::str::FromStr;
-    use std::time::Instant;
 
     #[test]
     fn test_is_square_attacked_pawn_attack() {
@@ -383,19 +373,11 @@ mod test {
     }
 
     #[test]
-    fn test_mov() {
-        let board = Board::from_str("4k3/8/6n1/4R3/8/8/8/4K3 b - - 0 1").unwrap();
-        // let board = Board::default();
-        generate_moves(&board);
-    }
-
-    #[test]
     fn moves_at_startpos() {
         let board = Board::default();
         let moves = generate_moves(&board);
 
         println!("{:#?}", moves);
-
         assert_eq!(moves.len(), 20);
     }
 
@@ -409,18 +391,5 @@ mod test {
         println!("{:#?}", moves);
 
         assert_eq!(moves.len(), 46);
-    }
-
-    #[test]
-    fn perf_test_kiwipete_depth_6() {
-        let before = Instant::now();
-
-        let board =
-            Board::from_str("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 1 0")
-                .unwrap();
-
-        perf_test(&board, 6);
-
-        println!("elapsed: {:?}", before.elapsed());
     }
 }
