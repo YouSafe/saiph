@@ -4,7 +4,7 @@ use crate::chess_move::{Move, MoveFlag};
 use crate::movgen::{CheckState, InCheck, MoveList, PieceMoveGenerator};
 use crate::piece::Piece;
 use crate::promotion::ALL_PROMOTIONS;
-use crate::tables::{get_bishop_attacks, get_pawn_attacks};
+use crate::tables::{get_pawn_attacks, line};
 use std::any::TypeId;
 
 pub struct PawnCaptureMoveGenerator;
@@ -27,11 +27,10 @@ impl PieceMoveGenerator for PawnCaptureMoveGenerator {
 
         for source in current_sides_pawns.iter() {
             let capture_mask = if pinned.get_bit(source) {
-                capture_mask & get_bishop_attacks(king_square, BitBoard::EMPTY)
+                capture_mask & line(king_square, source)
             } else {
                 capture_mask
             };
-            // TODO: check if i feel like it should be !board.occupancies(side_to_move)
             let attacks = get_pawn_attacks(source, side_to_move)
                 & board.occupancies(!side_to_move)
                 & capture_mask;
@@ -172,5 +171,21 @@ mod test {
         PawnCaptureMoveGenerator::generate::<NotInCheck>(&board, &mut move_list);
         println!("{:#?}", move_list);
         assert_eq!(move_list.len(), 0);
+    }
+
+    #[test]
+    fn test_capture_with_pinned_pawn() {
+        let board = Board::from_str("8/2p5/3p4/KP5r/1R3p1k/6P1/4P3/8 b - - 0 1").unwrap();
+        let mut move_list = vec![];
+        PawnCaptureMoveGenerator::generate::<InCheck>(&board, &mut move_list);
+        println!("{:#?}", move_list);
+
+        assert!(!move_list.contains(&Move {
+            from: F4,
+            to: G3,
+            promotion: None,
+            piece: Piece::Pawn,
+            flags: MoveFlag::Capture,
+        }));
     }
 }
