@@ -11,6 +11,7 @@ use crate::board::Board;
 use crate::chess_move::Move;
 use crate::color::Color;
 use crate::movgen::castling::CastlingMoveGenerator;
+use crate::movgen::en_passant::EnPassantMoveGenerator;
 use crate::movgen::king::KingMoveGenerator;
 use crate::movgen::knight::KnightMoveGenerator;
 use crate::movgen::pawn_capture::PawnCaptureMoveGenerator;
@@ -133,6 +134,7 @@ pub fn generate_moves(board: &Board) -> MoveList {
         // PAWN MOVES
         QuietPawnMoveGenerator::generate::<NotInCheck>(board, &mut move_list);
         PawnCaptureMoveGenerator::generate::<NotInCheck>(board, &mut move_list);
+        EnPassantMoveGenerator::generate::<NotInCheck>(board, &mut move_list);
 
         // KNIGHT MOVES
         KnightMoveGenerator::generate::<NotInCheck>(board, &mut move_list);
@@ -149,6 +151,7 @@ pub fn generate_moves(board: &Board) -> MoveList {
         // PAWN MOVES
         QuietPawnMoveGenerator::generate::<InCheck>(board, &mut move_list);
         PawnCaptureMoveGenerator::generate::<InCheck>(board, &mut move_list);
+        EnPassantMoveGenerator::generate::<InCheck>(board, &mut move_list);
 
         // KNIGHT MOVES
         KnightMoveGenerator::generate::<InCheck>(board, &mut move_list);
@@ -378,4 +381,19 @@ mod test {
 
         assert_eq!(moves.len(), 46);
     }
+
+    // #[test]
+    // fn test_moving() {
+    //     let board = Board::from_str("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1").unwrap();
+    //     // Board::from_str("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1")
+    //     //     .unwrap();
+    //
+    //     println!("{board}");
+    //     let moves = generate_moves(&board);
+    //
+    //     for mov in moves {
+    //         let result = board.make_move(mov);
+    //         println!("move: {:?} {result}", mov);
+    //     }
+    // }
 }

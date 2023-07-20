@@ -12,6 +12,9 @@ impl CastlingRights {
     pub const BLACK_KING_SIDE: Self = Self(4);
     pub const BLACK_QUEEN_SIDE: Self = Self(8);
 
+    pub const WHITE_BOTH_SIDES: Self = Self(3);
+    pub const BLACK_BOTH_SIDES: Self = Self(12);
+
     pub const fn empty() -> CastlingRights {
         Self(0)
     }

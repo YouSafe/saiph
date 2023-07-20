@@ -1,13 +1,16 @@
 use crate::bitboard::BitBoard;
 use crate::castling_rights::CastlingRights;
+use crate::chess_move::Move;
+use crate::chess_move::MoveFlag::{Capture, Castling, DoublePawnPush, EnPassant};
 use crate::color::{Color, NUM_COLORS};
 use crate::movgen::calculate_pinned_checkers_pinners;
 use crate::piece::{Piece, ALL_PIECES, NUM_PIECES};
-use crate::square::Square;
+use crate::square::{File, Square};
 use std::fmt;
 use std::fmt::Formatter;
 use std::str::FromStr;
 
+#[derive(Clone, Copy)]
 pub struct Board {
     pieces: [BitBoard; NUM_PIECES],
     occupancies: [BitBoard; NUM_COLORS],
@@ -94,6 +97,126 @@ impl Board {
 
     pub fn en_passant_target(&self) -> Option<Square> {
         self.en_passant_target
+    }
+
+    pub fn make_move(&self, mov: Move) -> Board {
+        // read from old board
+        // write to new board
+        // copy
+        let mut result = *self;
+
+        // remove piece from from
+        result.pieces[mov.piece as usize] ^= mov.from;
+        result.occupancies[self.side_to_move as usize] ^= mov.from;
+        result.combined ^= mov.from;
+
+        // set piece in to
+        result.pieces[mov.piece as usize] |= mov.to;
+        result.occupancies[self.side_to_move as usize] |= mov.to;
+        result.combined |= mov.to;
+
+        const ROOK_TO_CASTLING_RIGHT: [[CastlingRights; 2]; NUM_COLORS] = [
+            [
+                CastlingRights::WHITE_QUEEN_SIDE,
+                CastlingRights::WHITE_KING_SIDE,
+            ],
+            [
+                CastlingRights::BLACK_QUEEN_SIDE,
+                CastlingRights::BLACK_KING_SIDE,
+            ],
+        ];
+
+        if mov.flags == Capture {
+            // replace opponents piece with your own
+            let target_piece = self
+                .piece_on_square(mov.to)
+                .expect("captures require a piece on the target square");
+
+            if target_piece != mov.piece {
+                result.pieces[target_piece as usize] ^= mov.to;
+                result.occupancies[!self.side_to_move as usize] ^= mov.to;
+                // combined is unchanged here
+            }
+
+            // remove castling right for that side
+            if target_piece == Piece::Rook {
+                let target_file = mov.to.to_file();
+                let right =
+                    ROOK_TO_CASTLING_RIGHT[!self.side_to_move as usize][target_file as usize / 4];
+                result.castling_rights -= right;
+            }
+        }
+
+        if let Some(promotion) = mov.promotion {
+            // remove old piece type
+            result.pieces[mov.piece as usize] ^= mov.to;
+            // add to new piece type
+            result.pieces[promotion.as_piece() as usize] |= mov.to;
+        }
+
+        if mov.flags == DoublePawnPush {
+            // update en_passant_target when double pushing
+            result.en_passant_target = Some(mov.to.forward(!self.side_to_move).unwrap());
+        }
+
+        if mov.flags == EnPassant {
+            let capture_piece = mov.to.forward(!self.side_to_move).unwrap();
+            result.pieces[Piece::Pawn as usize] ^= capture_piece;
+            result.occupancies[!self.side_to_move as usize] ^= capture_piece;
+            result.combined ^= capture_piece;
+        }
+
+        // en passant is cleared after doing any move
+        result.en_passant_target = None;
+
+        const CASTLE_CONFIG: [(File, File); 2] = [(File::A, File::D), (File::H, File::F)];
+
+        if mov.flags == Castling {
+            let backrank = result.side_to_move.backrank();
+            let target_file = mov.to.to_file();
+            let (rook_start_file, rook_end_file) = CASTLE_CONFIG[target_file as usize / 4];
+            let (rook_start_square, rook_end_square) = (
+                Square::from(backrank, rook_start_file),
+                Square::from(backrank, rook_end_file),
+            );
+
+            // remove piece from from
+            result.pieces[Piece::Rook as usize] ^= rook_start_square;
+            result.occupancies[self.side_to_move as usize] ^= rook_start_square;
+            result.combined ^= rook_start_square;
+
+            // set piece in to
+            result.pieces[Piece::Rook as usize] |= rook_end_square;
+            result.occupancies[self.side_to_move as usize] |= rook_end_square;
+            result.combined |= rook_end_square;
+        }
+
+        // update castling rights
+        if mov.piece == Piece::Rook {
+            // rook moved
+            let target_file = mov.from.to_file();
+            let right =
+                ROOK_TO_CASTLING_RIGHT[self.side_to_move as usize][target_file as usize / 4];
+            result.castling_rights -= right;
+        } else if mov.piece == Piece::King {
+            // remove castling rights for side if king moved
+            result.castling_rights -= match result.side_to_move {
+                Color::White => CastlingRights::WHITE_BOTH_SIDES,
+                Color::Black => CastlingRights::BLACK_BOTH_SIDES,
+            }
+        }
+
+        // TODO: update incrementally instead
+        let (pinned, checkers, pinners) = calculate_pinned_checkers_pinners(&result);
+        // update pinned, checkers
+        result.pinned = pinned;
+        result.checkers = checkers;
+        result.pinners = pinners;
+
+        // update side
+        result.side_to_move = !result.side_to_move;
+
+        result
     }
 }
 

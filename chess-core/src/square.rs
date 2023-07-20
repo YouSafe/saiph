@@ -17,6 +17,12 @@ pub enum Square {
     A1= 0, B1, C1, D1, E1, F1, G1, H1, 
 }
 
+impl Square {
+    pub fn to_file(&self) -> File {
+        unsafe { std::mem::transmute::<u8, File>(*self as u8 % 8) }
+    }
+}
+
 #[rustfmt::skip]
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

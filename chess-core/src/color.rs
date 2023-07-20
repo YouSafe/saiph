@@ -1,3 +1,5 @@
+use crate::bitboard::BitBoard;
+use crate::square::Rank;
 use std::ops::Not;
 
 #[repr(u8)]
@@ -13,6 +15,15 @@ impl Not for Color {
     fn not(self) -> Self::Output {
         // TODO: benchmark if this is really faster than a regular match expression
         unsafe { std::mem::transmute::<u8, Color>(self as u8 ^ 1) }
+    }
+}
+
+impl Color {
+    pub const fn backrank(&self) -> Rank {
+        match self {
+            Color::White => Rank::R1,
+            Color::Black => Rank::R8,
+        }
     }
 }
 

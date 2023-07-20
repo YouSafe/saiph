@@ -117,4 +117,21 @@ mod test {
 
         assert_eq!(move_list.len(), 0);
     }
+
+    #[test]
+    fn test_valid_en_passant() {
+        let board = Board::from_str("8/7k/8/8/2Pp4/8/8/K7 b - c3 0 1").unwrap();
+        let mut move_list = vec![];
+        EnPassantMoveGenerator::generate::<NotInCheck>(&board, &mut move_list);
+        println!("{:#?}", move_list);
+
+        assert_eq!(move_list.len(), 1);
+        assert!(move_list.contains(&Move {
+            from: Square::D4,
+            to: Square::C3,
+            promotion: None,
+            piece: Piece::Pawn,
+            flags: MoveFlag::EnPassant,
+        }));
+    }
 }
