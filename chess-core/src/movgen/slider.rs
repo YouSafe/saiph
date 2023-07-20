@@ -166,7 +166,7 @@ mod test {
     use crate::board::Board;
     use crate::chess_move::{Move, MoveFlag};
     use crate::movgen::slider::SliderMoveGenerator;
-    use crate::movgen::{NotInCheck, PieceMoveGenerator};
+    use crate::movgen::{InCheck, NotInCheck, PieceMoveGenerator};
     use crate::piece::Piece;
     use crate::square::Square;
     use std::str::FromStr;
@@ -176,6 +176,7 @@ mod test {
         let board = Board::from_str("4k3/8/7b/3P4/8/8/3B4/2K5 w - - 3 2").unwrap();
         let mut move_list = vec![];
         SliderMoveGenerator::generate::<NotInCheck>(&board, &mut move_list);
+        println!("{:#?}", move_list);
         assert_eq!(move_list.len(), 4);
 
         assert!(move_list.contains(&Move {
@@ -209,5 +210,32 @@ mod test {
             piece: Piece::Bishop,
             flags: MoveFlag::Capture,
         }));
+    }
+
+    #[test]
+    fn test_pinned_bishop_captures() {
+        let board = Board::from_str("8/2p5/3p4/KP5r/1R3b1k/6P1/4P3/8 b - - 0 1").unwrap();
+        let mut move_list = vec![];
+        SliderMoveGenerator::generate::<InCheck>(&board, &mut move_list);
+        println!("{:#?}", move_list);
+        assert_eq!(move_list.len(), 0);
+    }
+
+    #[test]
+    fn test_pinned_rook_captures() {
+        let board = Board::from_str("8/2p5/3p4/KP5r/1R4rk/6P1/4P3/8 b - - 0 1").unwrap();
+        let mut move_list = vec![];
+        SliderMoveGenerator::generate::<InCheck>(&board, &mut move_list);
+        println!("{:#?}", move_list);
+        assert_eq!(move_list.len(), 0);
+    }
+
+    #[test]
+    fn test_pinned_queen_captures() {
+        let board = Board::from_str("8/2p5/3p4/KP5r/1R4qk/6P1/4P3/8 b - - 0 1").unwrap();
+        let mut move_list = vec![];
+        SliderMoveGenerator::generate::<InCheck>(&board, &mut move_list);
+        println!("{:#?}", move_list);
+        assert_eq!(move_list.len(), 0);
     }
 }
