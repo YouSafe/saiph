@@ -54,8 +54,7 @@ pub struct CastlingMoveGenerator;
 impl PieceMoveGenerator for CastlingMoveGenerator {
     fn generate<T: CheckState + 'static>(board: &Board, move_list: &mut MoveList) {
         if TypeId::of::<T>() == TypeId::of::<InCheck>() {
-            // we can not castle in check
-            assert!(false, "can not castle in check");
+            panic!("can not castle in check");
         }
         let castling_rights = board.castling_rights();
 

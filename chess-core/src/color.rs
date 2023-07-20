@@ -1,4 +1,3 @@
-use crate::bitboard::BitBoard;
 use crate::square::Rank;
 use std::ops::Not;
 

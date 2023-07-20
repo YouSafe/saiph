@@ -1,5 +1,5 @@
 use crate::bitboard::BitBoard;
-use crate::castling_rights::CastlingRights;
+use crate::castling_rights::{CastlingRights, UPDATE_CASTLING_RIGHT_TABLE};
 use crate::chess_move::Move;
 use crate::chess_move::MoveFlag::{Capture, Castling, DoublePawnPush, EnPassant};
 use crate::color::{Color, NUM_COLORS};
@@ -118,17 +118,6 @@ impl Board {
         result.occupancies[self.side_to_move as usize] |= mov.to;
         result.combined |= mov.to;
 
-        const ROOK_TO_CASTLING_RIGHT: [[CastlingRights; 2]; NUM_COLORS] = [
-            [
-                CastlingRights::WHITE_QUEEN_SIDE,
-                CastlingRights::WHITE_KING_SIDE,
-            ],
-            [
-                CastlingRights::BLACK_QUEEN_SIDE,
-                CastlingRights::BLACK_KING_SIDE,
-            ],
-        ];
-
         if mov.flags == Capture {
             // replace opponents piece with your own
             let target_piece = self
@@ -143,10 +132,8 @@ impl Board {
 
             // remove castling right for that side
             if target_piece == Piece::Rook {
-                let target_file = mov.to.to_file();
-                let right =
-                    ROOK_TO_CASTLING_RIGHT[!self.side_to_move as usize][target_file as usize / 4];
-                result.castling_rights -= right;
+                result.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[mov.from as usize];
+                result.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[mov.to as usize];
             }
         }
 
@@ -194,12 +181,10 @@ impl Board {
         // update castling rights
         if mov.piece == Piece::Rook {
             // rook moved
-            let target_file = mov.from.to_file();
-            let right =
-                ROOK_TO_CASTLING_RIGHT[self.side_to_move as usize][target_file as usize / 4];
-            result.castling_rights -= right;
+            result.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[mov.from as usize];
+            result.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[mov.to as usize];
         } else if mov.piece == Piece::King {
-            // remove castling rights for side if king moved
+            // remove castling rights for side if king moved (includes castling)
             result.castling_rights -= match result.side_to_move {
                 Color::White => CastlingRights::WHITE_BOTH_SIDES,
                 Color::Black => CastlingRights::BLACK_BOTH_SIDES,

@@ -1,3 +1,4 @@
+use crate::square::Square;
 use std::fmt;
 use std::fmt::Formatter;
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
@@ -5,6 +6,30 @@ use std::str::FromStr;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CastlingRights(u8);
+
+pub static UPDATE_CASTLING_RIGHT_TABLE: [CastlingRights; 64] = generate_update_castling_right_table();
+
+const fn generate_update_castling_right_table() -> [CastlingRights; 64] {
+    // start out with every square keeping all the rights
+    // those castling rights represent upperbounds for the rights
+
+    // updating castling rights works by taking the old castling rights and union them with the
+    // entry of this table for the `from` and `to` square
+    let mut result = [CastlingRights::ALL; 64];
+
+    // remove colors castling rights if the corresponding king moves into or away from their square
+    result[Square::E1 as usize] = CastlingRights::ALL.subtract(CastlingRights::WHITE_BOTH_SIDES);
+    result[Square::E8 as usize] = CastlingRights::ALL.subtract(CastlingRights::BLACK_BOTH_SIDES);
+
+    // remove castling rights if a piece moves out or into the rook square
+    result[Square::A1 as usize] = CastlingRights::ALL.subtract(CastlingRights::WHITE_QUEEN_SIDE);
+    result[Square::H1 as usize] = CastlingRights::ALL.subtract(CastlingRights::WHITE_KING_SIDE);
+
+    result[Square::A8 as usize] = CastlingRights::ALL.subtract(CastlingRights::BLACK_QUEEN_SIDE);
+    result[Square::H8 as usize] = CastlingRights::ALL.subtract(CastlingRights::BLACK_KING_SIDE);
+
+    result
+}
 
 impl CastlingRights {
     pub const WHITE_KING_SIDE: Self = Self(1);
@@ -14,6 +39,7 @@ impl CastlingRights {
 
     pub const WHITE_BOTH_SIDES: Self = Self(3);
     pub const BLACK_BOTH_SIDES: Self = Self(12);
+    pub const ALL: Self = Self(15);
 
     pub const fn empty() -> CastlingRights {
         Self(0)
@@ -22,14 +48,15 @@ impl CastlingRights {
     pub const fn contains(&self, other: Self) -> bool {
         self.0 & other.0 == other.0
     }
+
+    pub const fn subtract(&self, other: Self) -> CastlingRights {
+        Self(self.0 & !other.0)
+    }
 }
 
 impl Default for CastlingRights {
     fn default() -> Self {
-        CastlingRights::WHITE_KING_SIDE
-            | CastlingRights::WHITE_QUEEN_SIDE
-            | CastlingRights::BLACK_KING_SIDE
-            | CastlingRights::BLACK_QUEEN_SIDE
+        CastlingRights::ALL
     }
 }
 
@@ -121,12 +148,12 @@ impl Sub for CastlingRights {
 
     #[inline]
     fn sub(self, rhs: Self) -> Self {
-        Self(self.0 & !rhs.0)
+        self.subtract(rhs)
     }
 }
 impl SubAssign for CastlingRights {
     #[inline]
     fn sub_assign(&mut self, rhs: Self) {
-        *self = Self(self.0 & !rhs.0);
+        *self = self.subtract(rhs);
     }
 }
