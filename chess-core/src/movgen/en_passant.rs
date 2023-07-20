@@ -9,11 +9,12 @@ use crate::tables::{get_bishop_attacks, get_pawn_attacks, get_rook_attacks};
 pub struct EnPassantMoveGenerator;
 
 impl EnPassantMoveGenerator {
-    pub fn valid_ep(board: &Board, capture: Square, source: Square) -> bool {
+    pub fn valid_ep(board: &Board, capture: Square, source: Square, destination: Square) -> bool {
         // create combined bitboard of board with both source and capture removed
         // removing the squares simulates the move
         let combined =
-            board.combined() & !BitBoard::from_square(capture) & !BitBoard::from_square(source);
+            board.combined() & !BitBoard::from_square(capture) & !BitBoard::from_square(source)
+                | BitBoard::from_square(destination);
 
         let king_square =
             (board.pieces(Piece::King) & board.occupancies(board.side_to_move())).bit_scan();
@@ -36,8 +37,6 @@ impl EnPassantMoveGenerator {
 
 impl PieceMoveGenerator for EnPassantMoveGenerator {
     fn generate<T: CheckState + 'static>(board: &Board, move_list: &mut MoveList) {
-        // TODO: i can't generate en passant move if king is in check and the pawn can't capture
-        // the checker
         if let Some(ep_square) = board.en_passant_target() {
             let side_to_move = board.side_to_move();
             let current_sides_pawns = board.pieces(Piece::Pawn) & board.occupancies(side_to_move);
@@ -49,7 +48,7 @@ impl PieceMoveGenerator for EnPassantMoveGenerator {
                 for destination in attack.iter() {
                     let capture = destination.forward(!side_to_move).unwrap();
 
-                    if Self::valid_ep(board, capture, source) {
+                    if Self::valid_ep(board, capture, source, destination) {
                         move_list.push(Move {
                             from: source,
                             to: destination,
@@ -69,7 +68,7 @@ mod test {
     use crate::board::Board;
     use crate::chess_move::{Move, MoveFlag};
     use crate::movgen::en_passant::EnPassantMoveGenerator;
-    use crate::movgen::{NotInCheck, PieceMoveGenerator};
+    use crate::movgen::{InCheck, NotInCheck, PieceMoveGenerator};
     use crate::piece::Piece;
     use crate::square::Square;
     use std::str::FromStr;
@@ -156,5 +155,35 @@ mod test {
             piece: Piece::Pawn,
             flags: MoveFlag::EnPassant,
         }));
+    }
+
+    #[test]
+    fn test_en_passant_in_check() {
+        let board = Board::from_str("1kb5/p7/P7/2Ppb2B/7P/7K/8/8 w - d6 0 4").unwrap();
+        let mut move_list = vec![];
+        EnPassantMoveGenerator::generate::<InCheck>(&board, &mut move_list);
+        println!("{:#?}", move_list);
+
+        assert_eq!(move_list.len(), 0);
+    }
+
+    #[test]
+    fn test_en_passant2() {
+        let board = Board::from_str("8/8/3p4/1Pp4r/KR3p1k/8/4P1P1/8 w - c6 0 2").unwrap();
+        let mut move_list = vec![];
+        EnPassantMoveGenerator::generate::<InCheck>(&board, &mut move_list);
+        println!("{:#?}", move_list);
+
+        assert_eq!(move_list.len(), 1);
+    }
+
+    #[test]
+    fn test_en_passant_vertical_pin() {
+        let board = Board::from_str("8/8/3p4/KPp3kr/5pP1/8/4P3/6R1 b - g3 0 3").unwrap();
+        let mut move_list = vec![];
+        EnPassantMoveGenerator::generate::<NotInCheck>(&board, &mut move_list);
+        println!("{:#?}", move_list);
+
+        assert_eq!(move_list.len(), 1);
     }
 }
