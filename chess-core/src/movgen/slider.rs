@@ -72,7 +72,7 @@ impl PieceMoveGenerator for SliderMoveGenerator {
 
         for source in ((bishops | queens) & pinned).iter() {
             let attacks = get_bishop_attacks(source, combined)
-                & line(source, king_square)
+                & line(king_square, source)
                 & !*board.occupancies(side_to_move);
 
             let source_piece = board.piece_on_square(source).unwrap();
@@ -131,7 +131,7 @@ impl PieceMoveGenerator for SliderMoveGenerator {
 
         for source in ((rooks | queens) & pinned).iter() {
             let attacks = get_rook_attacks(source, combined)
-                & line(source, king_square)
+                & line(king_square, source)
                 & !*board.occupancies(side_to_move);
 
             let source_piece = board.piece_on_square(source).unwrap();
@@ -158,5 +158,56 @@ impl PieceMoveGenerator for SliderMoveGenerator {
                 });
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::board::Board;
+    use crate::chess_move::{Move, MoveFlag};
+    use crate::movgen::slider::SliderMoveGenerator;
+    use crate::movgen::{NotInCheck, PieceMoveGenerator};
+    use crate::piece::Piece;
+    use crate::square::Square;
+    use std::str::FromStr;
+
+    #[test]
+    fn test_move_along_pin_ray() {
+        let board = Board::from_str("4k3/8/7b/3P4/8/8/3B4/2K5 w - - 3 2").unwrap();
+        let mut move_list = vec![];
+        SliderMoveGenerator::generate::<NotInCheck>(&board, &mut move_list);
+        assert_eq!(move_list.len(), 4);
+
+        assert!(move_list.contains(&Move {
+            from: Square::D2,
+            to: Square::E3,
+            promotion: None,
+            piece: Piece::Bishop,
+            flags: MoveFlag::Normal,
+        }));
+
+        assert!(move_list.contains(&Move {
+            from: Square::D2,
+            to: Square::F4,
+            promotion: None,
+            piece: Piece::Bishop,
+            flags: MoveFlag::Normal,
+        }));
+
+        assert!(move_list.contains(&Move {
+            from: Square::D2,
+            to: Square::G5,
+            promotion: None,
+            piece: Piece::Bishop,
+            flags: MoveFlag::Normal,
+        }));
+
+        assert!(move_list.contains(&Move {
+            from: Square::D2,
+            to: Square::H6,
+            promotion: None,
+            piece: Piece::Bishop,
+            flags: MoveFlag::Capture,
+        }));
     }
 }

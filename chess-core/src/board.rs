@@ -10,7 +10,7 @@ use std::fmt;
 use std::fmt::Formatter;
 use std::str::FromStr;
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Board {
     pieces: [BitBoard; NUM_PIECES],
     occupancies: [BitBoard; NUM_COLORS],
@@ -105,6 +105,9 @@ impl Board {
         // copy
         let mut result = *self;
 
+        // en passant is cleared after doing any move
+        result.en_passant_target = None;
+
         // remove piece from from
         result.pieces[mov.piece as usize] ^= mov.from;
         result.occupancies[self.side_to_move as usize] ^= mov.from;
@@ -134,9 +137,9 @@ impl Board {
 
             if target_piece != mov.piece {
                 result.pieces[target_piece as usize] ^= mov.to;
-                result.occupancies[!self.side_to_move as usize] ^= mov.to;
-                // combined is unchanged here
             }
+            result.occupancies[!self.side_to_move as usize] ^= mov.to;
+            // combined is unchanged here
 
             // remove castling right for that side
             if target_piece == Piece::Rook {
@@ -165,9 +168,6 @@ impl Board {
             result.occupancies[!self.side_to_move as usize] ^= capture_piece;
             result.combined ^= capture_piece;
         }
-
-        // en passant is cleared after doing any move
-        result.en_passant_target = None;
 
         const CASTLE_CONFIG: [(File, File); 2] = [(File::A, File::D), (File::H, File::F)];
 
@@ -206,15 +206,15 @@ impl Board {
             }
         }
 
+        // update side
+        result.side_to_move = !result.side_to_move;
+
         // TODO: update incrementally instead
         let (pinned, checkers, pinners) = calculate_pinned_checkers_pinners(&result);
         // update pinned, checkers
         result.pinned = pinned;
         result.checkers = checkers;
         result.pinners = pinners;
-
-        // update side
-        result.side_to_move = !result.side_to_move;
 
         result
     }

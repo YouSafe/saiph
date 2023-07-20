@@ -1,6 +1,8 @@
 use crate::bitboard::BitBoard;
 use crate::color::Color;
 use crate::square::Square::{A1, A2, A7, A8, H1, H2, H7, H8};
+use std::fmt;
+use std::fmt::Formatter;
 use std::str::FromStr;
 
 #[rustfmt::skip]
@@ -80,6 +82,18 @@ impl Square {
 
     pub fn from(rank: Rank, file: File) -> Square {
         Self::from_index(rank as u8 * 8 + file as u8)
+    }
+}
+
+impl fmt::Display for Square {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let (rank, file) = (self.to_index() / 8, self.to_index() % 8);
+        write!(
+            f,
+            "{}{}",
+            (('a' as u8) + (file)) as char,
+            (('1' as u8) + (rank)) as char
+        )
     }
 }
 

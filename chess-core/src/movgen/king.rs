@@ -92,4 +92,14 @@ mod test {
             flags: MoveFlag::Capture,
         }))
     }
+
+    #[test]
+    fn test_checkmate() {
+        let board = Board::from_str("3Q2k1/5ppp/8/8/8/8/5PPP/6K1 b - - 0 1").unwrap();
+        let mut move_list = vec![];
+        KingMoveGenerator::generate::<InCheck>(&board, &mut move_list);
+        println!("{:#?}", move_list);
+
+        assert_eq!(move_list.len(), 0);
+    }
 }

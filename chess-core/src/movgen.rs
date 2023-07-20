@@ -235,6 +235,34 @@ pub fn build_attacked_bitboard(board: &Board, attacking_side: Color) -> BitBoard
     bitboard
 }
 
+pub fn perf_test(board: &Board, depth: u8) {
+    let mut total_nodes = 0;
+
+    let moves = generate_moves(&board);
+    for mov in moves {
+        let mut nodes = 0;
+        let result = board.make_move(mov);
+        perf_driver(&result, depth - 1, &mut nodes);
+        println!("{}: {}", mov, nodes);
+        total_nodes += nodes;
+    }
+
+    println!("total_nodes: {}", total_nodes);
+}
+
+pub fn perf_driver(board: &Board, depth: u8, nodes: &mut u64) {
+    let moves = generate_moves(&board);
+    if depth == 1 {
+        *nodes += moves.len() as u64;
+        return;
+    }
+
+    for mov in moves {
+        let result = board.make_move(mov);
+        perf_driver(&result, depth - 1, nodes);
+    }
+}
+
 #[cfg(test)]
 mod test {
     use crate::bitboard::BitBoard;
@@ -242,10 +270,11 @@ mod test {
     use crate::color::Color;
     use crate::movgen::{
         build_attacked_bitboard, calculate_pinned_checkers_pinners, generate_attack_bitboard,
-        generate_moves, is_square_attacked,
+        generate_moves, is_square_attacked, perf_test,
     };
     use crate::square::Square;
     use std::str::FromStr;
+    use std::time::Instant;
 
     #[test]
     fn test_is_square_attacked_pawn_attack() {
@@ -382,18 +411,16 @@ mod test {
         assert_eq!(moves.len(), 46);
     }
 
-    // #[test]
-    // fn test_moving() {
-    //     let board = Board::from_str("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1").unwrap();
-    //     // Board::from_str("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1")
-    //     //     .unwrap();
-    //
-    //     println!("{board}");
-    //     let moves = generate_moves(&board);
-    //
-    //     for mov in moves {
-    //         let result = board.make_move(mov);
-    //         println!("move: {:?} {result}", mov);
-    //     }
-    // }
+    #[test]
+    fn perf_test_kiwipete_depth_6() {
+        let before = Instant::now();
+
+        let board =
+            Board::from_str("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 1 0")
+                .unwrap();
+
+        perf_test(&board, 6);
+
+        println!("elapsed: {:?}", before.elapsed());
+    }
 }

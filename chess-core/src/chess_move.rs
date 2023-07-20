@@ -1,6 +1,9 @@
+use crate::color::Color;
 use crate::piece::Piece;
 use crate::promotion::Promotion;
 use crate::square::Square;
+use std::fmt;
+use std::fmt::Formatter;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MoveFlag {
@@ -20,6 +23,22 @@ pub struct Move {
     pub promotion: Option<Promotion>,
     pub piece: Piece,
     pub flags: MoveFlag,
+}
+
+impl fmt::Display for Move {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        if let Some(promotion) = self.promotion {
+            write!(
+                f,
+                "{}{}{}",
+                self.from,
+                self.to,
+                promotion.as_piece().to_ascii(Color::Black)
+            )
+        } else {
+            write!(f, "{}{}", self.from, self.to)
+        }
+    }
 }
 
 #[cfg(test)]

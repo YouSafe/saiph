@@ -36,6 +36,8 @@ impl EnPassantMoveGenerator {
 
 impl PieceMoveGenerator for EnPassantMoveGenerator {
     fn generate<T: CheckState + 'static>(board: &Board, move_list: &mut MoveList) {
+        // TODO: i can't generate en passant move if king is in check and the pawn can't capture
+        // the checker
         if let Some(ep_square) = board.en_passant_target() {
             let side_to_move = board.side_to_move();
             let current_sides_pawns = board.pieces(Piece::Pawn) & board.occupancies(side_to_move);
@@ -44,17 +46,18 @@ impl PieceMoveGenerator for EnPassantMoveGenerator {
                 let attack =
                     get_pawn_attacks(source, side_to_move) & BitBoard::from_square(ep_square);
 
-                let destination = attack.bit_scan();
-                let capture = destination.forward(!side_to_move).unwrap();
+                for destination in attack.iter() {
+                    let capture = destination.forward(!side_to_move).unwrap();
 
-                if Self::valid_ep(board, capture, source) {
-                    move_list.push(Move {
-                        from: source,
-                        to: destination,
-                        promotion: None,
-                        piece: Piece::Pawn,
-                        flags: MoveFlag::EnPassant,
-                    });
+                    if Self::valid_ep(board, capture, source) {
+                        move_list.push(Move {
+                            from: source,
+                            to: destination,
+                            promotion: None,
+                            piece: Piece::Pawn,
+                            flags: MoveFlag::EnPassant,
+                        });
+                    }
                 }
             }
         }
@@ -129,6 +132,26 @@ mod test {
         assert!(move_list.contains(&Move {
             from: Square::D4,
             to: Square::C3,
+            promotion: None,
+            piece: Piece::Pawn,
+            flags: MoveFlag::EnPassant,
+        }));
+    }
+
+    #[test]
+    fn test_en_passant_edge() {
+        let board = Board::from_str(
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/Pp2P3/2N2Q1p/1PPBBPPP/R3K2R b KQkq a3 0 1",
+        )
+        .unwrap();
+        let mut move_list = vec![];
+        EnPassantMoveGenerator::generate::<NotInCheck>(&board, &mut move_list);
+        println!("{:#?}", move_list);
+
+        assert_eq!(move_list.len(), 1);
+        assert!(move_list.contains(&Move {
+            from: Square::B4,
+            to: Square::A3,
             promotion: None,
             piece: Piece::Pawn,
             flags: MoveFlag::EnPassant,
