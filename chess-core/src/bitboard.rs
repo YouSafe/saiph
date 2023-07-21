@@ -60,7 +60,7 @@ const fn generate_all_ranks() -> [BitBoard; 8] {
 
     let mut rank = 0;
     while rank < 8 {
-        result[rank] = BitBoard(0xFF << 8 * (rank));
+        result[rank] = BitBoard(0xFF << (8 * rank));
         rank += 1;
     }
     result

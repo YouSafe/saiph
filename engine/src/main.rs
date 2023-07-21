@@ -15,6 +15,6 @@ fn main() {
             .read_line(&mut message)
             .expect("failed to read line");
 
-        engine.receive_command(&message.trim());
+        engine.receive_command(message.trim());
     }
 }

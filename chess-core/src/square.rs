@@ -93,12 +93,7 @@ impl Square {
 impl fmt::Display for Square {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let (rank, file) = (self.to_index() / 8, self.to_index() % 8);
-        write!(
-            f,
-            "{}{}",
-            (('a' as u8) + (file)) as char,
-            (('1' as u8) + (rank)) as char
-        )
+        write!(f, "{}{}", (b'a' + file) as char, (b'1' + rank) as char)
     }
 }
 

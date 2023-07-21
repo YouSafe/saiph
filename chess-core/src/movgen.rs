@@ -220,7 +220,7 @@ pub fn build_attacked_bitboard(board: &Board, attacking_side: Color) -> BitBoard
 pub fn perf_test(board: &Board, depth: u8) {
     let mut total_nodes = 0;
 
-    let moves = generate_moves(&board);
+    let moves = generate_moves(board);
     for mov in moves {
         let mut nodes = 0;
         let result = board.make_move(mov);
@@ -239,7 +239,7 @@ pub fn perf_driver(board: &Board, depth: u8, nodes: &mut u64) {
         return;
     }
 
-    let moves = generate_moves(&board);
+    let moves = generate_moves(board);
     if depth == 1 {
         *nodes += moves.len() as u64;
         return;

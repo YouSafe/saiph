@@ -57,7 +57,7 @@ impl Search {
             return entry;
         }
 
-        let mut moves = generate_moves(&board);
+        let mut moves = generate_moves(board);
         if moves.is_empty() {
             return ScoringMove {
                 evaluation: match board.checkers() != BitBoard::EMPTY {
@@ -235,7 +235,7 @@ impl Search {
         let mut best_move = None;
         for max_depth in 0..=max_depth {
             best_move = Some(self.minimax_search(
-                &board,
+                board,
                 color_to_play == Color::White,
                 0,
                 max_depth,
@@ -253,7 +253,7 @@ impl Search {
             }
         }
 
-        if let Some(best_move) = best_move.clone() {
+        if let Some(best_move) = best_move {
             eprintln!("move: {}", best_move);
         }
         best_move

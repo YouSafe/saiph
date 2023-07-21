@@ -57,15 +57,14 @@ impl Neg for Evaluation {
 }
 
 pub const fn raw_piece_value(piece: Piece) -> i32 {
-    let piece_value = match piece {
+    match piece {
         Piece::Pawn => 100,
         Piece::Knight => 320,
         Piece::Bishop => 330,
         Piece::Rook => 500,
         Piece::Queen => 900,
         Piece::King => 20000,
-    };
-    piece_value
+    }
 }
 
 fn piece_value(piece: Piece, square: Square, piece_color: Color) -> i32 {

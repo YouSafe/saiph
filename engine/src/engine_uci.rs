@@ -33,6 +33,12 @@ pub struct EngineUCI {
     search: Search,
 }
 
+impl Default for EngineUCI {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EngineUCI {
     pub fn new() -> Self {
         EngineUCI {
