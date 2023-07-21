@@ -20,10 +20,7 @@ impl Not for Color {
 
 impl Color {
     pub const fn backrank(&self) -> Rank {
-        match self {
-            Color::White => Rank::R1,
-            Color::Black => Rank::R8,
-        }
+        [Rank::R1, Rank::R8][*self as usize]
     }
 }
 

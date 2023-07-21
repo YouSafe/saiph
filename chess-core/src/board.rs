@@ -7,9 +7,17 @@ use crate::castling_rights::{CastlingRights, UPDATE_CASTLING_RIGHT_TABLE};
 use crate::chess_move::Move;
 use crate::chess_move::MoveFlag::{Capture, Castling, DoublePawnPush, EnPassant};
 use crate::color::{Color, NUM_COLORS};
-use crate::movgen::calculate_pinned_checkers_pinners;
+use crate::movgen::{calculate_pinned_checkers_pinners, generate_moves};
 use crate::piece::{Piece, ALL_PIECES, NUM_PIECES};
 use crate::square::{File, Square};
+use crate::uci_move::UCIMove;
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum BoardStatus {
+    Ongoing,
+    Stalemate,
+    Checkmate,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Board {
@@ -98,6 +106,14 @@ impl Board {
 
     pub fn en_passant_target(&self) -> Option<Square> {
         self.en_passant_target
+    }
+
+    pub fn make_uci_move(&self, uci_move: UCIMove) -> Board {
+        let chess_move = generate_moves(self)
+            .into_iter()
+            .find(|m| uci_move == m)
+            .unwrap();
+        self.make_move(chess_move)
     }
 
     pub fn make_move(&self, mov: Move) -> Board {
@@ -203,6 +219,19 @@ impl Board {
         result.pinners = pinners;
 
         result
+    }
+
+    pub fn status(&self) -> BoardStatus {
+        // inefficient but works for now
+        let moves = generate_moves(self);
+        if moves.is_empty() {
+            return if self.checkers.is_empty() {
+                BoardStatus::Stalemate
+            } else {
+                BoardStatus::Checkmate
+            };
+        }
+        BoardStatus::Ongoing
     }
 }
 

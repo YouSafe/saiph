@@ -51,6 +51,19 @@ impl BitBoard {
     pub const NOT_H_FILE: BitBoard = BitBoard(9187201950435737471);
     pub const NOT_AB_FILE: BitBoard = BitBoard(18229723555195321596);
     pub const NOT_GH_FILE: BitBoard = BitBoard(4557430888798830399);
+
+    pub const ALL_RANKS: [BitBoard; 8] = generate_all_ranks();
+}
+
+const fn generate_all_ranks() -> [BitBoard; 8] {
+    let mut result = [BitBoard(0); 8];
+
+    let mut rank = 0;
+    while rank < 8 {
+        result[rank] = BitBoard(0xFF << 8 * (rank));
+        rank += 1;
+    }
+    result
 }
 
 impl fmt::Display for BitBoard {

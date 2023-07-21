@@ -1,5 +1,5 @@
 use crate::evaluation::raw_piece_value;
-use chess::Piece;
+use chess_core::piece::Piece;
 
 /// Most Valuable Victim - Least Valuable Aggressor
 pub fn mmv_lva(src_piece: Piece, dst_piece: Piece) -> i32 {
@@ -9,7 +9,7 @@ pub fn mmv_lva(src_piece: Piece, dst_piece: Piece) -> i32 {
 #[cfg(test)]
 mod test {
     use crate::move_ordering::mmv_lva;
-    use chess::{Piece, ALL_PIECES};
+    use chess_core::piece::{Piece, ALL_PIECES};
 
     #[test]
     fn test() {

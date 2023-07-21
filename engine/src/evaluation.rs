@@ -1,5 +1,8 @@
 use crate::piece_square_table::piece_square_table;
-use chess::{Board, Color, Piece, Square, ALL_PIECES};
+use chess_core::board::Board;
+use chess_core::color::Color;
+use chess_core::piece::{Piece, ALL_PIECES};
+use chess_core::square::Square;
 use std::ops::Neg;
 
 #[derive(PartialEq, Clone, Copy, Debug, PartialOrd, Ord, Eq)]
@@ -82,8 +85,8 @@ pub fn board_value(board: &Board) -> Evaluation {
     let mut result: i32 = 0;
     for piece in ALL_PIECES {
         let bitboard = *board.pieces(piece);
-        for square in bitboard {
-            result += piece_value(piece, square, board.color_on(square).unwrap());
+        for square in bitboard.iter() {
+            result += piece_value(piece, square, board.color_on_square(square).unwrap());
         }
     }
     Evaluation(result)
@@ -92,7 +95,7 @@ pub fn board_value(board: &Board) -> Evaluation {
 #[cfg(test)]
 mod test {
     use crate::evaluation::Evaluation;
-    use chess::Color;
+    use chess_core::color::Color;
 
     #[test]
     fn test_adjust_mate_ply() {

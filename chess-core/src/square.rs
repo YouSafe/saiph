@@ -24,6 +24,9 @@ impl Square {
     pub fn to_file(&self) -> File {
         unsafe { std::mem::transmute::<u8, File>(*self as u8 % 8) }
     }
+    pub fn to_rank(&self) -> Rank {
+        unsafe { std::mem::transmute::<u8, Rank>(*self as u8 / 8) }
+    }
 }
 
 #[rustfmt::skip]

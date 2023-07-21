@@ -1,5 +1,6 @@
 use crate::search::Search;
-use chess::{Board, ChessMove};
+use chess_core::board::Board;
+use chess_core::uci_move::UCIMove;
 use std::str::FromStr;
 
 #[derive(Debug, PartialEq)]
@@ -7,7 +8,7 @@ enum Command {
     Uci,
     IsReady,
     NewGame,
-    Position(StartingPosition, Vec<ChessMove>),
+    Position(StartingPosition, Vec<UCIMove>),
     Go,
     Stop,
     Quit,
@@ -92,7 +93,7 @@ impl EngineUCI {
                 // Also see: https://doc.rust-lang.org/rust-by-example/error/iter_result.html
                 let moves = moves
                     .iter()
-                    .map(|move_str| ChessMove::from_str(move_str))
+                    .map(|move_str| UCIMove::from_str(move_str))
                     .collect::<Result<Vec<_>, _>>()
                     .map_err(|_| ParseCommandError::InvalidMove)?;
 
@@ -123,7 +124,7 @@ impl EngineUCI {
                 };
 
                 for chess_move in moves {
-                    board = board.make_move_new(chess_move);
+                    board = board.make_uci_move(chess_move);
                 }
 
                 self.board = board;

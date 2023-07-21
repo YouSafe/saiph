@@ -1,13 +1,15 @@
 #![cfg_attr(rustfmt, rustfmt_skip)]
 // See: https://www.chessprogramming.org/Simplified_Evaluation_Function
 
-use chess::{Color, Piece, Square};
+use chess_core::color::Color;
+use chess_core::piece::Piece;
+use chess_core::square::Square;
 
 pub fn piece_square_table(piece: Piece, square: Square, piece_color: Color) -> i32 {
-    let square_index = square.to_index();
+    let square_index = square as usize;
 
-    let rank = square.get_rank().to_index();
-    let file = square.get_file().to_index();
+    let rank = square.to_rank() as usize;
+    let file = square.to_file() as usize;
 
     let lookup_index = match piece_color {
         Color::White => (7 - rank) * 8 + file,
@@ -83,9 +85,9 @@ const QUEEN_TABLE: [i8; 64] = [
 #[cfg(test)]
 mod test {
     use std::str::FromStr;
-    use chess::{Color, Square};
-    use chess::Piece::Pawn;
-    use Color::{Black, White};
+    use chess_core::color::Color::{Black, White};
+    use chess_core::piece::Piece::Pawn;
+    use chess_core::square::Square;
     use crate::piece_square_table::piece_square_table;
 
     #[test]

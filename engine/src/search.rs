@@ -1,9 +1,12 @@
 use crate::evaluation::{board_value, Evaluation};
 use crate::move_ordering::mmv_lva;
 use crate::transposition_table::{TranspositionTable, ValueType};
-use chess::{Board, ChessMove, Color, MoveGen, EMPTY};
+use chess_core::bitboard::BitBoard;
+use chess_core::board::Board;
+use chess_core::chess_move::Move;
+use chess_core::color::Color;
+use chess_core::movgen::generate_moves;
 use std::fmt;
-use std::ops::Not;
 
 pub struct Search {
     transposition_table: TranspositionTable,
@@ -12,7 +15,7 @@ pub struct Search {
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct ScoringMove {
     pub evaluation: Evaluation,
-    pub chess_move: Option<ChessMove>,
+    pub chess_move: Option<Move>,
 }
 
 impl fmt::Display for ScoringMove {
@@ -54,11 +57,11 @@ impl Search {
             return entry;
         }
 
-        let mut moves = MoveGen::new_legal(&board).collect::<Vec<_>>();
+        let mut moves = generate_moves(&board);
         if moves.is_empty() {
             return ScoringMove {
-                evaluation: match board.checkers() != &EMPTY {
-                    true => Evaluation::new_mate_eval(board.side_to_move().not(), ply),
+                evaluation: match board.checkers() != BitBoard::EMPTY {
+                    true => Evaluation::new_mate_eval(!board.side_to_move(), ply),
                     false => Evaluation(0),
                 },
                 chess_move: None,
@@ -78,8 +81,8 @@ impl Search {
         }
 
         moves.sort_unstable_by_key(|mov| {
-            let src_piece = board.piece_on(mov.get_source());
-            let dst_piece = board.piece_on(mov.get_dest());
+            let src_piece = board.piece_on_square(mov.source());
+            let dst_piece = board.piece_on_square(mov.destination());
 
             if let Some(dst_piece) = dst_piece {
                 return -mmv_lva(src_piece.unwrap(), dst_piece);
@@ -99,7 +102,7 @@ impl Search {
         let mut value_type = None;
 
         for chess_move in moves {
-            let result = board.make_move_new(chess_move);
+            let result = board.make_move(chess_move);
 
             let scoring_move = self.minimax_search(
                 &result,
@@ -181,15 +184,12 @@ impl Search {
             beta = eval;
         }
 
-        let targets = board.color_combined(!board.side_to_move());
-        let mut moves = MoveGen::new_legal(&board);
-        moves.set_iterator_mask(*targets);
-
-        let mut capture_moves = moves.collect::<Vec<_>>();
+        let mut capture_moves = generate_moves(board);
+        capture_moves.retain(|m| m.is_capture());
 
         capture_moves.sort_unstable_by_key(|mov| {
-            let src_piece = board.piece_on(mov.get_source());
-            let dst_piece = board.piece_on(mov.get_dest());
+            let src_piece = board.piece_on_square(mov.source());
+            let dst_piece = board.piece_on_square(mov.destination());
 
             if let Some(dst_piece) = dst_piece {
                 return -mmv_lva(src_piece.unwrap(), dst_piece);
@@ -198,7 +198,7 @@ impl Search {
         });
 
         for chess_move in capture_moves {
-            let result = board.make_move_new(chess_move);
+            let result = board.make_move(chess_move);
 
             eval = self.quiescence_search(
                 &result,
@@ -264,7 +264,11 @@ impl Search {
 mod test {
     use crate::evaluation::Evaluation;
     use crate::search::{ScoringMove, Search};
-    use chess::{Board, BoardStatus, ChessMove, Color};
+    use chess_core::board::{Board, BoardStatus};
+    use chess_core::chess_move::{Move, MoveFlag};
+    use chess_core::color::Color;
+    use chess_core::piece::Piece;
+    use chess_core::square::Square;
     use std::str::FromStr;
 
     #[test]
@@ -283,7 +287,13 @@ mod test {
         let best_move = search.find_best_move(&board, 6);
         assert_eq!(
             best_move.unwrap().chess_move,
-            Some(ChessMove::from_str("b7c7").unwrap())
+            Some(Move {
+                from: Square::B7,
+                to: Square::C7,
+                promotion: None,
+                piece: Piece::King,
+                flags: MoveFlag::Capture,
+            })
         )
     }
 
@@ -295,7 +305,13 @@ mod test {
         let best_move = search.find_best_move(&board, 6);
         assert_eq!(
             best_move.unwrap().chess_move,
-            Some(ChessMove::from_str("g3e1").unwrap())
+            Some(Move {
+                from: Square::G3,
+                to: Square::E1,
+                promotion: None,
+                piece: Piece::Queen,
+                flags: MoveFlag::Normal,
+            })
         )
     }
 
@@ -307,7 +323,13 @@ mod test {
         let best_move = search.find_best_move(&board, 6);
         assert_eq!(
             best_move.unwrap().chess_move,
-            Some(ChessMove::from_str("b7c7").unwrap())
+            Some(Move {
+                from: Square::B7,
+                to: Square::C7,
+                promotion: None,
+                piece: Piece::King,
+                flags: MoveFlag::Capture,
+            })
         )
     }
 
@@ -319,7 +341,13 @@ mod test {
         let best_move = search.find_best_move(&board, 6);
         assert_eq!(
             best_move.unwrap().chess_move,
-            Some(ChessMove::from_str("d1d8").unwrap())
+            Some(Move {
+                from: Square::D1,
+                to: Square::D8,
+                promotion: None,
+                piece: Piece::Rook,
+                flags: MoveFlag::Normal,
+            })
         );
     }
 
@@ -331,7 +359,13 @@ mod test {
         let best_move = search.find_best_move(&board, 6);
         assert_eq!(
             best_move.unwrap().chess_move,
-            Some(ChessMove::from_str("d8d1").unwrap())
+            Some(Move {
+                from: Square::D1,
+                to: Square::D8,
+                promotion: None,
+                piece: Piece::Rook,
+                flags: MoveFlag::Normal,
+            })
         );
     }
 
@@ -343,7 +377,13 @@ mod test {
         let best_move = search.find_best_move(&board, 7);
         assert_eq!(
             best_move.unwrap().chess_move,
-            Some(ChessMove::from_str("b8f8").unwrap())
+            Some(Move {
+                from: Square::B8,
+                to: Square::F8,
+                promotion: None,
+                piece: Piece::Queen,
+                flags: MoveFlag::Capture,
+            })
         )
     }
 
@@ -355,7 +395,13 @@ mod test {
         let best_move = search.find_best_move(&board, 7);
         assert_eq!(
             best_move.unwrap().chess_move,
-            Some(ChessMove::from_str("f1g2").unwrap())
+            Some(Move {
+                from: Square::F1,
+                to: Square::G2,
+                promotion: None,
+                piece: Piece::Queen,
+                flags: MoveFlag::Normal,
+            })
         );
     }
 
@@ -382,9 +428,16 @@ mod test {
                 .unwrap();
         let mut search = Search::new();
         let best_move = search.find_best_move(&board, 7);
+        // TODO: remove test as it's not very useful
         assert_ne!(
             best_move.unwrap().chess_move,
-            Some(ChessMove::from_str("d8d7").unwrap())
+            Some(Move {
+                from: Square::D8,
+                to: Square::D7,
+                promotion: None,
+                piece: Piece::Rook,
+                flags: MoveFlag::Normal,
+            })
         );
     }
 
@@ -393,7 +446,7 @@ mod test {
         let board = Board::from_str("8/1K6/6k1/r7/8/2q5/8/3q4 b - - 1 56").unwrap();
         let mut search = Search::new();
         let best_move = search.find_best_move(&board, 7);
-        let result = board.make_move_new(best_move.unwrap().chess_move.unwrap());
+        let result = board.make_move(best_move.unwrap().chess_move.unwrap());
         assert_eq!(result.status(), BoardStatus::Checkmate);
     }
 
@@ -406,19 +459,31 @@ mod test {
             whites_move,
             Some(ScoringMove {
                 evaluation: Evaluation::new_mate_eval(Color::Black, 2),
-                chess_move: Some(ChessMove::from_str("a1a2").unwrap())
+                chess_move: Some(Move {
+                    from: Square::A1,
+                    to: Square::A2,
+                    promotion: None,
+                    piece: Piece::King,
+                    flags: MoveFlag::Normal,
+                })
             })
         );
-        let result = board.make_move_new(whites_move.unwrap().chess_move.unwrap());
+        let result = board.make_move(whites_move.unwrap().chess_move.unwrap());
         let black_move = search.find_best_move(&result, 3);
         assert_eq!(
             black_move,
             Some(ScoringMove {
                 evaluation: Evaluation::new_mate_eval(Color::Black, 1),
-                chess_move: Some(ChessMove::from_str("b8a8").unwrap())
+                chess_move: Some(Move {
+                    from: Square::B8,
+                    to: Square::A8,
+                    promotion: None,
+                    piece: Piece::Rook,
+                    flags: MoveFlag::Normal,
+                })
             })
         );
-        let result = result.make_move_new(black_move.unwrap().chess_move.unwrap());
+        let result = result.make_move(black_move.unwrap().chess_move.unwrap());
         assert_eq!(result.status(), BoardStatus::Checkmate);
     }
 
@@ -451,7 +516,7 @@ mod test {
         for _ in 0..5 {
             let best_move = search.find_best_move(&board, 7);
             let chess_move = best_move.unwrap().chess_move.unwrap();
-            board = board.make_move_new(chess_move);
+            board = board.make_move(chess_move);
         }
         assert_eq!(board.status(), BoardStatus::Checkmate);
     }
@@ -463,7 +528,7 @@ mod test {
         for _ in 0..3 {
             let best_move = search.find_best_move(&board, 5);
             let chess_move = best_move.unwrap().chess_move.unwrap();
-            board = board.make_move_new(chess_move);
+            board = board.make_move(chess_move);
         }
         assert_eq!(board.status(), BoardStatus::Checkmate);
     }
@@ -477,7 +542,7 @@ mod test {
             // println!("{}", board.to_string());
             let best_move = search.find_best_move(&board, 14);
             let chess_move = best_move.unwrap().chess_move.unwrap();
-            board = board.make_move_new(chess_move);
+            board = board.make_move(chess_move);
         }
         // println!("{}", board.to_string());
 

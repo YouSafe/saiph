@@ -26,6 +26,20 @@ pub struct Move {
     pub flags: MoveFlag,
 }
 
+impl Move {
+    pub fn source(&self) -> Square {
+        self.from
+    }
+
+    pub fn destination(&self) -> Square {
+        self.to
+    }
+    
+    pub fn is_capture(&self) -> bool {
+        self.flags == MoveFlag::Capture
+    }
+}
+
 impl fmt::Display for Move {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         if let Some(promotion) = self.promotion {

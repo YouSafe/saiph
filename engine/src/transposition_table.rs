@@ -1,7 +1,8 @@
 use crate::evaluation::Evaluation;
 use crate::search::ScoringMove;
 use crate::transposition_table::ValueType::{Alpha, Beta, Exact};
-use chess::{Board, ChessMove};
+use chess_core::board::Board;
+use chess_core::chess_move::Move;
 use std::collections::HashMap;
 
 pub struct TranspositionTable {
@@ -23,34 +24,35 @@ impl TranspositionTable {
         alpha: Evaluation,
         beta: Evaluation,
     ) -> Option<ScoringMove> {
-        let entry = self.hash_table.get(board);
+        // TODO: implement zobrist hashing for board
+        // let entry = self.hash_table.get(board);
 
-        if let Some(entry) = entry {
-            if entry.depth >= depth {
-                let corrected_value = if entry.value.is_mate() {
-                    entry.value.tt_to_score(ply_from_root)
-                } else {
-                    entry.value
-                };
-
-                if entry.value_type == Exact {
-                    return Some(ScoringMove {
-                        chess_move: entry.best_move,
-                        evaluation: corrected_value,
-                    });
-                } else if entry.value_type == Alpha && corrected_value <= alpha {
-                    return Some(ScoringMove {
-                        chess_move: entry.best_move,
-                        evaluation: alpha,
-                    });
-                } else if entry.value_type == Beta && corrected_value >= beta {
-                    return Some(ScoringMove {
-                        chess_move: entry.best_move,
-                        evaluation: beta,
-                    });
-                };
-            }
-        }
+        // if let Some(entry) = entry {
+        //     if entry.depth >= depth {
+        //         let corrected_value = if entry.value.is_mate() {
+        //             entry.value.tt_to_score(ply_from_root)
+        //         } else {
+        //             entry.value
+        //         };
+        //
+        //         if entry.value_type == Exact {
+        //             return Some(ScoringMove {
+        //                 chess_move: entry.best_move,
+        //                 evaluation: corrected_value,
+        //             });
+        //         } else if entry.value_type == Alpha && corrected_value <= alpha {
+        //             return Some(ScoringMove {
+        //                 chess_move: entry.best_move,
+        //                 evaluation: alpha,
+        //             });
+        //         } else if entry.value_type == Beta && corrected_value >= beta {
+        //             return Some(ScoringMove {
+        //                 chess_move: entry.best_move,
+        //                 evaluation: beta,
+        //             });
+        //         };
+        //     }
+        // }
         None
     }
 
@@ -59,7 +61,7 @@ impl TranspositionTable {
         board: Board,
         value: Evaluation,
         value_type: ValueType,
-        best_move: Option<ChessMove>,
+        best_move: Option<Move>,
         depth: u8,
         ply_searched: u8,
     ) {
@@ -76,7 +78,8 @@ impl TranspositionTable {
             depth,
         };
 
-        self.hash_table.insert(board, entry);
+        // TODO: implement zobrist hashing for board
+        // self.hash_table.insert(board, entry);
     }
 
     pub fn _clear(&mut self) {
@@ -93,7 +96,7 @@ pub enum ValueType {
 }
 
 pub struct Entry {
-    pub best_move: Option<ChessMove>,
+    pub best_move: Option<Move>,
     pub value: Evaluation,
     pub value_type: ValueType,
     pub depth: u8,
