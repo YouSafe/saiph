@@ -1,7 +1,8 @@
-use chess_core::board::Board;
-use chess_core::movgen::{generate_moves, perf_test};
 use std::env;
 use std::str::FromStr;
+
+use chess_core::board::Board;
+use chess_core::movgen::{generate_moves, perf_test};
 
 fn main() {
     let args: Vec<String> = env::args().collect();

@@ -1,9 +1,10 @@
-use crate::bitboard::BitBoard;
-use crate::color::Color;
-use crate::square::Square::{A1, A2, A7, A8, H1, H2, H7, H8};
 use std::fmt;
 use std::fmt::Formatter;
 use std::str::FromStr;
+
+use crate::bitboard::BitBoard;
+use crate::color::Color;
+use crate::square::Square::{A1, A2, A7, A8, H1, H2, H7, H8};
 
 #[rustfmt::skip]
 #[repr(u8)]

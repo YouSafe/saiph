@@ -61,7 +61,6 @@ const fn mask_king_attacks(square: Square) -> BitBoard {
 
 #[cfg(test)]
 mod test {
-
     use crate::bitboard::BitBoard;
     use crate::square::Square;
     use crate::tables::king_move::mask_king_attacks;

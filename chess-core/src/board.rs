@@ -1,3 +1,7 @@
+use std::fmt;
+use std::fmt::Formatter;
+use std::str::FromStr;
+
 use crate::bitboard::BitBoard;
 use crate::castling_rights::{CastlingRights, UPDATE_CASTLING_RIGHT_TABLE};
 use crate::chess_move::Move;
@@ -6,9 +10,6 @@ use crate::color::{Color, NUM_COLORS};
 use crate::movgen::calculate_pinned_checkers_pinners;
 use crate::piece::{Piece, ALL_PIECES, NUM_PIECES};
 use crate::square::{File, Square};
-use std::fmt;
-use std::fmt::Formatter;
-use std::str::FromStr;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Board {
@@ -373,11 +374,12 @@ impl FromStr for Board {
 
 #[cfg(test)]
 mod test {
+    use std::str::FromStr;
+
     use crate::board::Board;
     use crate::color::Color;
     use crate::piece::Piece;
     use crate::square::Square;
-    use std::str::FromStr;
 
     #[test]
     fn test_display() {

@@ -1,10 +1,11 @@
+use std::any::TypeId;
+
 use crate::bitboard::BitBoard;
 use crate::board::Board;
 use crate::chess_move::{Move, MoveFlag};
 use crate::movgen::{CheckState, InCheck, MoveList, PieceMoveGenerator};
 use crate::piece::Piece;
 use crate::tables::{between, get_knight_attacks};
-use std::any::TypeId;
 
 pub struct KnightMoveGenerator;
 
@@ -65,18 +66,19 @@ impl PieceMoveGenerator for KnightMoveGenerator {
 
 #[cfg(test)]
 mod test {
+    use std::str::FromStr;
+
     use crate::board::Board;
     use crate::chess_move::{Move, MoveFlag};
     use crate::movgen::knight::KnightMoveGenerator;
-    use crate::movgen::{InCheck, NotInCheck, PieceMoveGenerator};
+    use crate::movgen::{InCheck, MoveList, NotInCheck, PieceMoveGenerator};
     use crate::piece::Piece;
     use crate::square::Square::*;
-    use std::str::FromStr;
 
     #[test]
     fn test_check_evasion() {
         let board = Board::from_str("4k2n/8/6n1/4R3/8/8/8/K7 b - - 0 1").unwrap();
-        let mut move_list = vec![];
+        let mut move_list = MoveList::new();
         KnightMoveGenerator::generate::<InCheck>(&board, &mut move_list);
         println!("{:#?}", move_list);
 
@@ -100,7 +102,7 @@ mod test {
     #[test]
     fn test_self_capture_prevention() {
         let board = Board::from_str("4k2n/8/6n1/8/8/8/8/K7 b - - 0 1").unwrap();
-        let mut move_list = vec![];
+        let mut move_list = MoveList::new();
         KnightMoveGenerator::generate::<NotInCheck>(&board, &mut move_list);
         println!("{:#?}", move_list);
         assert!(!move_list.contains(&Move {
@@ -122,7 +124,7 @@ mod test {
     #[test]
     fn test_pinned_knight_can_not_move() {
         let board = Board::from_str("4k3/8/4n3/8/8/8/8/K3R3 b - - 0 1").unwrap();
-        let mut move_list = vec![];
+        let mut move_list = MoveList::new();
         KnightMoveGenerator::generate::<NotInCheck>(&board, &mut move_list);
         println!("{:#?}", move_list);
         assert_eq!(move_list.len(), 0);
@@ -131,7 +133,7 @@ mod test {
     #[test]
     fn test_capture_empty_square() {
         let board = Board::from_str("3pkp2/2p3p1/4n3/2p3p1/3p4/8/8/K7 b - - 0 1").unwrap();
-        let mut move_list = vec![];
+        let mut move_list = MoveList::new();
         KnightMoveGenerator::generate::<NotInCheck>(&board, &mut move_list);
         println!("{:#?}", move_list);
         assert_eq!(move_list.len(), 1);
@@ -147,7 +149,7 @@ mod test {
     #[test]
     fn test_capture_marked_as_quiet() {
         let board = Board::from_str("3BkB2/2P3P1/4n3/2P3P1/3P4/8/8/K7 b - - 0 1").unwrap();
-        let mut move_list = vec![];
+        let mut move_list = MoveList::new();
         KnightMoveGenerator::generate::<NotInCheck>(&board, &mut move_list);
         println!("{:#?}", move_list);
 

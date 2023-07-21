@@ -1,9 +1,10 @@
+use std::fmt;
+use std::fmt::Formatter;
+
 use crate::color::Color;
 use crate::piece::Piece;
 use crate::promotion::Promotion;
 use crate::square::Square;
-use std::fmt;
-use std::fmt::Formatter;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MoveFlag {

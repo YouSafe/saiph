@@ -1,10 +1,4 @@
-mod castling;
-mod en_passant;
-mod king;
-mod knight;
-mod pawn_capture;
-mod quiet_pawn;
-mod slider;
+use arrayvec::ArrayVec;
 
 use crate::bitboard::BitBoard;
 use crate::board::Board;
@@ -24,7 +18,15 @@ use crate::tables::{
     get_queen_attacks, get_rook_attacks,
 };
 
-type MoveList = Vec<Move>;
+mod castling;
+mod en_passant;
+mod king;
+mod knight;
+mod pawn_capture;
+mod quiet_pawn;
+mod slider;
+
+type MoveList = ArrayVec<Move, 256>;
 
 pub fn generate_attack_bitboard(board: &Board, attacking_color: Color) -> BitBoard {
     let mut attacked = BitBoard(0);
@@ -113,7 +115,7 @@ trait PieceMoveGenerator {
 }
 
 pub fn generate_moves(board: &Board) -> MoveList {
-    let mut move_list = vec![];
+    let mut move_list = MoveList::new();
 
     let checkers = board.checkers();
     if checkers.popcnt() == 0 {
@@ -256,6 +258,8 @@ pub fn perf_driver(board: &Board, depth: u8, nodes: &mut u64) {
 
 #[cfg(test)]
 mod test {
+    use std::str::FromStr;
+
     use crate::bitboard::BitBoard;
     use crate::board::Board;
     use crate::color::Color;
@@ -264,7 +268,6 @@ mod test {
         generate_moves, is_square_attacked,
     };
     use crate::square::Square;
-    use std::str::FromStr;
 
     #[test]
     fn test_is_square_attacked_pawn_attack() {

@@ -65,18 +65,19 @@ impl PieceMoveGenerator for EnPassantMoveGenerator {
 
 #[cfg(test)]
 mod test {
+    use std::str::FromStr;
+
     use crate::board::Board;
     use crate::chess_move::{Move, MoveFlag};
     use crate::movgen::en_passant::EnPassantMoveGenerator;
-    use crate::movgen::{InCheck, NotInCheck, PieceMoveGenerator};
+    use crate::movgen::{InCheck, MoveList, NotInCheck, PieceMoveGenerator};
     use crate::piece::Piece;
     use crate::square::Square;
-    use std::str::FromStr;
 
     #[test]
     fn test_en_passant() {
         let board = Board::from_str("8/8/k7/8/2Pp4/8/8/3K4 b - c3 0 1").unwrap();
-        let mut move_list = vec![];
+        let mut move_list = MoveList::new();
         EnPassantMoveGenerator::generate::<NotInCheck>(&board, &mut move_list);
         println!("{:#?}", move_list);
 
@@ -93,7 +94,7 @@ mod test {
     #[test]
     fn test_invalid_en_passant_horizontal() {
         let board = Board::from_str("8/8/8/8/k1Pp3R/8/8/3K4 b - c3 0 1").unwrap();
-        let mut move_list = vec![];
+        let mut move_list = MoveList::new();
         EnPassantMoveGenerator::generate::<NotInCheck>(&board, &mut move_list);
         println!("{:#?}", move_list);
 
@@ -103,7 +104,7 @@ mod test {
     #[test]
     fn test_invalid_en_passant_vertical() {
         let board = Board::from_str("5q2/8/8/4pP2/8/8/8/5K2 w - e6 0 1").unwrap();
-        let mut move_list = vec![];
+        let mut move_list = MoveList::new();
         EnPassantMoveGenerator::generate::<NotInCheck>(&board, &mut move_list);
         println!("{:#?}", move_list);
 
@@ -113,7 +114,7 @@ mod test {
     #[test]
     fn test_invalid_en_passant_diagonal() {
         let board = Board::from_str("8/7q/8/4pP2/8/8/8/1K6 w - e6 0 1").unwrap();
-        let mut move_list = vec![];
+        let mut move_list = MoveList::new();
         EnPassantMoveGenerator::generate::<NotInCheck>(&board, &mut move_list);
         println!("{:#?}", move_list);
 
@@ -123,7 +124,7 @@ mod test {
     #[test]
     fn test_valid_en_passant() {
         let board = Board::from_str("8/7k/8/8/2Pp4/8/8/K7 b - c3 0 1").unwrap();
-        let mut move_list = vec![];
+        let mut move_list = MoveList::new();
         EnPassantMoveGenerator::generate::<NotInCheck>(&board, &mut move_list);
         println!("{:#?}", move_list);
 
@@ -143,7 +144,7 @@ mod test {
             "r3k2r/p1ppqpb1/bn2pnp1/3PN3/Pp2P3/2N2Q1p/1PPBBPPP/R3K2R b KQkq a3 0 1",
         )
         .unwrap();
-        let mut move_list = vec![];
+        let mut move_list = MoveList::new();
         EnPassantMoveGenerator::generate::<NotInCheck>(&board, &mut move_list);
         println!("{:#?}", move_list);
 
@@ -160,7 +161,7 @@ mod test {
     #[test]
     fn test_en_passant_in_check() {
         let board = Board::from_str("1kb5/p7/P7/2Ppb2B/7P/7K/8/8 w - d6 0 4").unwrap();
-        let mut move_list = vec![];
+        let mut move_list = MoveList::new();
         EnPassantMoveGenerator::generate::<InCheck>(&board, &mut move_list);
         println!("{:#?}", move_list);
 
@@ -170,7 +171,7 @@ mod test {
     #[test]
     fn test_en_passant2() {
         let board = Board::from_str("8/8/3p4/1Pp4r/KR3p1k/8/4P1P1/8 w - c6 0 2").unwrap();
-        let mut move_list = vec![];
+        let mut move_list = MoveList::new();
         EnPassantMoveGenerator::generate::<InCheck>(&board, &mut move_list);
         println!("{:#?}", move_list);
 
@@ -180,7 +181,7 @@ mod test {
     #[test]
     fn test_en_passant_vertical_pin() {
         let board = Board::from_str("8/8/3p4/KPp3kr/5pP1/8/4P3/6R1 b - g3 0 3").unwrap();
-        let mut move_list = vec![];
+        let mut move_list = MoveList::new();
         EnPassantMoveGenerator::generate::<NotInCheck>(&board, &mut move_list);
         println!("{:#?}", move_list);
 

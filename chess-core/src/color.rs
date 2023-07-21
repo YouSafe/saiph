@@ -1,5 +1,6 @@
-use crate::square::Rank;
 use std::ops::Not;
+
+use crate::square::Rank;
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

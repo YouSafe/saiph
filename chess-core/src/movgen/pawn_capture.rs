@@ -1,3 +1,5 @@
+use std::any::TypeId;
+
 use crate::bitboard::BitBoard;
 use crate::board::Board;
 use crate::chess_move::{Move, MoveFlag};
@@ -5,7 +7,6 @@ use crate::movgen::{CheckState, InCheck, MoveList, PieceMoveGenerator};
 use crate::piece::Piece;
 use crate::promotion::ALL_PROMOTIONS;
 use crate::tables::{get_pawn_attacks, line};
-use std::any::TypeId;
 
 pub struct PawnCaptureMoveGenerator;
 
@@ -63,19 +64,20 @@ impl PieceMoveGenerator for PawnCaptureMoveGenerator {
 
 #[cfg(test)]
 mod test {
+    use std::str::FromStr;
+
     use crate::board::Board;
     use crate::chess_move::{Move, MoveFlag};
     use crate::movgen::pawn_capture::PawnCaptureMoveGenerator;
-    use crate::movgen::{InCheck, NotInCheck, PieceMoveGenerator};
+    use crate::movgen::{InCheck, MoveList, NotInCheck, PieceMoveGenerator};
     use crate::piece::Piece;
     use crate::promotion::ALL_PROMOTIONS;
     use crate::square::Square::*;
-    use std::str::FromStr;
 
     #[test]
     fn capture_pinner() {
         let board = Board::from_str("6k1/8/8/8/8/2b5/1P6/K7 w - - 0 1").unwrap();
-        let mut move_list = vec![];
+        let mut move_list = MoveList::new();
         PawnCaptureMoveGenerator::generate::<NotInCheck>(&board, &mut move_list);
         println!("{:#?}", move_list);
 
@@ -93,7 +95,7 @@ mod test {
     #[test]
     fn test_capture_promotion() {
         let board = Board::from_str("3b2k1/2P5/8/8/8/8/8/K7 w - - 0 1").unwrap();
-        let mut move_list = vec![];
+        let mut move_list = MoveList::new();
         PawnCaptureMoveGenerator::generate::<NotInCheck>(&board, &mut move_list);
         println!("{:#?}", move_list);
 
@@ -113,7 +115,7 @@ mod test {
     #[test]
     fn test_blocked_capture_by_pin() {
         let board = Board::from_str("6k1/8/8/8/2K1r3/3P4/4q3/8 w - - 0 1").unwrap();
-        let mut move_list = vec![];
+        let mut move_list = MoveList::new();
         PawnCaptureMoveGenerator::generate::<NotInCheck>(&board, &mut move_list);
         println!("{:#?}", move_list);
 
@@ -123,7 +125,7 @@ mod test {
     #[test]
     fn test_force_knight_capture() {
         let board = Board::from_str("6k1/8/8/8/2K5/4n1q1/3P3P/8 w - - 0 1").unwrap();
-        let mut move_list = vec![];
+        let mut move_list = MoveList::new();
         PawnCaptureMoveGenerator::generate::<InCheck>(&board, &mut move_list);
         println!("{:#?}", move_list);
 
@@ -141,7 +143,7 @@ mod test {
     #[test]
     fn test_multiple_captures() {
         let board = Board::from_str("6k1/8/8/8/2K5/2p1p3/3P4/8 w - - 0 1").unwrap();
-        let mut move_list = vec![];
+        let mut move_list = MoveList::new();
         PawnCaptureMoveGenerator::generate::<NotInCheck>(&board, &mut move_list);
         println!("{:#?}", move_list);
 
@@ -167,7 +169,7 @@ mod test {
     #[test]
     fn test_capture_own_pawn() {
         let board = Board::from_str("8/8/k7/8/8/2N1P3/3P4/3K4 w - - 0 1").unwrap();
-        let mut move_list = vec![];
+        let mut move_list = MoveList::new();
         PawnCaptureMoveGenerator::generate::<NotInCheck>(&board, &mut move_list);
         println!("{:#?}", move_list);
         assert_eq!(move_list.len(), 0);
@@ -176,7 +178,7 @@ mod test {
     #[test]
     fn test_capture_with_pinned_pawn() {
         let board = Board::from_str("8/2p5/3p4/KP5r/1R3p1k/6P1/4P3/8 b - - 0 1").unwrap();
-        let mut move_list = vec![];
+        let mut move_list = MoveList::new();
         PawnCaptureMoveGenerator::generate::<InCheck>(&board, &mut move_list);
         println!("{:#?}", move_list);
 

@@ -1,3 +1,5 @@
+use std::any::TypeId;
+
 use crate::bitboard::BitBoard;
 use crate::board::Board;
 use crate::castling_rights::CastlingRights;
@@ -7,7 +9,6 @@ use crate::movgen::{is_square_attacked, CheckState, InCheck, MoveList, PieceMove
 use crate::piece::Piece;
 use crate::square::Square;
 use crate::tables::between;
-use std::any::TypeId;
 
 struct CastlingConfig {
     required_rights: CastlingRights,
@@ -82,18 +83,19 @@ impl PieceMoveGenerator for CastlingMoveGenerator {
 
 #[cfg(test)]
 mod test {
+    use std::str::FromStr;
+
     use crate::board::Board;
     use crate::chess_move::{Move, MoveFlag};
     use crate::movgen::castling::CastlingMoveGenerator;
-    use crate::movgen::{NotInCheck, PieceMoveGenerator};
+    use crate::movgen::{MoveList, NotInCheck, PieceMoveGenerator};
     use crate::piece::Piece;
     use crate::square::Square::*;
-    use std::str::FromStr;
 
     #[test]
     fn test_white_castling() {
         let board = Board::from_str("r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1").unwrap();
-        let mut move_list = vec![];
+        let mut move_list = MoveList::new();
         CastlingMoveGenerator::generate::<NotInCheck>(&board, &mut move_list);
         println!("{:#?}", move_list);
 
@@ -119,7 +121,7 @@ mod test {
     #[test]
     fn test_black_castling() {
         let board = Board::from_str("r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R b KQkq - 0 1").unwrap();
-        let mut move_list = vec![];
+        let mut move_list = MoveList::new();
         CastlingMoveGenerator::generate::<NotInCheck>(&board, &mut move_list);
         println!("{:#?}", move_list);
 
@@ -146,7 +148,7 @@ mod test {
     fn test_would_land_on_check_queen_side() {
         let board =
             Board::from_str("r3k2r/pppppppp/8/6b1/8/8/PPP1PPPP/R3K2R w KQkq - 0 1").unwrap();
-        let mut move_list = vec![];
+        let mut move_list = MoveList::new();
         CastlingMoveGenerator::generate::<NotInCheck>(&board, &mut move_list);
         println!("{:#?}", move_list);
 
@@ -165,7 +167,7 @@ mod test {
     fn test_would_land_on_check_king_side() {
         let board =
             Board::from_str("r3k2r/pppppppp/8/2b5/8/5P2/PPPPP1PP/R3K2R w KQkq - 0 1").unwrap();
-        let mut move_list = vec![];
+        let mut move_list = MoveList::new();
         CastlingMoveGenerator::generate::<NotInCheck>(&board, &mut move_list);
         println!("{:#?}", move_list);
 
@@ -184,7 +186,7 @@ mod test {
     fn test_both_sides_blocked() {
         let board =
             Board::from_str("r3k2r/pppppppp/8/8/8/1b5b/PP1PPP1P/R3K2R w KQkq - 0 1").unwrap();
-        let mut move_list = vec![];
+        let mut move_list = MoveList::new();
         CastlingMoveGenerator::generate::<NotInCheck>(&board, &mut move_list);
         println!("{:#?}", move_list);
 

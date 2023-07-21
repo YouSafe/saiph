@@ -1,8 +1,9 @@
-use crate::square::Square;
 use std::fmt;
 use std::fmt::Formatter;
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
 use std::str::FromStr;
+
+use crate::square::Square;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CastlingRights(u8);

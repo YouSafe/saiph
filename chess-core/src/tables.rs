@@ -1,14 +1,15 @@
+use lazy_static::lazy_static;
+
 use crate::bitboard::BitBoard;
 use crate::color::Color;
 use crate::square::Square;
-use crate::tables::bishop_move::{generate_bishop_attacks, BISHOP_MAGIC_NUMBERS};
+use crate::tables::bishop_move::{BISHOP_MAGIC_NUMBERS, generate_bishop_attacks};
 use crate::tables::king_move::generate_king_attacks;
 use crate::tables::knight_move::generate_knight_attacks;
 use crate::tables::pawn_move::generate_pawn_attacks;
 use crate::tables::rays_between::generate_rays_between;
 use crate::tables::rook_move::{generate_rook_attacks, ROOK_MAGIC_NUMBERS};
 use crate::tables::xray_line::generate_xray_lines;
-use lazy_static::lazy_static;
 
 pub mod bishop_move;
 pub mod king_move;
@@ -71,13 +72,14 @@ pub fn line(from: Square, target: Square) -> BitBoard {
 
 #[cfg(test)]
 mod test {
+    use std::time::Instant;
+
     use crate::tables::bishop_move::generate_bishop_attacks;
     use crate::tables::king_move::generate_king_attacks;
     use crate::tables::knight_move::generate_knight_attacks;
     use crate::tables::pawn_move::generate_pawn_attacks;
     use crate::tables::rays_between::generate_rays_between;
     use crate::tables::rook_move::generate_rook_attacks;
-    use std::time::Instant;
 
     #[test]
     fn test_generation() {

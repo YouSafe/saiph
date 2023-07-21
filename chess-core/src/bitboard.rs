@@ -1,9 +1,10 @@
-use crate::square::Square;
 use std::fmt;
 use std::fmt::Formatter;
 use std::ops::{
     BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Mul, Not, Shl, Shr,
 };
+
+use crate::square::Square;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct BitBoard(pub u64);

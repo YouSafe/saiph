@@ -1,7 +1,9 @@
+use std::str::FromStr;
+
+use criterion::{Criterion, criterion_group, criterion_main};
+
 use chess_core::board::Board;
 use chess_core::movgen::perf_driver;
-use criterion::{criterion_group, criterion_main, Criterion};
-use std::str::FromStr;
 
 fn perf_test(depth: u8, fen: &str, expected_total_nodes: u64) {
     let board = Board::from_str(fen).unwrap();
