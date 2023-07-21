@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use criterion::{Criterion, criterion_group, criterion_main};
+use criterion::{criterion_group, criterion_main, Criterion};
 
 use chess_core::board::Board;
 use chess_core::movgen::perf_driver;
@@ -21,11 +21,16 @@ fn perft_kiwipete() {
     );
 }
 
+fn perft_startpos() {
+    perf_test(5, Board::STARTING_POS_FEN, 4865609);
+}
+
 fn perft_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("perft_benchmark");
     group.sample_size(10);
 
     group.bench_function("kiwipete", |b| b.iter(|| perft_kiwipete()));
+    group.bench_function("startpos", |b| b.iter(|| perft_startpos()));
 }
 
 criterion_group!(benches, perft_benchmark);

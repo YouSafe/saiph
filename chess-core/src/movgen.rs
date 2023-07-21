@@ -207,13 +207,11 @@ pub fn is_square_attacked(board: &Board, attacked_square: Square, attacking_side
 
 pub fn build_attacked_bitboard(board: &Board, attacking_side: Color) -> BitBoard {
     let mut bitboard = BitBoard(0);
-    for rank in 0..8 {
-        for file in 0..8 {
-            let square = Square::from_index(rank * 8 + file);
+    for square in 0..64 {
+        let square = Square::from_index(square);
 
-            if is_square_attacked(board, square, attacking_side) {
-                bitboard |= square;
-            }
+        if is_square_attacked(board, square, attacking_side) {
+            bitboard |= square;
         }
     }
     bitboard

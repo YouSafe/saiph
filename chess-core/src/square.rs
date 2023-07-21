@@ -41,6 +41,7 @@ pub enum File {
 }
 
 impl Square {
+    #[inline]
     pub const fn to_index(&self) -> u8 {
         *self as u8
     }
