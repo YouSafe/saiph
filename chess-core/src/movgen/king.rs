@@ -21,9 +21,9 @@ impl PieceMoveGenerator for KingMoveGenerator {
         // limit captures to the opponent pieces
         capture_mask &= board.occupancies(!side_to_move);
         // avoid opponent pieces on quiet moves
-        push_mask &= !*board.occupancies(!side_to_move);
+        push_mask &= !board.occupancies(!side_to_move);
 
-        let attacks = get_king_attacks(king_square) & !*board.occupancies(side_to_move);
+        let attacks = get_king_attacks(king_square) & !board.occupancies(side_to_move);
 
         // quiet
         for target in (attacks & push_mask).iter() {

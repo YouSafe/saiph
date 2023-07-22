@@ -76,12 +76,12 @@ impl Board {
         &self.pieces[piece as usize]
     }
 
-    pub fn occupancies(&self, color: Color) -> &BitBoard {
-        &self.occupancies[color as usize]
+    pub fn occupancies(&self, color: Color) -> BitBoard {
+        self.occupancies[color as usize]
     }
 
-    pub fn combined(&self) -> &BitBoard {
-        &self.combined
+    pub fn combined(&self) -> BitBoard {
+        self.combined
     }
 
     pub fn side_to_move(&self) -> Color {

@@ -28,58 +28,66 @@ impl PieceMoveGenerator for QuietPawnMoveGenerator {
             push_mask = between(king_square, checker);
         }
 
-        for source in current_sides_pawns.iter() {
-            let push_mask = if pinned.get_bit(source) {
-                push_mask & king_square.file_mask()
-            } else {
-                push_mask
-            };
+        // determine source squares that can move:
+        // they have to either be not pinned or pinned with the king being on the same file
+        let movable_sources = current_sides_pawns & (!pinned | (pinned & king_square.file_mask()));
 
-            if let Some(target) = source.forward(side_to_move) {
-                if board.combined().get_bit(target) {
-                    // target is blocked by another piece
-                    continue;
-                }
+        // those sources are then shifted one square forward and any overlaps with existing pieces
+        // on the board are removed
+        let single_push = movable_sources.shift(side_to_move.forward_shift()) & !board.combined();
 
-                if target.on_promotion_rank(side_to_move) && push_mask.get_bit(target) {
-                    // fill in promotion moves
-                    for promotion in ALL_PROMOTIONS {
-                        move_list.push(Move {
-                            from: source,
-                            to: target,
-                            piece: Piece::Pawn,
-                            promotion: Some(promotion),
-                            flags: MoveFlag::Normal,
-                        });
-                    }
-                    continue;
-                }
-                // fill in single pawn push
-                if push_mask.get_bit(target) {
-                    move_list.push(Move {
-                        from: source,
-                        to: target,
-                        promotion: None,
-                        piece: Piece::Pawn,
-                        flags: MoveFlag::Normal,
-                    });
-                }
+        // restrict the single push targets to squares they can actually move to (check evasion)
+        let single_push_targets = single_push & push_mask;
 
-                if source.on_initial_pawn_rank(side_to_move) {
-                    if let Some(target) = target.forward(side_to_move) {
-                        if !board.combined().get_bit(target) && push_mask.get_bit(target) {
-                            // fill in double pawn push
-                            move_list.push(Move {
-                                from: source,
-                                to: target,
-                                promotion: None,
-                                piece: Piece::Pawn,
-                                flags: MoveFlag::DoublePawnPush,
-                            });
-                        }
-                    }
-                }
+        // move the already moved squares, remove overlaps and restrict the final target squares to
+        // legal squares, respecting checks
+        let double_push_targets = single_push.shift(side_to_move.forward_shift())
+            & !board.combined()
+            & side_to_move.double_pawn_push_rank()
+            & push_mask;
+
+        let non_promotions = single_push_targets & !(!side_to_move).bankrank_rank();
+        let promotions = single_push_targets & (!side_to_move).bankrank_rank();
+
+        for target in promotions.iter() {
+            let source = target.forward(!side_to_move).unwrap();
+            for promotion in ALL_PROMOTIONS {
+                move_list.push(Move {
+                    from: source,
+                    to: target,
+                    piece: Piece::Pawn,
+                    promotion: Some(promotion),
+                    flags: MoveFlag::Normal,
+                });
             }
+        }
+
+        for target in double_push_targets.iter() {
+            let source = target
+                .forward(!side_to_move)
+                .unwrap()
+                .forward(!side_to_move)
+                .unwrap();
+
+            move_list.push(Move {
+                from: source,
+                to: target,
+                piece: Piece::Pawn,
+                promotion: None,
+                flags: MoveFlag::DoublePawnPush,
+            });
+        }
+
+        for target in non_promotions.iter() {
+            let source = target.forward(!side_to_move).unwrap();
+
+            move_list.push(Move {
+                from: source,
+                to: target,
+                piece: Piece::Pawn,
+                promotion: None,
+                flags: MoveFlag::Normal,
+            });
         }
     }
 }

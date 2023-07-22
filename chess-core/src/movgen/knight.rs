@@ -33,11 +33,11 @@ impl PieceMoveGenerator for KnightMoveGenerator {
         // limit captures to the opponent pieces
         capture_mask &= board.occupancies(!side_to_move);
         // avoid opponent pieces on quiet moves
-        push_mask &= !*board.occupancies(!side_to_move);
+        push_mask &= !board.occupancies(!side_to_move);
 
         // pinned knights can't move at all
         for source in (current_sides_knights & !pinned).iter() {
-            let attacks = get_knight_attacks(source) & !*board.occupancies(side_to_move);
+            let attacks = get_knight_attacks(source) & !board.occupancies(side_to_move);
 
             // captures
             for target in (attacks & capture_mask).iter() {

@@ -32,19 +32,19 @@ impl PieceMoveGenerator for SliderMoveGenerator {
         // limit captures to the opponent pieces
         capture_mask &= board.occupancies(!side_to_move);
         // avoid opponent pieces on quiet moves
-        push_mask &= !*board.occupancies(!side_to_move);
+        push_mask &= !board.occupancies(!side_to_move);
 
         let bishops = board.pieces(Piece::Bishop) & board.occupancies(side_to_move);
         let rooks = board.pieces(Piece::Rook) & board.occupancies(side_to_move);
         let queens = board.pieces(Piece::Queen) & board.occupancies(side_to_move);
 
-        let combined = *board.combined();
+        let combined = board.combined();
 
         // TODO: refactor to avoid code duplication
 
         // diagonal attackers
         for source in ((bishops | queens) & !pinned).iter() {
-            let attacks = get_bishop_attacks(source, combined) & !*board.occupancies(side_to_move);
+            let attacks = get_bishop_attacks(source, combined) & !board.occupancies(side_to_move);
 
             let source_piece = board.piece_on_square(source).unwrap();
 
@@ -74,7 +74,7 @@ impl PieceMoveGenerator for SliderMoveGenerator {
         for source in ((bishops | queens) & pinned).iter() {
             let attacks = get_bishop_attacks(source, combined)
                 & line(king_square, source)
-                & !*board.occupancies(side_to_move);
+                & !board.occupancies(side_to_move);
 
             let source_piece = board.piece_on_square(source).unwrap();
 
@@ -103,7 +103,7 @@ impl PieceMoveGenerator for SliderMoveGenerator {
 
         // line attackers
         for source in ((rooks | queens) & !pinned).iter() {
-            let attacks = get_rook_attacks(source, combined) & !*board.occupancies(side_to_move);
+            let attacks = get_rook_attacks(source, combined) & !board.occupancies(side_to_move);
 
             let source_piece = board.piece_on_square(source).unwrap();
 
@@ -133,7 +133,7 @@ impl PieceMoveGenerator for SliderMoveGenerator {
         for source in ((rooks | queens) & pinned).iter() {
             let attacks = get_rook_attacks(source, combined)
                 & line(king_square, source)
-                & !*board.occupancies(side_to_move);
+                & !board.occupancies(side_to_move);
 
             let source_piece = board.piece_on_square(source).unwrap();
 
