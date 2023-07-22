@@ -115,41 +115,32 @@ pub fn generate_moves(board: &Board) -> MoveList {
 
     let checkers = board.checkers();
     if checkers.popcnt() == 0 {
-        // PAWN MOVES
         QuietPawnMoveGenerator::generate::<NotInCheck>(board, &mut move_list);
         PawnCaptureMoveGenerator::generate::<NotInCheck>(board, &mut move_list);
         EnPassantMoveGenerator::generate::<NotInCheck>(board, &mut move_list);
 
-        // KNIGHT MOVES
         KnightMoveGenerator::generate::<NotInCheck>(board, &mut move_list);
 
-        // SLIDERS MOVES
         SliderMoveGenerator::generate::<NotInCheck>(board, &mut move_list);
 
-        // KING MOVES
         CastlingMoveGenerator::generate::<NotInCheck>(board, &mut move_list);
         KingMoveGenerator::generate::<NotInCheck>(board, &mut move_list);
     } else if checkers.popcnt() == 1 {
         // a single check can be evaded by capturing the checker
 
-        // PAWN MOVES
         QuietPawnMoveGenerator::generate::<InCheck>(board, &mut move_list);
         PawnCaptureMoveGenerator::generate::<InCheck>(board, &mut move_list);
         EnPassantMoveGenerator::generate::<InCheck>(board, &mut move_list);
 
-        // KNIGHT MOVES
         KnightMoveGenerator::generate::<InCheck>(board, &mut move_list);
 
-        // SLIDERS MOVES
         SliderMoveGenerator::generate::<InCheck>(board, &mut move_list);
 
-        // KING MOVES
         // castling is not allowed when the king is in check
         KingMoveGenerator::generate::<InCheck>(board, &mut move_list);
     } else {
         // double and more checkers
         // only the king can move
-        // KING MOVES
         KingMoveGenerator::generate::<InCheck>(board, &mut move_list);
     }
 

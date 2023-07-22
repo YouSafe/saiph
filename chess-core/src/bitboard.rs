@@ -34,14 +34,6 @@ impl BitBoard {
         BitBoardIterator(*self)
     }
 
-    pub fn iter_masked(&self, mask: u64) -> BitBoardIteratorMasked {
-        BitBoardIteratorMasked {
-            index: 0,
-            bitboard: *self,
-            mask,
-        }
-    }
-
     pub const EMPTY: BitBoard = BitBoard(0);
 
     pub const NOT_1ST_RANK: BitBoard = BitBoard(18446744073709551360);
@@ -195,12 +187,6 @@ impl BitXorAssign<Square> for BitBoard {
 
 pub struct BitBoardIterator(BitBoard);
 
-pub struct BitBoardIteratorMasked {
-    index: u8,
-    bitboard: BitBoard,
-    mask: u64,
-}
-
 impl Iterator for BitBoardIterator {
     type Item = Square;
 
@@ -212,25 +198,6 @@ impl Iterator for BitBoardIterator {
             self.0 ^= square;
             Some(square)
         }
-    }
-}
-
-impl Iterator for BitBoardIteratorMasked {
-    type Item = Square;
-
-    fn next(&mut self) -> Option<Square> {
-        while !self.bitboard.is_empty() {
-            let square = self.bitboard.bit_scan();
-            self.bitboard ^= square;
-
-            let overlaps_mask = (self.mask & (1 << self.index)) != 0;
-            self.index += 1;
-
-            if overlaps_mask {
-                return Some(square);
-            }
-        }
-        None
     }
 }
 
