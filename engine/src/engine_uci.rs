@@ -1,7 +1,9 @@
-use crate::search::Search;
+use crate::searcher::Searcher;
+use crate::timer::Timer;
 use chess_core::board::Board;
 use chess_core::uci_move::UCIMove;
 use std::str::FromStr;
+use std::time::Duration;
 
 #[derive(Debug, PartialEq)]
 enum Command {
@@ -11,7 +13,6 @@ enum Command {
     Position(StartingPosition, Vec<UCIMove>),
     Go,
     Stop,
-    Quit,
 }
 
 #[derive(Debug)]
@@ -30,7 +31,8 @@ enum StartingPosition {
 
 pub struct EngineUCI {
     board: Board,
-    search: Search,
+    searcher: Searcher,
+    timer: Timer,
 }
 
 impl Default for EngineUCI {
@@ -42,8 +44,9 @@ impl Default for EngineUCI {
 impl EngineUCI {
     pub fn new() -> Self {
         EngineUCI {
-            search: Search::new(),
+            searcher: Searcher::new(),
             board: Default::default(),
+            timer: Timer::new(),
         }
     }
 
@@ -107,7 +110,6 @@ impl EngineUCI {
             }
             "go" => Command::Go,
             "stop" => Command::Stop,
-            "quit" => Command::Quit,
             _ => return Err(ParseCommandError::UnknownCommand(message.to_owned())),
         };
 
@@ -122,7 +124,9 @@ impl EngineUCI {
             Command::IsReady => {
                 println!("readyok");
             }
-            Command::NewGame => {}
+            Command::NewGame => {
+                self.searcher.clear_tables();
+            }
             Command::Position(start_pos, moves) => {
                 let mut board = match start_pos {
                     StartingPosition::Standard => Board::default(),
@@ -136,13 +140,12 @@ impl EngineUCI {
                 self.board = board;
             }
             Command::Go => {
-                let pick = self.search.find_best_move(&self.board, 7).unwrap();
-
-                println!("bestmove {}", pick.chess_move.unwrap());
+                self.timer.set_timer(Duration::from_secs(1));
+                self.searcher
+                    .initiate_search(self.board.clone(), self.timer.clone());
             }
-            Command::Stop => {}
-            Command::Quit => {
-                // do nothing
+            Command::Stop => {
+                self.searcher.stop_search();
             }
         }
     }

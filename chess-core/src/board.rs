@@ -272,6 +272,11 @@ impl Board {
         BoardStatus::Ongoing
     }
 
+    #[inline]
+    pub fn hash(&self) -> u64 {
+        self.hash
+    }
+
     fn generate_hash_key(&self) -> u64 {
         let mut key = 0;
 

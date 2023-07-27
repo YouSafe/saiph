@@ -3,10 +3,22 @@ use chess_core::board::Board;
 use chess_core::color::Color;
 use chess_core::piece::{Piece, ALL_PIECES};
 use chess_core::square::Square;
+use std::fmt;
+use std::fmt::Formatter;
 use std::ops::Neg;
 
 #[derive(PartialEq, Clone, Copy, Debug, PartialOrd, Ord, Eq)]
 pub struct Evaluation(pub i32);
+
+impl fmt::Display for Evaluation {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        if self.is_mate() {
+            writeln!(f, "#{}", self.mate_num_ply())
+        } else {
+            writeln!(f, "{}", self.0)
+        }
+    }
+}
 
 impl Evaluation {
     pub const MIN: Evaluation = Evaluation(i32::MIN + 1);
@@ -83,7 +95,7 @@ fn piece_value(piece: Piece, square: Square, piece_color: Color) -> i32 {
 pub fn board_value(board: &Board) -> Evaluation {
     let mut result: i32 = 0;
     for piece in ALL_PIECES {
-        let bitboard = *board.pieces(piece);
+        let bitboard = board.pieces(piece);
         for square in bitboard.iter() {
             result += piece_value(piece, square, board.color_on_square(square).unwrap());
         }
