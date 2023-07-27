@@ -6,11 +6,12 @@ use crate::bitboard::BitBoard;
 use crate::castling_rights::{CastlingRights, UPDATE_CASTLING_RIGHT_TABLE};
 use crate::chess_move::Move;
 use crate::chess_move::MoveFlag::{Capture, Castling, DoublePawnPush, EnPassant};
-use crate::color::{Color, NUM_COLORS};
+use crate::color::{Color, ALL_COLORS, NUM_COLORS};
 use crate::movgen::{calculate_pinned_checkers_pinners, generate_moves};
 use crate::piece::{Piece, ALL_PIECES, NUM_PIECES};
 use crate::square::{File, Square};
 use crate::uci_move::UCIMove;
+use crate::zobrist::{CASTLE_KEYS, EN_PASSANT_KEYS, PIECE_KEYS, SIDE_KEY};
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum BoardStatus {
@@ -19,7 +20,7 @@ pub enum BoardStatus {
     Checkmate,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Board {
     pieces: [BitBoard; NUM_PIECES],
     occupancies: [BitBoard; NUM_COLORS],
@@ -30,6 +31,7 @@ pub struct Board {
     pinned: BitBoard,
     checkers: BitBoard,
     pinners: BitBoard,
+    hash: u64,
 }
 
 impl Default for Board {
@@ -72,8 +74,8 @@ impl Board {
         }
     }
 
-    pub fn pieces(&self, piece: Piece) -> &BitBoard {
-        &self.pieces[piece as usize]
+    pub fn pieces(&self, piece: Piece) -> BitBoard {
+        self.pieces[piece as usize]
     }
 
     pub fn occupancies(&self, color: Color) -> BitBoard {
@@ -120,20 +122,26 @@ impl Board {
         // read from old board
         // write to new board
         // copy
-        let mut result = *self;
+        let mut result = self.clone();
 
         // en passant is cleared after doing any move
         result.en_passant_target = None;
+        if let Some(en_passant_target) = self.en_passant_target() {
+            result.hash ^= EN_PASSANT_KEYS[en_passant_target.to_file() as usize];
+        }
 
         // remove piece from from
         result.pieces[mov.piece as usize] ^= mov.from;
         result.occupancies[self.side_to_move as usize] ^= mov.from;
         result.combined ^= mov.from;
+        result.hash ^=
+            PIECE_KEYS[self.side_to_move as usize][mov.piece as usize][mov.from as usize];
 
         // set piece in to
         result.pieces[mov.piece as usize] |= mov.to;
         result.occupancies[self.side_to_move as usize] |= mov.to;
         result.combined |= mov.to;
+        result.hash ^= PIECE_KEYS[self.side_to_move as usize][mov.piece as usize][mov.to as usize];
 
         if mov.flags == Capture {
             // replace opponents piece with your own
@@ -145,12 +153,22 @@ impl Board {
                 result.pieces[target_piece as usize] ^= mov.to;
             }
             result.occupancies[!self.side_to_move as usize] ^= mov.to;
+            // CIV
+            result.hash ^=
+                PIECE_KEYS[!self.side_to_move as usize][target_piece as usize][mov.to as usize];
+
             // combined is unchanged here
 
             // remove castling right for that side
             if target_piece == Piece::Rook {
+                // remove castling rights from hash
+                result.hash ^= CASTLE_KEYS[result.castling_rights.to_usize()];
+
                 result.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[mov.from as usize];
                 result.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[mov.to as usize];
+
+                // add castling rights to hash
+                result.hash ^= CASTLE_KEYS[result.castling_rights.to_usize()];
             }
         }
 
@@ -159,11 +177,18 @@ impl Board {
             result.pieces[mov.piece as usize] ^= mov.to;
             // add to new piece type
             result.pieces[promotion.as_piece() as usize] |= mov.to;
+
+            result.hash ^=
+                PIECE_KEYS[self.side_to_move as usize][mov.piece as usize][mov.to as usize];
+            result.hash ^= PIECE_KEYS[self.side_to_move as usize][promotion.as_piece() as usize]
+                [mov.to as usize];
         }
 
         if mov.flags == DoublePawnPush {
             // update en_passant_target when double pushing
             result.en_passant_target = Some(mov.to.forward(!self.side_to_move).unwrap());
+
+            result.hash ^= EN_PASSANT_KEYS[mov.to.to_file() as usize];
         }
 
         if mov.flags == EnPassant {
@@ -171,6 +196,9 @@ impl Board {
             result.pieces[Piece::Pawn as usize] ^= capture_piece;
             result.occupancies[!self.side_to_move as usize] ^= capture_piece;
             result.combined ^= capture_piece;
+
+            result.hash ^= PIECE_KEYS[!self.side_to_move as usize][Piece::Pawn as usize]
+                [capture_piece as usize];
         }
 
         const CASTLE_CONFIG: [(File, File); 2] = [(File::A, File::D), (File::H, File::F)];
@@ -188,31 +216,41 @@ impl Board {
             result.pieces[Piece::Rook as usize] ^= rook_start_square;
             result.occupancies[self.side_to_move as usize] ^= rook_start_square;
             result.combined ^= rook_start_square;
+            result.hash ^= PIECE_KEYS[self.side_to_move as usize][Piece::Rook as usize]
+                [rook_start_square as usize];
 
             // set piece in to
             result.pieces[Piece::Rook as usize] |= rook_end_square;
             result.occupancies[self.side_to_move as usize] |= rook_end_square;
             result.combined |= rook_end_square;
+            result.hash ^= PIECE_KEYS[self.side_to_move as usize][Piece::Rook as usize]
+                [rook_end_square as usize];
         }
 
         // update castling rights
         if mov.piece == Piece::Rook {
             // rook moved
+            result.hash ^= CASTLE_KEYS[result.castling_rights.to_usize()];
             result.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[mov.from as usize];
             result.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[mov.to as usize];
+            result.hash ^= CASTLE_KEYS[result.castling_rights.to_usize()];
         } else if mov.piece == Piece::King {
             // remove castling rights for side if king moved (includes castling)
+            result.hash ^= CASTLE_KEYS[result.castling_rights.to_usize()];
             result.castling_rights -= match result.side_to_move {
                 Color::White => CastlingRights::WHITE_BOTH_SIDES,
                 Color::Black => CastlingRights::BLACK_BOTH_SIDES,
-            }
+            };
+            result.hash ^= CASTLE_KEYS[result.castling_rights.to_usize()];
         }
 
         // update side
         result.side_to_move = !result.side_to_move;
+        result.hash ^= SIDE_KEY;
 
         // TODO: update incrementally instead
         let (pinned, checkers, pinners) = calculate_pinned_checkers_pinners(&result);
+
         // update pinned, checkers
         result.pinned = pinned;
         result.checkers = checkers;
@@ -232,6 +270,32 @@ impl Board {
             };
         }
         BoardStatus::Ongoing
+    }
+
+    fn generate_hash_key(&self) -> u64 {
+        let mut key = 0;
+
+        for color in ALL_COLORS {
+            for piece in ALL_PIECES {
+                let piece_bitboard = self.pieces(piece) & self.occupancies(color);
+
+                for square in piece_bitboard.iter() {
+                    key ^= PIECE_KEYS[color as usize][piece as usize][square as usize];
+                }
+            }
+        }
+
+        if let Some(en_passant_target) = self.en_passant_target {
+            key ^= EN_PASSANT_KEYS[en_passant_target.to_file() as usize];
+        }
+
+        key ^= CASTLE_KEYS[self.castling_rights.to_usize()];
+
+        if self.side_to_move == Color::Black {
+            key ^= SIDE_KEY;
+        }
+
+        key
     }
 }
 
@@ -263,6 +327,7 @@ impl fmt::Display for Board {
         writeln!(f, "En passant square:\t{:?}", self.en_passant_target)?;
         writeln!(f, "Side to move:\t\t{:?}", self.side_to_move)?;
         writeln!(f, "Castling rights:\t{}", self.castling_rights)?;
+        writeln!(f, "Hash: \t{:#018x}", self.hash)?;
         Ok(())
     }
 }
@@ -387,6 +452,7 @@ impl FromStr for Board {
             pinned: Default::default(),
             checkers: Default::default(),
             pinners: Default::default(),
+            hash: 0,
         };
 
         // TODO: check if board is sane
@@ -396,6 +462,8 @@ impl FromStr for Board {
         board.pinned = pinned;
         board.checkers = checkers;
         board.pinners = pinners;
+
+        board.hash = board.generate_hash_key();
 
         Ok(board)
     }
@@ -427,6 +495,7 @@ mod test {
 En passant square:	None
 Side to move:		White
 Castling rights:	KQkq
+Hash: 	0x4a887e3c9bc2624a
 ";
         let board = Board::default();
         println!("{}", board);

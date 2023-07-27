@@ -8,7 +8,8 @@ use crate::square::Square;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CastlingRights(u8);
 
-pub static UPDATE_CASTLING_RIGHT_TABLE: [CastlingRights; 64] = generate_update_castling_right_table();
+pub static UPDATE_CASTLING_RIGHT_TABLE: [CastlingRights; 64] =
+    generate_update_castling_right_table();
 
 const fn generate_update_castling_right_table() -> [CastlingRights; 64] {
     // start out with every square keeping all the rights
@@ -52,6 +53,10 @@ impl CastlingRights {
 
     pub const fn subtract(&self, other: Self) -> CastlingRights {
         Self(self.0 & !other.0)
+    }
+
+    pub const fn to_usize(&self) -> usize {
+        self.0 as usize
     }
 }
 

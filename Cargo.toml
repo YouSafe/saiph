@@ -2,7 +2,7 @@
 resolver = "2"
 members = [
     "chess-core",
-    "engine"
+    "engine",
 ]
 
 [profile.release]

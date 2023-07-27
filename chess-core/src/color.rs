@@ -14,7 +14,6 @@ impl Not for Color {
     type Output = Color;
 
     fn not(self) -> Self::Output {
-        // TODO: benchmark if this is really faster than a regular match expression
         unsafe { std::mem::transmute::<u8, Color>(self as u8 ^ 1) }
     }
 }
@@ -42,6 +41,7 @@ impl Color {
 }
 
 pub const NUM_COLORS: usize = 2;
+pub const ALL_COLORS: [Color; 2] = [Color::White, Color::Black];
 
 #[cfg(test)]
 mod test {

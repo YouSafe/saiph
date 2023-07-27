@@ -9,3 +9,4 @@ pub mod promotion;
 pub mod square;
 pub mod tables;
 pub mod uci_move;
+mod zobrist;
