@@ -1,13 +1,13 @@
 use crate::evaluation::{board_value, Evaluation};
 use crate::move_ordering::mmv_lva;
 use crate::timer::Timer;
-use crate::transposition_table::TranspositionTable;
+use crate::transposition_table::{TranspositionTable, ValueType};
 use chess_core::bitboard::BitBoard;
 use chess_core::board::Board;
 use chess_core::chess_move::Move;
 use chess_core::color::Color;
 use chess_core::movgen::generate_moves;
-use std::fmt;
+use std::collections::HashSet;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 pub struct SearchStatistics {
@@ -17,6 +17,7 @@ pub struct SearchStatistics {
 pub struct Search<'a> {
     stop: &'a AtomicBool,
     table: &'a mut TranspositionTable,
+    visited_positions: HashSet<Board>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -25,31 +26,17 @@ pub struct ScoringMove {
     pub chess_move: Option<Move>,
 }
 
-impl Default for ScoringMove {
-    fn default() -> Self {
-        ScoringMove {
-            evaluation: Evaluation(0),
-            chess_move: None,
-        }
-    }
-}
-
-impl fmt::Display for ScoringMove {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.chess_move {
-            None => {
-                write!(f, "({}, None)", self.evaluation)
-            }
-            Some(chess_move) => {
-                write!(f, "({}, {})", self.evaluation, chess_move)
-            }
-        }
-    }
-}
-
 impl<'a> Search<'a> {
     pub fn new(table: &'a mut TranspositionTable, stop: &'a AtomicBool) -> Self {
-        Search { table, stop }
+        Search {
+            table,
+            stop,
+            visited_positions: HashSet::with_capacity(120),
+        }
+    }
+
+    fn is_repetition(&self, board: &Board) -> bool {
+        self.visited_positions.contains(board)
     }
 
     /// Fail-hard variation of negamax search
@@ -63,13 +50,25 @@ impl<'a> Search<'a> {
         ply: u8,
         stats: &mut SearchStatistics,
     ) -> Evaluation {
-        let old_alpha = alpha;
+        let mut value_type = ValueType::Alpha;
+
+        if depth == 0 {
+            return self.quiescence(board, alpha, beta);
+        }
 
         if timer.is_already_up() {
             self.stop.store(true, Ordering::Relaxed);
         }
 
         stats.nodes += 1;
+
+        if self.is_repetition(board) {
+            return Evaluation(0);
+        }
+
+        if let Some(scoring_move) = self.table.probe(board, alpha, beta, depth, ply) {
+            return scoring_move.evaluation;
+        }
 
         let mut moves = generate_moves(board);
         if moves.is_empty() {
@@ -83,21 +82,29 @@ impl<'a> Search<'a> {
             };
         }
 
-        if depth == 0 {
-            return self.quiescence(board, alpha, beta);
-        }
+        let pv_move = self.table.probe_pv(board);
 
         // move ordering
         moves.sort_by_key(|mov| {
             let src_piece = mov.piece;
             let dst_piece = board.piece_on_square(mov.destination());
+
+            if let Some(pv_move) = pv_move {
+                if mov == &pv_move {
+                    return -20000;
+                }
+            }
+
             if let Some(dst_piece) = dst_piece {
                 return -mmv_lva(src_piece, dst_piece);
             }
             0
         });
 
-        let mut local_best = None;
+        let mut local_best = ScoringMove {
+            evaluation: Evaluation::MIN,
+            chess_move: None,
+        };
 
         for chess_move in moves {
             let result = board.make_move(chess_move);
@@ -109,22 +116,35 @@ impl<'a> Search<'a> {
                 return Evaluation(0);
             }
 
-            if score > alpha {
-                // PV node
-                alpha = score;
+            if score > local_best.evaluation {
+                local_best = ScoringMove {
+                    evaluation: score,
+                    chess_move: Some(chess_move),
+                };
+                if score > alpha {
+                    if score >= beta {
+                        self.table.store(
+                            board,
+                            local_best.chess_move,
+                            depth,
+                            beta,
+                            ValueType::Beta,
+                            ply,
+                        );
 
-                local_best = Some(chess_move);
+                        // node fails high
+                        return beta;
+                    }
 
-                if score >= beta {
-                    // node fails high
-                    return beta;
+                    // PV node
+                    alpha = score;
+                    value_type = ValueType::Exact;
                 }
             }
         }
 
-        if alpha != old_alpha {
-            self.table.store(board, local_best.unwrap(), depth);
-        }
+        self.table
+            .store(board, local_best.chess_move, depth, alpha, value_type, ply);
 
         // node fails low
         alpha
@@ -180,7 +200,7 @@ impl<'a> Search<'a> {
 
         let mut evaluation = Evaluation(0);
         let mut line = vec![];
-        for max_depth in 1..15 {
+        for max_depth in 1..40 {
             let mut stats = SearchStatistics { nodes: 0 };
 
             evaluation = self.negamax_search(
@@ -193,8 +213,6 @@ impl<'a> Search<'a> {
                 &mut stats,
             );
 
-            line = self.table.pv_line(board, max_depth);
-
             // the eval negamax returns is from the point of view of the current side to play
             // however, for me it's so much more intuitive when the eval is from the point of view
             // of the white player
@@ -202,24 +220,30 @@ impl<'a> Search<'a> {
                 evaluation = -evaluation;
             }
 
-            if evaluation.is_mate() {
-                break;
-            }
-
             if self.stop.load(Ordering::Relaxed) {
                 eprintln!("stop search");
                 break;
             }
-        }
 
-        for mov in line.iter() {
-            print!("{} ", mov);
+            line = self.table.pv_line(board, max_depth);
+
+            print!(
+                "depth: {} score {} nodes {} ",
+                max_depth, evaluation, stats.nodes
+            );
+            for mov in line.iter() {
+                print!("{} ", mov);
+            }
+            println!();
+
+            if evaluation.is_mate() {
+                break;
+            }
         }
-        println!();
 
         ScoringMove {
             evaluation,
-            chess_move: Some(line[0]),
+            chess_move: line.get(0).cloned(),
         }
     }
 }
@@ -446,8 +470,8 @@ mod test {
 
         for _ in 0..5 {
             let best_move = search.find_best_move(&board, &Timer::new());
-            let chess_move = best_move.chess_move.unwrap();
-            board = board.make_move(chess_move);
+            let chess_move = best_move.chess_move;
+            board = board.make_move(chess_move.unwrap());
         }
         assert_eq!(board.status(), BoardStatus::Checkmate);
     }
@@ -462,8 +486,8 @@ mod test {
 
         for _ in 0..3 {
             let best_move = search.find_best_move(&board, &Timer::new());
-            let chess_move = best_move.chess_move.unwrap();
-            board = board.make_move(chess_move);
+            let chess_move = best_move.chess_move;
+            board = board.make_move(chess_move.unwrap());
         }
         assert_eq!(board.status(), BoardStatus::Checkmate);
     }
@@ -476,13 +500,13 @@ mod test {
         let stop = AtomicBool::new(false);
         let mut search = Search::new(&mut table, &stop);
 
+        let timer = Timer::new();
+
         for _ in 0..13 {
-            // println!("{}", board.to_string());
-            let best_move = search.find_best_move(&board, &Timer::new());
-            let chess_move = best_move.chess_move.unwrap();
-            board = board.make_move(chess_move);
+            let best_move = search.find_best_move(&board, &timer);
+            let chess_move = best_move.chess_move;
+            board = board.make_move(chess_move.unwrap());
         }
-        // println!("{}", board.to_string());
 
         assert_eq!(board.status(), BoardStatus::Checkmate);
     }

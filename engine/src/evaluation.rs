@@ -13,9 +13,9 @@ pub struct Evaluation(pub i32);
 impl fmt::Display for Evaluation {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         if self.is_mate() {
-            writeln!(f, "#{}", self.mate_num_ply())
+            write!(f, "#{}", self.mate_num_ply())
         } else {
-            writeln!(f, "{}", self.0)
+            write!(f, "{}", self.0)
         }
     }
 }
@@ -30,6 +30,8 @@ impl Evaluation {
 
     const IMMEDIATE_MATE_SCORE: i32 = 100_000;
     const MAX_MATE_DEPTH: i32 = 1000;
+    pub const IS_MATE: Evaluation =
+        Evaluation(Evaluation::IMMEDIATE_MATE_SCORE - Evaluation::MAX_MATE_DEPTH);
 
     pub const fn is_mate(&self) -> bool {
         self.0.abs() > (Evaluation::IMMEDIATE_MATE_SCORE - Evaluation::MAX_MATE_DEPTH)
@@ -95,8 +97,7 @@ fn piece_value(piece: Piece, square: Square, piece_color: Color) -> i32 {
 pub fn board_value(board: &Board) -> Evaluation {
     let mut result: i32 = 0;
     for piece in ALL_PIECES {
-        let bitboard = board.pieces(piece);
-        for square in bitboard.iter() {
+        for square in board.pieces(piece).iter() {
             result += piece_value(piece, square, board.color_on_square(square).unwrap());
         }
     }
@@ -168,5 +169,10 @@ mod test {
     fn test_checkmate_eval() {
         let mate = Evaluation::new_mate_eval(Color::Black, 0);
         assert!(mate.is_mate());
+    }
+
+    #[test]
+    fn test_min_and_max() {
+        assert_eq!(Evaluation::MAX, -Evaluation::MIN);
     }
 }
