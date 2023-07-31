@@ -7,10 +7,10 @@ use chess_core::board::Board;
 use chess_core::movgen::perf_driver;
 
 fn perf_test(depth: u8, fen: &str, expected_total_nodes: u64) {
-    let board = Board::from_str(fen).unwrap();
+    let mut board = Board::from_str(fen).unwrap();
 
     let mut actual_total_nodes = 0;
-    perf_driver(&board, depth, &mut actual_total_nodes);
+    perf_driver(&mut board, depth, &mut actual_total_nodes);
     assert_eq!(expected_total_nodes, actual_total_nodes);
 }
 

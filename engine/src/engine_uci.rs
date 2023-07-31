@@ -134,13 +134,13 @@ impl EngineUCI {
                 };
 
                 for chess_move in moves {
-                    board = board.make_uci_move(chess_move);
+                    board.apply_uci_move(chess_move);
                 }
 
                 self.board = board;
             }
             Command::Go => {
-                self.timer.set_timer(Duration::from_secs(1));
+                self.timer.set_timer(Duration::from_secs(5));
                 self.searcher
                     .initiate_search(self.board.clone(), self.timer.clone());
             }

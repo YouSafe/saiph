@@ -30,8 +30,6 @@ impl Evaluation {
 
     const IMMEDIATE_MATE_SCORE: i32 = 100_000;
     const MAX_MATE_DEPTH: i32 = 1000;
-    pub const IS_MATE: Evaluation =
-        Evaluation(Evaluation::IMMEDIATE_MATE_SCORE - Evaluation::MAX_MATE_DEPTH);
 
     pub const fn is_mate(&self) -> bool {
         self.0.abs() > (Evaluation::IMMEDIATE_MATE_SCORE - Evaluation::MAX_MATE_DEPTH)

@@ -1,7 +1,7 @@
 use arrayvec::ArrayVec;
 
 use crate::bitboard::BitBoard;
-use crate::board::Board;
+use crate::board::{Board, PartialBoard};
 use crate::chess_move::Move;
 use crate::color::Color;
 use crate::movgen::castling::CastlingMoveGenerator;
@@ -26,7 +26,7 @@ mod pawn_capture;
 mod quiet_pawn;
 mod slider;
 
-type MoveList = ArrayVec<Move, 256>;
+pub type MoveList = ArrayVec<Move, 256>;
 
 pub fn generate_attack_bitboard(board: &Board, attacking_color: Color) -> BitBoard {
     let mut attacked = BitBoard(0);
@@ -53,7 +53,7 @@ pub fn generate_attack_bitboard(board: &Board, attacking_color: Color) -> BitBoa
     attacked
 }
 
-pub fn calculate_pinned_checkers_pinners(board: &Board) -> (BitBoard, BitBoard, BitBoard) {
+pub fn calculate_pinned_checkers_pinners(board: &PartialBoard) -> (BitBoard, BitBoard, BitBoard) {
     let king_square =
         (board.pieces(Piece::King) & board.occupancies(board.side_to_move())).bit_scan();
 
@@ -208,14 +208,29 @@ pub fn build_attacked_bitboard(board: &Board, attacking_side: Color) -> BitBoard
     bitboard
 }
 
-pub fn perf_test(board: &Board, depth: u8) {
+pub fn perf_test(board: &mut Board, depth: u8) {
     let mut total_nodes = 0;
 
-    let moves = generate_moves(board);
+    let moves = board.generate_moves();
     for mov in moves {
         let mut nodes = 0;
-        let result = board.make_move(mov);
-        perf_driver(&result, depth - 1, &mut nodes);
+
+        // let mut cloned = board.clone();
+        // cloned.apply_move(mov);
+        board.apply_move(mov);
+        perf_driver(board, depth - 1, &mut nodes);
+        board.undo_move();
+        // let before_undo = cloned.clone();
+        // cloned.undo_move();
+
+        // if &mut cloned != board {
+        //     eprintln!(
+        //         "original: {} \napply: {} \napply & undo: {}",
+        //         board, before_undo, cloned
+        //     );
+        //     panic!("HELP");
+        // }
+
         println!("{} {}", mov, nodes);
         total_nodes += nodes;
     }
@@ -224,20 +239,33 @@ pub fn perf_test(board: &Board, depth: u8) {
     println!("{}", total_nodes);
 }
 
-pub fn perf_driver(board: &Board, depth: u8, nodes: &mut u64) {
+pub fn perf_driver(board: &mut Board, depth: u8, nodes: &mut u64) {
     if depth == 0 {
         *nodes += 1;
         return;
     }
 
-    let moves = generate_moves(board);
+    let moves = board.generate_moves();
     if depth == 1 {
         *nodes += moves.len() as u64;
         return;
     }
     for mov in moves {
-        let result = board.make_move(mov);
-        perf_driver(&result, depth - 1, nodes);
+        // let mut cloned = board.clone();
+        // cloned.apply_move(mov);
+        board.apply_move(mov);
+        perf_driver(board, depth - 1, nodes);
+        board.undo_move();
+        // let before_undo = cloned.clone();
+        // cloned.undo_move();
+
+        // if &mut cloned != board {
+        //     eprintln!(
+        //         "original: {} \napply: {} \napply & undo: {}",
+        //         board, before_undo, cloned
+        //     );
+        //     panic!("HELP");
+        // }
     }
 }
 
@@ -349,16 +377,16 @@ mod test {
         assert_eq!(attacked, test);
     }
 
-    #[test]
-    fn test_generate_pinned_checkers() {
-        let board = Board::from_str("Q2k3Q/1N2PN2/1QN1NQ2/8/3R4/3K4/8/8 b - - 0 1").unwrap();
-
-        let (pinned, checkers, _pinners) = calculate_pinned_checkers_pinners(&board);
-
-        println!("{board}");
-        println!("pinned: {pinned}");
-        println!("checkers: {checkers}");
-    }
+    // #[test]
+    // fn test_generate_pinned_checkers() {
+    //     let board = Board::from_str("Q2k3Q/1N2PN2/1QN1NQ2/8/3R4/3K4/8/8 b - - 0 1").unwrap();
+    //
+    //     let (pinned, checkers, _pinners) = calculate_pinned_checkers_pinners(&board);
+    //
+    //     println!("{board}");
+    //     println!("pinned: {pinned}");
+    //     println!("checkers: {checkers}");
+    // }
 
     #[test]
     fn moves_at_startpos() {

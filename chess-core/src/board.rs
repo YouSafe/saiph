@@ -1,15 +1,22 @@
 use std::fmt;
 use std::fmt::Formatter;
+use std::hash::{Hash, Hasher};
+use std::iter::Filter;
+use std::slice::Iter;
 use std::str::FromStr;
+use std::sync::Arc;
 
 use crate::bitboard::BitBoard;
 use crate::castling_rights::{CastlingRights, UPDATE_CASTLING_RIGHT_TABLE};
-use crate::chess_move::Move;
-use crate::chess_move::MoveFlag::{Capture, Castling, DoublePawnPush, EnPassant};
+use crate::chess_move::MoveFlag::{Capture, Castling, DoublePawnPush, EnPassant, Normal};
+use crate::chess_move::{Move, MoveFlag};
 use crate::color::{Color, ALL_COLORS, NUM_COLORS};
-use crate::movgen::{calculate_pinned_checkers_pinners, generate_moves};
+use crate::movgen::{calculate_pinned_checkers_pinners, generate_moves, MoveList};
 use crate::piece::{Piece, ALL_PIECES, NUM_PIECES};
 use crate::square::{File, Square};
+use crate::tables::{
+    between, get_bishop_attacks, get_knight_attacks, get_pawn_attacks, get_rook_attacks,
+};
 use crate::uci_move::UCIMove;
 use crate::zobrist::{CASTLE_KEYS, EN_PASSANT_KEYS, PIECE_KEYS, SIDE_KEY};
 
@@ -21,17 +28,50 @@ pub enum BoardStatus {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BoardState {
+    hash: u64,
+    en_passant_target: Option<Square>,
+    castling_rights: CastlingRights,
+    rule50: u8,
+    ply: u16,
+    pinners: BitBoard,
+    checkers: BitBoard,
+    pinned: BitBoard,
+    last_move: Option<Move>,
+    captured_piece: Option<Piece>,
+    previous: Option<Arc<BoardState>>,
+}
+
+#[derive(Debug, Clone, Eq)]
 pub struct Board {
     pieces: [BitBoard; NUM_PIECES],
     occupancies: [BitBoard; NUM_COLORS],
     combined: BitBoard,
     side_to_move: Color,
-    en_passant_target: Option<Square>,
-    castling_rights: CastlingRights,
-    pinned: BitBoard,
-    checkers: BitBoard,
-    pinners: BitBoard,
-    hash: u64,
+    state: Arc<BoardState>,
+    game_ply: u16,
+}
+
+impl PartialEq for Board {
+    fn eq(&self, other: &Self) -> bool {
+        // assert_eq!(
+        //     self.pieces,
+        //     other.pieces,
+        //     "self: {} \nother: {}",
+        //     self.pieces[Piece::Pawn as usize],
+        //     other.pieces[Piece::Pawn as usize],
+        // );
+        // assert_eq!(
+        //     self.combined, other.combined,
+        //     "self: {} \nother: {}",
+        //     self.combined, other.combined
+        // );
+        // assert_eq!(self.occupancies, other.occupancies);
+        self.pieces == other.pieces
+            && self.occupancies == other.occupancies
+            && self.combined == other.combined
+            && self.side_to_move == other.side_to_move
+    }
 }
 
 impl Default for Board {
@@ -46,8 +86,6 @@ impl Board {
 
     pub const KILLER_POS_FEN: &'static str =
         "rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR w KQkq e6 0 1";
-
-    pub const EMPTY: &'static str = "8/8/8/8/8/8/8/8 w - - 0 1";
 
     pub fn piece_on_square(&self, square: Square) -> Option<Piece> {
         let bitboard = BitBoard::from_square(square);
@@ -91,70 +129,77 @@ impl Board {
     }
 
     pub fn checkers(&self) -> BitBoard {
-        self.checkers
+        self.state.checkers
     }
 
     pub fn pinned(&self) -> BitBoard {
-        self.pinned
+        self.state.pinned
     }
 
     pub fn pinners(&self) -> BitBoard {
-        self.pinners
+        self.state.pinners
     }
 
     pub fn castling_rights(&self) -> CastlingRights {
-        self.castling_rights
+        self.state.castling_rights
     }
 
     pub fn en_passant_target(&self) -> Option<Square> {
-        self.en_passant_target
+        self.state.en_passant_target
     }
 
-    pub fn make_uci_move(&self, uci_move: UCIMove) -> Board {
+    pub fn apply_uci_move(&mut self, uci_move: UCIMove) {
         let chess_move = generate_moves(self)
             .into_iter()
             .find(|m| uci_move == m)
             .unwrap();
-        self.make_move(chess_move)
+        self.apply_move(chess_move);
     }
 
-    pub fn make_move(&self, mov: Move) -> Board {
-        // read from old board
-        // write to new board
-        // copy
-        let mut result = self.clone();
+    pub fn apply_move(&mut self, mov: Move) {
+        // copy state and put it in
+        let mut new_state = (*self.state).clone();
+        new_state.previous = Some(self.state.clone());
+
+        new_state.last_move = Some(mov);
 
         // en passant is cleared after doing any move
-        result.en_passant_target = None;
+        new_state.en_passant_target = None;
         if let Some(en_passant_target) = self.en_passant_target() {
-            result.hash ^= EN_PASSANT_KEYS[en_passant_target.to_file() as usize];
+            new_state.hash ^= EN_PASSANT_KEYS[en_passant_target.to_file() as usize];
         }
 
+        new_state.captured_piece = None;
+
+        // get piece at target square before moving
+        let target_piece = self.piece_on_square(mov.to);
+
         // remove piece from from
-        result.pieces[mov.piece as usize] ^= mov.from;
-        result.occupancies[self.side_to_move as usize] ^= mov.from;
-        result.combined ^= mov.from;
-        result.hash ^=
+        self.pieces[mov.piece as usize] ^= mov.from;
+        self.occupancies[self.side_to_move as usize] ^= mov.from;
+        self.combined ^= mov.from;
+        new_state.hash ^=
             PIECE_KEYS[self.side_to_move as usize][mov.piece as usize][mov.from as usize];
 
         // set piece in to
-        result.pieces[mov.piece as usize] |= mov.to;
-        result.occupancies[self.side_to_move as usize] |= mov.to;
-        result.combined |= mov.to;
-        result.hash ^= PIECE_KEYS[self.side_to_move as usize][mov.piece as usize][mov.to as usize];
+        self.pieces[mov.piece as usize] |= mov.to;
+        self.occupancies[self.side_to_move as usize] |= mov.to;
+        self.combined |= mov.to;
+        new_state.hash ^=
+            PIECE_KEYS[self.side_to_move as usize][mov.piece as usize][mov.to as usize];
 
         if mov.flags == Capture {
             // replace opponents piece with your own
-            let target_piece = self
-                .piece_on_square(mov.to)
-                .expect("captures require a piece on the target square");
+            // get piece that was at the target square before the move
+            let target_piece = target_piece.expect("captures require a piece on the target square");
+
+            new_state.captured_piece = Some(target_piece);
 
             if target_piece != mov.piece {
-                result.pieces[target_piece as usize] ^= mov.to;
+                self.pieces[target_piece as usize] ^= mov.to;
             }
-            result.occupancies[!self.side_to_move as usize] ^= mov.to;
-            // CIV
-            result.hash ^=
+            self.occupancies[!self.side_to_move as usize] ^= mov.to;
+            new_state.hash ^=
                 PIECE_KEYS[!self.side_to_move as usize][target_piece as usize][mov.to as usize];
 
             // combined is unchanged here
@@ -162,49 +207,49 @@ impl Board {
             // remove castling right for that side
             if target_piece == Piece::Rook {
                 // remove castling rights from hash
-                result.hash ^= CASTLE_KEYS[result.castling_rights.to_usize()];
+                new_state.hash ^= CASTLE_KEYS[new_state.castling_rights.to_usize()];
 
-                result.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[mov.from as usize];
-                result.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[mov.to as usize];
+                new_state.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[mov.from as usize];
+                new_state.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[mov.to as usize];
 
                 // add castling rights to hash
-                result.hash ^= CASTLE_KEYS[result.castling_rights.to_usize()];
+                new_state.hash ^= CASTLE_KEYS[new_state.castling_rights.to_usize()];
             }
         }
 
         if let Some(promotion) = mov.promotion {
             // remove old piece type
-            result.pieces[mov.piece as usize] ^= mov.to;
+            self.pieces[mov.piece as usize] ^= mov.to;
             // add to new piece type
-            result.pieces[promotion.as_piece() as usize] |= mov.to;
+            self.pieces[promotion.as_piece() as usize] |= mov.to;
 
-            result.hash ^=
+            new_state.hash ^=
                 PIECE_KEYS[self.side_to_move as usize][mov.piece as usize][mov.to as usize];
-            result.hash ^= PIECE_KEYS[self.side_to_move as usize][promotion.as_piece() as usize]
+            new_state.hash ^= PIECE_KEYS[self.side_to_move as usize][promotion.as_piece() as usize]
                 [mov.to as usize];
         }
 
         if mov.flags == DoublePawnPush {
             // update en_passant_target when double pushing
-            result.en_passant_target = Some(mov.to.forward(!self.side_to_move).unwrap());
+            new_state.en_passant_target = Some(mov.to.forward(!self.side_to_move).unwrap());
 
-            result.hash ^= EN_PASSANT_KEYS[mov.to.to_file() as usize];
+            new_state.hash ^= EN_PASSANT_KEYS[mov.to.to_file() as usize];
         }
 
         if mov.flags == EnPassant {
             let capture_piece = mov.to.forward(!self.side_to_move).unwrap();
-            result.pieces[Piece::Pawn as usize] ^= capture_piece;
-            result.occupancies[!self.side_to_move as usize] ^= capture_piece;
-            result.combined ^= capture_piece;
+            self.pieces[Piece::Pawn as usize] ^= capture_piece;
+            self.occupancies[!self.side_to_move as usize] ^= capture_piece;
+            self.combined ^= capture_piece;
 
-            result.hash ^= PIECE_KEYS[!self.side_to_move as usize][Piece::Pawn as usize]
+            new_state.hash ^= PIECE_KEYS[!self.side_to_move as usize][Piece::Pawn as usize]
                 [capture_piece as usize];
         }
 
         const CASTLE_CONFIG: [(File, File); 2] = [(File::A, File::D), (File::H, File::F)];
 
         if mov.flags == Castling {
-            let backrank = result.side_to_move.backrank();
+            let backrank = self.side_to_move.backrank();
             let target_file = mov.to.to_file();
             let (rook_start_file, rook_end_file) = CASTLE_CONFIG[target_file as usize / 4];
             let (rook_start_square, rook_end_square) = (
@@ -213,57 +258,163 @@ impl Board {
             );
 
             // remove piece from from
-            result.pieces[Piece::Rook as usize] ^= rook_start_square;
-            result.occupancies[self.side_to_move as usize] ^= rook_start_square;
-            result.combined ^= rook_start_square;
-            result.hash ^= PIECE_KEYS[self.side_to_move as usize][Piece::Rook as usize]
+            self.pieces[Piece::Rook as usize] ^= rook_start_square;
+            self.occupancies[self.side_to_move as usize] ^= rook_start_square;
+            self.combined ^= rook_start_square;
+            new_state.hash ^= PIECE_KEYS[self.side_to_move as usize][Piece::Rook as usize]
                 [rook_start_square as usize];
 
             // set piece in to
-            result.pieces[Piece::Rook as usize] |= rook_end_square;
-            result.occupancies[self.side_to_move as usize] |= rook_end_square;
-            result.combined |= rook_end_square;
-            result.hash ^= PIECE_KEYS[self.side_to_move as usize][Piece::Rook as usize]
+            self.pieces[Piece::Rook as usize] |= rook_end_square;
+            self.occupancies[self.side_to_move as usize] |= rook_end_square;
+            self.combined |= rook_end_square;
+            new_state.hash ^= PIECE_KEYS[self.side_to_move as usize][Piece::Rook as usize]
                 [rook_end_square as usize];
         }
 
         // update castling rights
         if mov.piece == Piece::Rook {
             // rook moved
-            result.hash ^= CASTLE_KEYS[result.castling_rights.to_usize()];
-            result.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[mov.from as usize];
-            result.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[mov.to as usize];
-            result.hash ^= CASTLE_KEYS[result.castling_rights.to_usize()];
+            new_state.hash ^= CASTLE_KEYS[new_state.castling_rights.to_usize()];
+            new_state.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[mov.from as usize];
+            new_state.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[mov.to as usize];
+            new_state.hash ^= CASTLE_KEYS[new_state.castling_rights.to_usize()];
         } else if mov.piece == Piece::King {
             // remove castling rights for side if king moved (includes castling)
-            result.hash ^= CASTLE_KEYS[result.castling_rights.to_usize()];
-            result.castling_rights -= match result.side_to_move {
+            new_state.hash ^= CASTLE_KEYS[new_state.castling_rights.to_usize()];
+            new_state.castling_rights -= match self.side_to_move {
                 Color::White => CastlingRights::WHITE_BOTH_SIDES,
                 Color::Black => CastlingRights::BLACK_BOTH_SIDES,
             };
-            result.hash ^= CASTLE_KEYS[result.castling_rights.to_usize()];
+            new_state.hash ^= CASTLE_KEYS[new_state.castling_rights.to_usize()];
         }
 
         // update side
-        result.side_to_move = !result.side_to_move;
-        result.hash ^= SIDE_KEY;
+        self.side_to_move = !self.side_to_move;
+        new_state.hash ^= SIDE_KEY;
 
         // TODO: update incrementally instead
-        let (pinned, checkers, pinners) = calculate_pinned_checkers_pinners(&result);
+        let king_square =
+            (self.pieces(Piece::King) & self.occupancies(self.side_to_move())).bit_scan();
+
+        let mut potential_pinners = BitBoard(0);
+        let mut pinned = BitBoard(0);
+
+        let mut checkers = BitBoard(0);
+
+        // pretend king is a bishop and see if any other bishop OR queen is attacked by that
+        potential_pinners |= get_bishop_attacks(king_square, BitBoard(0))
+            & (self.pieces(Piece::Bishop) | self.pieces(Piece::Queen));
+
+        // now pretend the king is a rook and so the same procedure
+        potential_pinners |= get_rook_attacks(king_square, BitBoard(0))
+            & (self.pieces(Piece::Rook) | self.pieces(Piece::Queen));
+
+        // limit to opponent's pieces
+        potential_pinners &= self.occupancies(!self.side_to_move());
+
+        let mut pinners = BitBoard(0);
+
+        for square in potential_pinners.iter() {
+            let potentially_pinned = between(square, king_square) & self.combined();
+            if potentially_pinned.is_empty() {
+                checkers |= square;
+            } else if potentially_pinned.popcnt() == 1 {
+                pinned |= potentially_pinned;
+                pinners |= potential_pinners;
+            }
+        }
+
+        // TODO: only update when knight moved
+        // now pretend the king is a knight and check if it attacks an enemy knight
+        checkers |= get_knight_attacks(king_square)
+            & self.pieces(Piece::Knight)
+            & self.occupancies(!self.side_to_move());
+
+        // TODO: only update when pawn moved
+        // do the same thing for pawns
+        checkers |= get_pawn_attacks(king_square, self.side_to_move())
+            & self.pieces(Piece::Pawn)
+            & self.occupancies(!self.side_to_move());
 
         // update pinned, checkers
-        result.pinned = pinned;
-        result.checkers = checkers;
-        result.pinners = pinners;
+        new_state.pinned = pinned;
+        new_state.checkers = checkers;
+        new_state.pinners = pinners;
 
-        result
+        self.state = Arc::new(new_state);
+    }
+
+    pub fn undo_move(&mut self) {
+        // revert last move from popped state
+        if let Some(last_move) = self.state.last_move {
+            self.side_to_move = !self.side_to_move;
+            const CASTLE_CONFIG: [(File, File); 2] = [(File::A, File::D), (File::H, File::F)];
+
+            if last_move.flags == Castling {
+                let backrank = self.side_to_move.backrank();
+                let target_file = last_move.to.to_file();
+                let (rook_start_file, rook_end_file) = CASTLE_CONFIG[target_file as usize / 4];
+                let (rook_start_square, rook_end_square) = (
+                    Square::from(backrank, rook_start_file),
+                    Square::from(backrank, rook_end_file),
+                );
+
+                self.pieces[Piece::Rook as usize] |= rook_start_square;
+                self.occupancies[self.side_to_move as usize] |= rook_start_square;
+                self.combined |= rook_start_square;
+
+                self.pieces[Piece::Rook as usize] ^= rook_end_square;
+                self.occupancies[self.side_to_move as usize] ^= rook_end_square;
+                self.combined ^= rook_end_square;
+            }
+
+            // undo promotion
+            if let Some(promotion) = last_move.promotion {
+                // remove old piece type
+                self.pieces[last_move.piece as usize] |= last_move.to;
+                // add to new piece type
+                self.pieces[promotion.as_piece() as usize] ^= last_move.to;
+            }
+
+            self.pieces[last_move.piece as usize] |= last_move.from;
+            self.occupancies[self.side_to_move as usize] |= last_move.from;
+            self.combined |= last_move.from;
+
+            self.pieces[last_move.piece as usize] ^= last_move.to;
+            self.occupancies[self.side_to_move as usize] ^= last_move.to;
+            self.combined ^= last_move.to;
+
+            // undo capture
+            if let Some(captured_piece) = self.state.captured_piece {
+                self.pieces[captured_piece as usize] |= last_move.to;
+                self.occupancies[!self.side_to_move as usize] |= last_move.to;
+                self.combined |= last_move.to;
+            }
+
+            if last_move.flags == EnPassant {
+                let capture_piece = last_move.to.forward(!self.side_to_move).unwrap();
+                self.pieces[Piece::Pawn as usize] |= capture_piece;
+                self.occupancies[!self.side_to_move as usize] |= capture_piece;
+                self.combined |= capture_piece;
+            }
+        }
+
+        if let Some(previous_state) = self.state.previous.clone() {
+            self.state = previous_state;
+        }
+    }
+
+    pub fn generate_moves(&self) -> MoveList {
+        generate_moves(&self)
     }
 
     pub fn status(&self) -> BoardStatus {
         // inefficient but works for now
+        // should not be used in the search
         let moves = generate_moves(self);
         if moves.is_empty() {
-            return if self.checkers.is_empty() {
+            return if self.state.checkers.is_empty() {
                 BoardStatus::Stalemate
             } else {
                 BoardStatus::Checkmate
@@ -274,33 +425,13 @@ impl Board {
 
     #[inline]
     pub fn hash(&self) -> u64 {
-        self.hash
+        self.state.hash
     }
+}
 
-    fn generate_hash_key(&self) -> u64 {
-        let mut key = 0;
-
-        for color in ALL_COLORS {
-            for piece in ALL_PIECES {
-                let piece_bitboard = self.pieces(piece) & self.occupancies(color);
-
-                for square in piece_bitboard.iter() {
-                    key ^= PIECE_KEYS[color as usize][piece as usize][square as usize];
-                }
-            }
-        }
-
-        if let Some(en_passant_target) = self.en_passant_target {
-            key ^= EN_PASSANT_KEYS[en_passant_target.to_file() as usize];
-        }
-
-        key ^= CASTLE_KEYS[self.castling_rights.to_usize()];
-
-        if self.side_to_move == Color::Black {
-            key ^= SIDE_KEY;
-        }
-
-        key
+impl Hash for Board {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        state.write_u64(self.state.hash);
     }
 }
 
@@ -312,9 +443,10 @@ impl fmt::Display for Board {
             for file in 0..8 {
                 let square = Square::from_index(rank * 8 + file);
                 let symbol = if let Some(piece) = self.piece_on_square(square) {
-                    let color = self
-                        .color_on_square(square)
-                        .expect("piece must have a color");
+                    let color = self.color_on_square(square).expect(
+                        format!("piece {:?} on square {} must have a color", piece, square)
+                            .as_str(),
+                    );
                     piece.to_ascii(color)
                 } else {
                     '.'
@@ -329,10 +461,12 @@ impl fmt::Display for Board {
         }
 
         writeln!(f, "\n")?;
-        writeln!(f, "En passant square:\t{:?}", self.en_passant_target)?;
+        writeln!(f, "En passant square:\t{:?}", self.state.en_passant_target)?;
         writeln!(f, "Side to move:\t\t{:?}", self.side_to_move)?;
-        writeln!(f, "Castling rights:\t{}", self.castling_rights)?;
-        writeln!(f, "Hash: \t{:#018x}", self.hash)?;
+        writeln!(f, "Castling rights:\t{}", self.state.castling_rights)?;
+        writeln!(f, "Captured piece:\t{:?}", self.state.captured_piece)?;
+        writeln!(f, "Last move:\t{:?}", self.state.last_move)?;
+        writeln!(f, "Hash: \t{:#018x}", self.state.hash)?;
         Ok(())
     }
 }
@@ -447,30 +581,95 @@ impl FromStr for Board {
             .parse::<u64>()
             .map_err(|_| ParseFenError::BadHalfMoveClock)?;
 
-        let mut board = Board {
+        let partial_board = PartialBoard {
             pieces,
             occupancies,
             combined,
             side_to_move,
             en_passant_target,
             castling_rights,
-            pinned: Default::default(),
-            checkers: Default::default(),
-            pinners: Default::default(),
-            hash: 0,
+        };
+
+        let (pinned, checkers, pinners) = calculate_pinned_checkers_pinners(&partial_board);
+
+        let board = Board {
+            pieces,
+            occupancies,
+            combined,
+            side_to_move,
+            state: Arc::new(BoardState {
+                hash: partial_board.generate_hash_key(),
+                en_passant_target,
+                castling_rights,
+                rule50: 0,
+                ply: 0,
+                pinners,
+                checkers,
+                pinned,
+                last_move: None,
+                captured_piece: None,
+                previous: None,
+            }),
+            // TODO update
+            game_ply: 0,
         };
 
         // TODO: check if board is sane
 
-        let (pinned, checkers, pinners) = calculate_pinned_checkers_pinners(&board);
-
-        board.pinned = pinned;
-        board.checkers = checkers;
-        board.pinners = pinners;
-
-        board.hash = board.generate_hash_key();
-
         Ok(board)
+    }
+}
+
+pub struct PartialBoard {
+    pieces: [BitBoard; NUM_PIECES],
+    occupancies: [BitBoard; NUM_COLORS],
+    en_passant_target: Option<Square>,
+    castling_rights: CastlingRights,
+    combined: BitBoard,
+    side_to_move: Color,
+}
+
+impl PartialBoard {
+    pub fn pieces(&self, piece: Piece) -> BitBoard {
+        self.pieces[piece as usize]
+    }
+
+    pub fn occupancies(&self, color: Color) -> BitBoard {
+        self.occupancies[color as usize]
+    }
+
+    pub fn combined(&self) -> BitBoard {
+        self.combined
+    }
+
+    pub fn side_to_move(&self) -> Color {
+        self.side_to_move
+    }
+
+    fn generate_hash_key(&self) -> u64 {
+        let mut key = 0;
+
+        for color in ALL_COLORS {
+            for piece in ALL_PIECES {
+                let piece_bitboard = self.pieces(piece) & self.occupancies(color);
+
+                for square in piece_bitboard.iter() {
+                    key ^= PIECE_KEYS[color as usize][piece as usize][square as usize];
+                }
+            }
+        }
+
+        if let Some(en_passant_target) = self.en_passant_target {
+            key ^= EN_PASSANT_KEYS[en_passant_target.to_file() as usize];
+        }
+
+        key ^= CASTLE_KEYS[self.castling_rights.to_usize()];
+
+        if self.side_to_move == Color::Black {
+            key ^= SIDE_KEY;
+        }
+
+        key
     }
 }
 

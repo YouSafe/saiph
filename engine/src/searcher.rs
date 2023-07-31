@@ -40,13 +40,13 @@ impl Searcher {
                         break;
                     }
                     SearcherMessage::NewSearchTask(board, timer) => {
-                        stop.store(false, Ordering::Relaxed);
+                        stop.store(false, Ordering::SeqCst);
                         let stop_ref = stop.as_ref();
                         let table_ref = &mut table.lock().unwrap();
 
-                        let mut search = Search::new(table_ref, stop_ref);
+                        let mut search = Search::new(board, table_ref, stop_ref);
 
-                        let pick = search.find_best_move(&board, &timer);
+                        let pick = search.find_best_move(&timer);
                         println!("bestmove {}", pick.chess_move.unwrap());
                     }
                 }

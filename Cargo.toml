@@ -15,4 +15,5 @@ debug = true
 
 [profile.test]
 opt-level = 3
+debug = true
 

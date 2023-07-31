@@ -41,7 +41,7 @@ impl TranspositionTable {
 
         // empty
         if let Some(old_entry) = &self.table[index as usize] {
-            if old_entry.age < self.current_age || old_entry.depth < depth {
+            if old_entry.age < self.current_age || old_entry.depth <= depth {
                 can_replace = true;
             }
         } else {
@@ -139,12 +139,13 @@ impl TranspositionTable {
 
             let moves = generate_moves(&current_board);
             if moves.contains(&best_move) {
-                current_board = current_board.make_move(best_move);
+                current_board.apply_move(best_move);
                 line.push(best_move);
                 maybe_entry = self.probe_pv(&current_board);
             }
             count += 1;
         }
+
         line
     }
 
