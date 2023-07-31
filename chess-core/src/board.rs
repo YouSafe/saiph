@@ -39,7 +39,6 @@ pub struct BoardState {
     pinned: BitBoard,
     last_move: Option<Move>,
     captured_piece: Option<Piece>,
-    previous: Option<Arc<BoardState>>,
 }
 
 #[derive(Debug, Clone, Eq)]
@@ -48,25 +47,13 @@ pub struct Board {
     occupancies: [BitBoard; NUM_COLORS],
     combined: BitBoard,
     side_to_move: Color,
-    state: Arc<BoardState>,
+    history: Vec<BoardState>,
+    state: BoardState,
     game_ply: u16,
 }
 
 impl PartialEq for Board {
     fn eq(&self, other: &Self) -> bool {
-        // assert_eq!(
-        //     self.pieces,
-        //     other.pieces,
-        //     "self: {} \nother: {}",
-        //     self.pieces[Piece::Pawn as usize],
-        //     other.pieces[Piece::Pawn as usize],
-        // );
-        // assert_eq!(
-        //     self.combined, other.combined,
-        //     "self: {} \nother: {}",
-        //     self.combined, other.combined
-        // );
-        // assert_eq!(self.occupancies, other.occupancies);
         self.pieces == other.pieces
             && self.occupancies == other.occupancies
             && self.combined == other.combined
@@ -158,8 +145,8 @@ impl Board {
 
     pub fn apply_move(&mut self, mov: Move) {
         // copy state and put it in
-        let mut new_state = (*self.state).clone();
-        new_state.previous = Some(self.state.clone());
+        let mut new_state = self.state.clone();
+        // new_state.previous = Some(self.state.clone());
 
         new_state.last_move = Some(mov);
 
@@ -342,7 +329,9 @@ impl Board {
         new_state.checkers = checkers;
         new_state.pinners = pinners;
 
-        self.state = Arc::new(new_state);
+        let old_state = std::mem::replace(&mut self.state, new_state);
+        self.history.push(old_state);
+        // self.state = Arc::new(new_state);
     }
 
     pub fn undo_move(&mut self) {
@@ -400,7 +389,7 @@ impl Board {
             }
         }
 
-        if let Some(previous_state) = self.state.previous.clone() {
+        if let Some(previous_state) = self.history.pop() {
             self.state = previous_state;
         }
     }
@@ -597,7 +586,7 @@ impl FromStr for Board {
             occupancies,
             combined,
             side_to_move,
-            state: Arc::new(BoardState {
+            state: BoardState {
                 hash: partial_board.generate_hash_key(),
                 en_passant_target,
                 castling_rights,
@@ -608,8 +597,8 @@ impl FromStr for Board {
                 pinned,
                 last_move: None,
                 captured_piece: None,
-                previous: None,
-            }),
+            },
+            history: vec![],
             // TODO update
             game_ply: 0,
         };
