@@ -40,7 +40,7 @@ impl Searcher {
                         break;
                     }
                     SearcherMessage::NewSearchTask(board, timer) => {
-                        stop.store(false, Ordering::SeqCst);
+                        stop.store(false, Ordering::Relaxed);
                         let stop_ref = stop.as_ref();
                         let table_ref = &mut table.lock().unwrap();
 

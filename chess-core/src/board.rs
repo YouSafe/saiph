@@ -1,15 +1,12 @@
 use std::fmt;
 use std::fmt::Formatter;
 use std::hash::{Hash, Hasher};
-use std::iter::Filter;
-use std::slice::Iter;
 use std::str::FromStr;
-use std::sync::Arc;
 
 use crate::bitboard::BitBoard;
 use crate::castling_rights::{CastlingRights, UPDATE_CASTLING_RIGHT_TABLE};
-use crate::chess_move::MoveFlag::{Capture, Castling, DoublePawnPush, EnPassant, Normal};
-use crate::chess_move::{Move, MoveFlag};
+use crate::chess_move::Move;
+use crate::chess_move::MoveFlag::{Capture, Castling, DoublePawnPush, EnPassant};
 use crate::color::{Color, ALL_COLORS, NUM_COLORS};
 use crate::movgen::{calculate_pinned_checkers_pinners, generate_moves, MoveList};
 use crate::piece::{Piece, ALL_PIECES, NUM_PIECES};
@@ -395,7 +392,7 @@ impl Board {
     }
 
     pub fn generate_moves(&self) -> MoveList {
-        generate_moves(&self)
+        generate_moves(self)
     }
 
     pub fn status(&self) -> BoardStatus {
@@ -410,6 +407,17 @@ impl Board {
             };
         }
         BoardStatus::Ongoing
+    }
+
+    pub fn is_repetition(&self) -> bool {
+        let key = self.state.hash;
+
+        for current in self.history.iter() {
+            if key == current.hash {
+                return true;
+            }
+        }
+        return false;
     }
 
     #[inline]

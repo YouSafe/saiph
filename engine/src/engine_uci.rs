@@ -140,7 +140,7 @@ impl EngineUCI {
                 self.board = board;
             }
             Command::Go => {
-                self.timer.set_timer(Duration::from_secs(5));
+                self.timer.set_timer(Duration::from_secs(2));
                 self.searcher
                     .initiate_search(self.board.clone(), self.timer.clone());
             }

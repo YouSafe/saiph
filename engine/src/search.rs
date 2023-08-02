@@ -46,15 +46,15 @@ impl<'a> Search<'a> {
             return Evaluation(0);
         }
 
+        if self.board.is_repetition() {
+            return Evaluation(0);
+        }
+
         if depth == 0 {
             return self.quiescence(alpha, beta, ply);
         }
 
         stats.nodes += 1;
-
-        // if board.is_repetition() {
-        //     return Evaluation(0);
-        // }
 
         if let Some(scoring_move) = self.table.probe(&self.board, alpha, beta, depth, ply) {
             return scoring_move.evaluation;
@@ -187,7 +187,7 @@ impl<'a> Search<'a> {
 
         for chess_move in moves {
             self.board.apply_move(chess_move);
-            let score = self.quiescence(alpha, beta, ply + 1);
+            let score = -self.quiescence(-beta, -alpha, ply + 1);
             self.board.undo_move();
 
             if score > alpha {
@@ -237,7 +237,7 @@ impl<'a> Search<'a> {
             line = self.table.pv_line(&self.board, max_depth);
 
             print!(
-                "depth: {} score {} nodes {} ",
+                "info depth {} cp {} nodes {} pv ",
                 max_depth, evaluation, stats.nodes
             );
             for mov in line.iter() {
@@ -245,9 +245,9 @@ impl<'a> Search<'a> {
             }
             println!();
 
-            // if evaluation.is_mate() {
-            //     break;
-            // }
+            if evaluation.is_mate() {
+                break;
+            }
         }
 
         ScoringMove {
@@ -474,6 +474,18 @@ mod test {
     #[test]
     fn test_rook_vs_king() {
         let board = Board::from_str("8/6K1/8/8/8/r6k/8/8 w - - 6 74").unwrap();
+        let mut table = TranspositionTable::new();
+        let stop = AtomicBool::new(false);
+        let mut search = Search::new(board, &mut table, &stop);
+
+        let best_move = search.find_best_move(&Timer::new());
+        eprintln!("eval: {:?}", best_move.evaluation);
+        // assert_eq!(best_move.evaluation.mate_num_ply(), -16 * 2 + 1)
+    }
+
+    #[test]
+    fn test_threefold_detection() {
+        let board = Board::from_str("2r3k1/R7/8/1R6/8/8/P4KPP/8 w - - 0 1").unwrap();
         let mut table = TranspositionTable::new();
         let stop = AtomicBool::new(false);
         let mut search = Search::new(board, &mut table, &stop);
