@@ -67,41 +67,30 @@ impl EngineUCI {
             "isready" => Command::IsReady,
             "ucinewgame" => Command::NewGame,
             "position" => {
-                let args_str = parts.collect::<Vec<_>>().join(" ");
-
-                let args: Vec<_> = args_str.split("moves").map(|s| s.trim()).collect();
-
-                if args.len() != 2 {
-                    return Err(ParseCommandError::MissingParts);
-                }
-
-                let starting_pos_part = args[0];
-                let moves_part = args[1];
-
-                let mut starting_pos_split = starting_pos_part.split(' ');
-
-                let starting_pos = match starting_pos_split.next() {
-                    Some("startpos") => StartingPosition::Standard,
+                let token = parts.next();
+                let starting_pos;
+                match token {
+                    Some("startpos") => {
+                        starting_pos = StartingPosition::Standard;
+                        parts.next(); // consume "moves" token
+                    }
                     Some("fen") => {
-                        let fen = starting_pos_split.collect::<Vec<_>>().join(" ");
-                        StartingPosition::Custom(
+                        // this also consumes the "moves" token
+                        let fen = parts
+                            .by_ref()
+                            .take_while(|s| *s != "moves")
+                            .collect::<Vec<_>>()
+                            .join(" ");
+
+                        starting_pos = StartingPosition::Custom(
                             Board::from_str(fen.as_str())
                                 .map_err(|_| ParseCommandError::InvalidStartingPos)?,
-                        )
+                        );
                     }
-                    Some(_) => return Err(ParseCommandError::InvalidStartingPos),
-                    None => return Err(ParseCommandError::MissingParts),
-                };
+                    _ => return Err(ParseCommandError::MissingParts),
+                }
 
-                // Note: the filter allows having two spaces between the moves, which is not intended
-                let moves = moves_part
-                    .split(' ')
-                    .filter(|s| !s.is_empty())
-                    .collect::<Vec<_>>();
-
-                // Also see: https://doc.rust-lang.org/rust-by-example/error/iter_result.html
-                let moves = moves
-                    .iter()
+                let moves = parts
                     .map(|move_str| UCIMove::from_str(move_str))
                     .collect::<Result<Vec<_>, _>>()
                     .map_err(|_| ParseCommandError::InvalidMove)?;
