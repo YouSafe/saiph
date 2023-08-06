@@ -29,7 +29,7 @@ impl Evaluation {
     // IMMEDIATE_MATE_SCORE - MAX_MATE_DEPTH, ..., IMMEDIATE_MATE_SCORE, ..., MAX]
 
     const IMMEDIATE_MATE_SCORE: i32 = 100_000;
-    const MAX_MATE_DEPTH: i32 = 1000;
+    const MAX_MATE_DEPTH: i32 = 100;
 
     pub const fn is_mate(&self) -> bool {
         self.0.abs() > (Evaluation::IMMEDIATE_MATE_SCORE - Evaluation::MAX_MATE_DEPTH)
@@ -38,6 +38,11 @@ impl Evaluation {
     pub const fn mate_num_ply(&self) -> i8 {
         assert!(self.is_mate());
         (self.0.signum() * (Evaluation::IMMEDIATE_MATE_SCORE - self.0.abs())) as i8
+    }
+
+    pub fn mate_full_moves(&self) -> i8 {
+        let mate_ply = self.mate_num_ply();
+        ((mate_ply as f32) / 2.0).ceil() as i8
     }
 
     pub fn new_mate_eval(mating_color: Color, ply_from_root: u8) -> Evaluation {
@@ -172,5 +177,34 @@ mod test {
     #[test]
     fn test_min_and_max() {
         assert_eq!(Evaluation::MAX, -Evaluation::MIN);
+    }
+
+    #[test]
+    fn test_mate_num_ply() {
+        let evaluation = Evaluation(-Evaluation::IMMEDIATE_MATE_SCORE + 50);
+        assert_eq!(evaluation.mate_num_ply(), -50);
+    }
+
+    #[test]
+    fn test_mate_full_moves() {
+        let expected = |v: Evaluation| {
+            (if v > Evaluation(0) {
+                Evaluation::IMMEDIATE_MATE_SCORE - v.0 + 1
+            } else {
+                -Evaluation::IMMEDIATE_MATE_SCORE - v.0
+            }) / 2
+        };
+
+        for i in (0..10).rev() {
+            let eval = Evaluation::new_mate_eval(Color::Black, i);
+            println!("-{i} -> {}", expected(eval));
+            assert_eq!(expected(eval), eval.mate_full_moves() as i32, "{eval}");
+        }
+
+        for i in 0..10 {
+            let eval = Evaluation::new_mate_eval(Color::White, i);
+            println!("{i} -> {}", expected(eval));
+            assert_eq!(expected(eval), eval.mate_full_moves() as i32, "{eval}");
+        }
     }
 }

@@ -147,6 +147,10 @@ impl Board {
 
         new_state.last_move = Some(mov);
 
+        self.game_ply += 1;
+        new_state.ply += 1;
+        new_state.rule50 += 1;
+
         // en passant is cleared after doing any move
         new_state.en_passant_target = None;
         if let Some(en_passant_target) = self.en_passant_target() {
@@ -199,6 +203,8 @@ impl Board {
                 // add castling rights to hash
                 new_state.hash ^= CASTLE_KEYS[new_state.castling_rights.to_usize()];
             }
+
+            new_state.rule50 = 0;
         }
 
         if let Some(promotion) = mov.promotion {
@@ -254,6 +260,10 @@ impl Board {
             self.combined |= rook_end_square;
             new_state.hash ^= PIECE_KEYS[self.side_to_move as usize][Piece::Rook as usize]
                 [rook_end_square as usize];
+        }
+
+        if mov.piece == Piece::Pawn {
+            new_state.rule50 = 0;
         }
 
         // update castling rights
@@ -328,7 +338,6 @@ impl Board {
 
         let old_state = std::mem::replace(&mut self.state, new_state);
         self.history.push(old_state);
-        // self.state = Arc::new(new_state);
     }
 
     pub fn undo_move(&mut self) {
@@ -386,9 +395,15 @@ impl Board {
             }
         }
 
+        self.game_ply -= 1;
+
         if let Some(previous_state) = self.history.pop() {
             self.state = previous_state;
         }
+    }
+
+    pub fn game_ply(&self) -> u16 {
+        self.game_ply
     }
 
     pub fn generate_moves(&self) -> MoveList {
@@ -570,13 +585,13 @@ impl FromStr for Board {
             ),
         };
 
-        let _fullmove_number = fullmove_number
-            .parse::<u64>()
-            .map_err(|_| ParseFenError::BadFullMoveNumber)?;
-
-        let _halfmove_clock = halfmove_clock
-            .parse::<u64>()
+        let halfmove_clock = halfmove_clock
+            .parse::<u8>()
             .map_err(|_| ParseFenError::BadHalfMoveClock)?;
+
+        let fullmove_number = fullmove_number
+            .parse::<u16>()
+            .map_err(|_| ParseFenError::BadFullMoveNumber)?;
 
         let partial_board = PartialBoard {
             pieces,
@@ -598,7 +613,7 @@ impl FromStr for Board {
                 hash: partial_board.generate_hash_key(),
                 en_passant_target,
                 castling_rights,
-                rule50: 0,
+                rule50: halfmove_clock,
                 ply: 0,
                 pinners,
                 checkers,
@@ -607,8 +622,7 @@ impl FromStr for Board {
                 captured_piece: None,
             },
             history: vec![],
-            // TODO update
-            game_ply: 0,
+            game_ply: (2 * (fullmove_number - 1)).max(0) + [0, 1][side_to_move as usize],
         };
 
         // TODO: check if board is sane

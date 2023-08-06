@@ -4,7 +4,7 @@ use chess_core::board::Board;
 use chess_core::chess_move::Move;
 use chess_core::movgen::generate_moves;
 
-const TABLE_SIZE: usize = 0x100000 * 64;
+const TABLE_SIZE: usize = 0x100000 * 256;
 const NUM_TABLE_ENTRIES: usize = TABLE_SIZE / std::mem::size_of::<Entry>();
 
 #[derive(Debug)]
@@ -39,7 +39,6 @@ impl TranspositionTable {
 
         let mut can_replace = false;
 
-        // empty
         if let Some(old_entry) = &self.table[index as usize] {
             if old_entry.age < self.current_age || old_entry.depth <= depth {
                 can_replace = true;

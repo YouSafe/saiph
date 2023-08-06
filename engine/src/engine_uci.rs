@@ -1,6 +1,7 @@
+use crate::search_limits::SearchLimits;
 use crate::searcher::Searcher;
-use crate::timer::Timer;
 use chess_core::board::Board;
+use chess_core::color::Color;
 use chess_core::uci_move::UCIMove;
 use std::str::FromStr;
 use std::time::Duration;
@@ -11,7 +12,7 @@ enum Command {
     IsReady,
     NewGame,
     Position(StartingPosition, Vec<UCIMove>),
-    Go,
+    Go(SearchLimits),
     Stop,
 }
 
@@ -21,6 +22,7 @@ enum ParseCommandError {
     UnknownCommand(String),
     InvalidStartingPos,
     InvalidMove,
+    InvalidNumber,
 }
 
 #[derive(Debug, PartialEq)]
@@ -32,7 +34,6 @@ enum StartingPosition {
 pub struct EngineUCI {
     board: Board,
     searcher: Searcher,
-    timer: Timer,
 }
 
 impl Default for EngineUCI {
@@ -46,7 +47,6 @@ impl EngineUCI {
         EngineUCI {
             searcher: Searcher::new(),
             board: Default::default(),
-            timer: Timer::new(),
         }
     }
 
@@ -97,7 +97,71 @@ impl EngineUCI {
 
                 Command::Position(starting_pos, moves)
             }
-            "go" => Command::Go,
+            "go" => {
+                let mut limits = SearchLimits {
+                    infinite: false,
+                    time_left: [Duration::default(); 2],
+                    increment: [Duration::default(); 2],
+                    move_time: Duration::default(),
+                    depth: 0,
+                    mate: 0,
+                };
+
+                while let Some(token) = parts.next() {
+                    match token {
+                        "infinite" => {
+                            limits.infinite = true;
+                        }
+                        "wtime" | "btime" | "winc" | "binc" | "movetime" => {
+                            let param = parts
+                                .next()
+                                .ok_or(ParseCommandError::MissingParts)?
+                                .parse()
+                                .map_err(|_| ParseCommandError::InvalidNumber)?;
+
+                            match token {
+                                "wtime" => {
+                                    limits.time_left[Color::White as usize] =
+                                        Duration::from_millis(param)
+                                }
+                                "btime" => {
+                                    limits.time_left[Color::Black as usize] =
+                                        Duration::from_millis(param)
+                                }
+                                "winc" => {
+                                    limits.increment[Color::White as usize] =
+                                        Duration::from_millis(param)
+                                }
+                                "binc" => {
+                                    limits.increment[Color::Black as usize] =
+                                        Duration::from_millis(param)
+                                }
+                                "movetime" => limits.move_time = Duration::from_millis(param),
+                                _ => (),
+                            }
+                        }
+                        "depth" => {
+                            let param = parts
+                                .next()
+                                .ok_or(ParseCommandError::MissingParts)?
+                                .parse()
+                                .map_err(|_| ParseCommandError::InvalidNumber)?;
+                            limits.depth = param
+                        }
+                        "mate" => {
+                            let param = parts
+                                .next()
+                                .ok_or(ParseCommandError::MissingParts)?
+                                .parse()
+                                .map_err(|_| ParseCommandError::InvalidNumber)?;
+                            limits.mate = param
+                        }
+                        _ => {}
+                    }
+                }
+
+                Command::Go(limits)
+            }
             "stop" => Command::Stop,
             _ => return Err(ParseCommandError::UnknownCommand(message.to_owned())),
         };
@@ -128,10 +192,8 @@ impl EngineUCI {
 
                 self.board = board;
             }
-            Command::Go => {
-                self.timer.set_timer(Duration::from_secs(2));
-                self.searcher
-                    .initiate_search(self.board.clone(), self.timer.clone());
+            Command::Go(limits) => {
+                self.searcher.initiate_search(self.board.clone(), limits);
             }
             Command::Stop => {
                 self.searcher.stop_search();

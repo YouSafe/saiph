@@ -115,12 +115,14 @@ impl BitAnd for CastlingRights {
         Self(self.0 & rhs.0)
     }
 }
+
 impl BitAndAssign for CastlingRights {
     #[inline]
     fn bitand_assign(&mut self, rhs: Self) {
         *self = Self(self.0 & rhs.0);
     }
 }
+
 impl BitOr for CastlingRights {
     type Output = Self;
 
@@ -129,12 +131,14 @@ impl BitOr for CastlingRights {
         Self(self.0 | rhs.0)
     }
 }
+
 impl BitOrAssign for CastlingRights {
     #[inline]
     fn bitor_assign(&mut self, rhs: Self) {
         *self = Self(self.0 | rhs.0);
     }
 }
+
 impl BitXor for CastlingRights {
     type Output = Self;
 
@@ -143,12 +147,14 @@ impl BitXor for CastlingRights {
         Self(self.0 ^ rhs.0)
     }
 }
+
 impl BitXorAssign for CastlingRights {
     #[inline]
     fn bitxor_assign(&mut self, rhs: Self) {
         *self = Self(self.0 ^ rhs.0);
     }
 }
+
 impl Sub for CastlingRights {
     type Output = Self;
 
@@ -157,6 +163,7 @@ impl Sub for CastlingRights {
         self.subtract(rhs)
     }
 }
+
 impl SubAssign for CastlingRights {
     #[inline]
     fn sub_assign(&mut self, rhs: Self) {

@@ -1,12 +1,14 @@
+use crate::clock::Clock;
 use crate::evaluation::{board_value, Evaluation};
 use crate::move_ordering::mmv_lva;
-use crate::timer::Timer;
+use crate::search_limits::SearchLimits;
 use crate::transposition_table::{TranspositionTable, ValueType};
 use chess_core::bitboard::BitBoard;
 use chess_core::board::Board;
 use chess_core::chess_move::Move;
 use chess_core::color::Color;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Instant;
 
 pub struct SearchStatistics {
     nodes: u64,
@@ -32,7 +34,7 @@ impl<'a> Search<'a> {
     /// Fail-hard variation of negamax search
     fn negamax_search(
         &mut self,
-        timer: &Timer,
+        clock: &Clock,
         mut alpha: Evaluation,
         beta: Evaluation,
         depth: u8,
@@ -41,12 +43,14 @@ impl<'a> Search<'a> {
     ) -> Evaluation {
         let mut value_type = ValueType::Alpha;
 
-        if timer.is_already_up() {
-            self.stop.store(true, Ordering::Relaxed);
-            return Evaluation(0);
+        if let Some(optimum) = clock.optimum {
+            if optimum < Instant::now() && (stats.nodes & 4095) == 0 {
+                self.stop.store(true, Ordering::SeqCst);
+                return Evaluation(0);
+            }
         }
 
-        if self.board.is_repetition() {
+        if ply > 0 && self.board.is_repetition() {
             return Evaluation(0);
         }
 
@@ -100,10 +104,10 @@ impl<'a> Search<'a> {
 
         for chess_move in moves {
             self.board.apply_move(chess_move);
-            let score = -self.negamax_search(timer, -beta, -alpha, depth - 1, ply + 1, stats);
+            let score = -self.negamax_search(clock, -beta, -alpha, depth - 1, ply + 1, stats);
             self.board.undo_move();
 
-            if self.stop.load(Ordering::Relaxed) {
+            if self.stop.load(Ordering::SeqCst) {
                 return Evaluation(0);
             }
 
@@ -205,49 +209,60 @@ impl<'a> Search<'a> {
         alpha
     }
 
-    pub fn find_best_move(&mut self, timer: &Timer) -> ScoringMove {
+    pub fn find_best_move(&mut self, limits: SearchLimits) -> ScoringMove {
         self.table.age();
 
         let mut evaluation = Evaluation(0);
         let mut line = vec![];
-        for max_depth in 1.. {
-            let mut stats = SearchStatistics { nodes: 0 };
+        let mut stats = SearchStatistics { nodes: 0 };
+
+        let clock = Clock::new(&limits, self.board.game_ply(), self.board.side_to_move());
+
+        for max_depth in 2.. {
+            if limits.depth != 0 && max_depth > limits.depth {
+                break;
+            }
 
             evaluation = self.negamax_search(
-                timer,
+                &clock,
                 Evaluation::MIN,
                 Evaluation::MAX,
                 max_depth,
                 0,
                 &mut stats,
             );
+            //
+            // // the eval negamax returns is from the point of view of the current side to play
+            // // however, for me it's so much more intuitive when the eval is from the point of view
+            // // of the white player
+            // if self.board.side_to_move() == Color::Black {
+            //     evaluation = -evaluation;
+            // }
 
-            // the eval negamax returns is from the point of view of the current side to play
-            // however, for me it's so much more intuitive when the eval is from the point of view
-            // of the white player
-            if self.board.side_to_move() == Color::Black {
-                evaluation = -evaluation;
-            }
-
-            if self.stop.load(Ordering::Relaxed) {
+            if self.stop.load(Ordering::SeqCst) {
                 eprintln!("stop search");
                 break;
             }
 
             line = self.table.pv_line(&self.board, max_depth);
 
-            print!(
-                "info depth {} cp {} nodes {} pv ",
-                max_depth, evaluation, stats.nodes
-            );
+            print!("info depth {} ", max_depth);
+            if evaluation.is_mate() {
+                print!("score mate {} ", evaluation.mate_full_moves());
+            } else {
+                print!("score cp {} ", evaluation);
+            }
+            print!("time {} ", clock.start.elapsed().as_millis());
+            print!("nodes {} pv ", stats.nodes);
             for mov in line.iter() {
                 print!("{} ", mov);
             }
             println!();
 
-            if evaluation.is_mate() {
-                break;
-            }
+            // This leads to unwanted threefold repetitions
+            // if evaluation.is_mate() && evaluation.mate_num_ply() >= limits.mate as i8 {
+            //     break;
+            // }
         }
 
         ScoringMove {
@@ -261,7 +276,7 @@ impl<'a> Search<'a> {
 mod test {
     use crate::evaluation::Evaluation;
     use crate::search::{ScoringMove, Search};
-    use crate::timer::Timer;
+    use crate::search_limits::SearchLimits;
     use crate::transposition_table::TranspositionTable;
     use chess_core::board::{Board, BoardStatus};
     use chess_core::chess_move::{Move, MoveFlag};
@@ -280,9 +295,16 @@ mod test {
         let stop = AtomicBool::new(false);
 
         let mut search = Search::new(board, &mut table, &stop);
-        let mut timer = Timer::new();
-        timer.set_timer(Duration::from_secs(1));
-        let best_move = search.find_best_move(&timer);
+        let limits = SearchLimits {
+            infinite: false,
+            time_left: [Duration::from_secs(1); 2],
+            increment: [Duration::from_millis(0); 2],
+            move_time: Default::default(),
+            depth: 0,
+            mate: 0,
+        };
+
+        let best_move = search.find_best_move(limits);
         assert_eq!(
             best_move.chess_move,
             Some(Move {
@@ -303,7 +325,7 @@ mod test {
         let stop = AtomicBool::new(false);
 
         let mut search = Search::new(board, &mut table, &stop);
-        let best_move = search.find_best_move(&Timer::new());
+        let best_move = search.find_best_move(SearchLimits::new_depth_limit(2));
         assert_eq!(
             best_move.chess_move,
             Some(Move {
@@ -326,7 +348,7 @@ mod test {
         let stop = AtomicBool::new(false);
 
         let mut search = Search::new(board, &mut table, &stop);
-        let best_move = search.find_best_move(&Timer::new());
+        let best_move = search.find_best_move(SearchLimits::new_depth_limit(2));
         assert_eq!(
             best_move.chess_move,
             Some(Move {
@@ -348,7 +370,7 @@ mod test {
         let stop = AtomicBool::new(false);
         let mut search = Search::new(board, &mut table, &stop);
 
-        let best_move = search.find_best_move(&Timer::new());
+        let best_move = search.find_best_move(SearchLimits::new_depth_limit(2));
         assert_eq!(
             best_move.chess_move,
             Some(Move {
@@ -370,7 +392,7 @@ mod test {
         let stop = AtomicBool::new(false);
         let mut search = Search::new(board, &mut table, &stop);
 
-        let best_move = search.find_best_move(&Timer::new());
+        let best_move = search.find_best_move(SearchLimits::new_depth_limit(2));
         assert_eq!(
             best_move.chess_move,
             Some(Move {
@@ -391,7 +413,7 @@ mod test {
         let stop = AtomicBool::new(false);
         let mut search = Search::new(board, &mut table, &stop);
 
-        let best_move = search.find_best_move(&Timer::new());
+        let best_move = search.find_best_move(SearchLimits::new_depth_limit(2));
         assert_eq!(
             best_move.chess_move,
             Some(Move {
@@ -412,7 +434,7 @@ mod test {
         let stop = AtomicBool::new(false);
         let mut search = Search::new(board.clone(), &mut table, &stop);
 
-        let best_move = search.find_best_move(&Timer::new());
+        let best_move = search.find_best_move(SearchLimits::new_depth_limit(2));
         board.apply_move(best_move.chess_move.unwrap());
         assert_eq!(board.status(), BoardStatus::Checkmate);
     }
@@ -424,7 +446,7 @@ mod test {
         let stop = AtomicBool::new(false);
         let mut search = Search::new(board.clone(), &mut table, &stop);
 
-        let whites_move = search.find_best_move(&Timer::new());
+        let whites_move = search.find_best_move(SearchLimits::new_depth_limit(3));
         assert_eq!(
             whites_move,
             ScoringMove {
@@ -439,11 +461,12 @@ mod test {
             }
         );
         board.apply_move(whites_move.chess_move.unwrap());
-        let black_move = search.find_best_move(&Timer::new());
+        let mut search = Search::new(board.clone(), &mut table, &stop);
+        let black_move = search.find_best_move(SearchLimits::new_depth_limit(3));
         assert_eq!(
             black_move,
             ScoringMove {
-                evaluation: Evaluation::new_mate_eval(Color::Black, 1),
+                evaluation: Evaluation::new_mate_eval(Color::White, 1),
                 chess_move: Some(Move {
                     from: Square::B8,
                     to: Square::A8,
@@ -466,9 +489,9 @@ mod test {
         let stop = AtomicBool::new(false);
         let mut search = Search::new(board, &mut table, &stop);
 
-        let best_move = search.find_best_move(&Timer::new());
+        let best_move = search.find_best_move(SearchLimits::new_depth_limit(40));
         eprintln!("eval: {:?}", best_move.evaluation);
-        // assert_eq!(best_move.evaluation.mate_num_ply(), -10 * 2 + 1)
+        assert_eq!(best_move.evaluation.is_mate());
     }
 
     #[test]
@@ -478,21 +501,9 @@ mod test {
         let stop = AtomicBool::new(false);
         let mut search = Search::new(board, &mut table, &stop);
 
-        let best_move = search.find_best_move(&Timer::new());
+        let best_move = search.find_best_move(SearchLimits::new_depth_limit(20));
+        assert!(best_move.evaluation.is_mate());
         eprintln!("eval: {:?}", best_move.evaluation);
-        // assert_eq!(best_move.evaluation.mate_num_ply(), -16 * 2 + 1)
-    }
-
-    #[test]
-    fn test_threefold_detection() {
-        let board = Board::from_str("2r3k1/R7/8/1R6/8/8/P4KPP/8 w - - 0 1").unwrap();
-        let mut table = TranspositionTable::new();
-        let stop = AtomicBool::new(false);
-        let mut search = Search::new(board, &mut table, &stop);
-
-        let best_move = search.find_best_move(&Timer::new());
-        eprintln!("eval: {:?}", best_move.evaluation);
-        // assert_eq!(best_move.evaluation.mate_num_ply(), -16 * 2 + 1)
     }
 
     #[test]
@@ -502,7 +513,8 @@ mod test {
         let stop = AtomicBool::new(false);
         let mut search = Search::new(board, &mut table, &stop);
 
-        let best_move = search.find_best_move(&Timer::new());
+        let best_move = search.find_best_move(SearchLimits::new_depth_limit(44));
+        assert!(best_move.evaluation.is_mate());
         eprintln!("eval: {:?}", best_move.evaluation);
     }
 
@@ -515,7 +527,7 @@ mod test {
 
         for _ in 0..5 {
             search = Search::new(board.clone(), &mut table, &stop);
-            let best_move = search.find_best_move(&Timer::new());
+            let best_move = search.find_best_move(SearchLimits::new_depth_limit(7));
             let chess_move = best_move.chess_move;
             board.apply_move(chess_move.unwrap());
         }
@@ -533,7 +545,7 @@ mod test {
 
         for _ in 0..3 {
             search = Search::new(board.clone(), &mut table, &stop);
-            let best_move = search.find_best_move(&Timer::new());
+            let best_move = search.find_best_move(SearchLimits::new_depth_limit(4));
             let chess_move = best_move.chess_move;
             board.apply_move(chess_move.unwrap());
         }
@@ -547,13 +559,11 @@ mod test {
         let mut table = TranspositionTable::new();
         let stop = AtomicBool::new(false);
 
-        let timer = Timer::new();
-
         let mut search;
 
         for _ in 0..13 {
             search = Search::new(board.clone(), &mut table, &stop);
-            let best_move = search.find_best_move(&timer);
+            let best_move = search.find_best_move(SearchLimits::new_depth_limit(14));
             let chess_move = best_move.chess_move;
             board.apply_move(chess_move.unwrap());
         }

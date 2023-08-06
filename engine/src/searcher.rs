@@ -1,5 +1,5 @@
 use crate::search::Search;
-use crate::timer::Timer;
+use crate::search_limits::SearchLimits;
 use crate::transposition_table::TranspositionTable;
 use chess_core::board::Board;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -9,7 +9,7 @@ use std::thread;
 use std::thread::JoinHandle;
 
 enum SearcherMessage {
-    NewSearchTask(Board, Timer),
+    NewSearchTask(Board, SearchLimits),
     Quit,
 }
 
@@ -39,14 +39,14 @@ impl Searcher {
                         eprintln!("not accepting any more search requests");
                         break;
                     }
-                    SearcherMessage::NewSearchTask(board, timer) => {
-                        stop.store(false, Ordering::Relaxed);
+                    SearcherMessage::NewSearchTask(board, limits) => {
+                        stop.store(false, Ordering::SeqCst);
                         let stop_ref = stop.as_ref();
                         let table_ref = &mut table.lock().unwrap();
 
                         let mut search = Search::new(board, table_ref, stop_ref);
 
-                        let pick = search.find_best_move(&timer);
+                        let pick = search.find_best_move(limits);
                         println!("bestmove {}", pick.chess_move.unwrap());
                     }
                 }
@@ -59,14 +59,14 @@ impl Searcher {
         self.table.lock().unwrap().clear();
     }
 
-    pub fn initiate_search(&self, board: Board, timer: Timer) {
+    pub fn initiate_search(&self, board: Board, limits: SearchLimits) {
         self.channel_sender
-            .send(SearcherMessage::NewSearchTask(board, timer))
+            .send(SearcherMessage::NewSearchTask(board, limits))
             .expect("could not send new search task");
     }
 
     pub fn stop_search(&mut self) {
-        self.stop.store(true, Ordering::Relaxed);
+        self.stop.store(true, Ordering::SeqCst);
     }
 }
 
