@@ -215,21 +215,9 @@ pub fn perf_test(board: &mut Board, depth: u8) {
     for mov in moves {
         let mut nodes = 0;
 
-        // let mut cloned = board.clone();
-        // cloned.apply_move(mov);
         board.apply_move(mov);
         perf_driver(board, depth - 1, &mut nodes);
         board.undo_move();
-        // let before_undo = cloned.clone();
-        // cloned.undo_move();
-
-        // if &mut cloned != board {
-        //     eprintln!(
-        //         "original: {} \napply: {} \napply & undo: {}",
-        //         board, before_undo, cloned
-        //     );
-        //     panic!("HELP");
-        // }
 
         println!("{} {}", mov, nodes);
         total_nodes += nodes;
@@ -251,21 +239,9 @@ pub fn perf_driver(board: &mut Board, depth: u8, nodes: &mut u64) {
         return;
     }
     for mov in moves {
-        // let mut cloned = board.clone();
-        // cloned.apply_move(mov);
         board.apply_move(mov);
         perf_driver(board, depth - 1, nodes);
         board.undo_move();
-        // let before_undo = cloned.clone();
-        // cloned.undo_move();
-
-        // if &mut cloned != board {
-        //     eprintln!(
-        //         "original: {} \napply: {} \napply & undo: {}",
-        //         board, before_undo, cloned
-        //     );
-        //     panic!("HELP");
-        // }
     }
 }
 
@@ -277,8 +253,7 @@ mod test {
     use crate::board::Board;
     use crate::color::Color;
     use crate::movgen::{
-        build_attacked_bitboard, calculate_pinned_checkers_pinners, generate_attack_bitboard,
-        generate_moves, is_square_attacked,
+        build_attacked_bitboard, generate_attack_bitboard, generate_moves, is_square_attacked,
     };
     use crate::square::Square;
 

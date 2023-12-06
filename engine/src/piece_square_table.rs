@@ -16,15 +16,14 @@ pub fn piece_square_table(piece: Piece, square: Square, piece_color: Color) -> i
         Color::Black => square_index,
     };
 
-    let bonus = match piece {
+    (match piece {
         Piece::Pawn => PAWNS_TABLE[lookup_index],
         Piece::Knight => KNIGHTS_TABLE[lookup_index],
         Piece::Bishop => BISHOP_TABLE[lookup_index],
         Piece::Rook => ROOK_TABLE[lookup_index],
         Piece::Queen => QUEEN_TABLE[lookup_index],
         Piece::King => 0,
-    } as i32;
-    bonus
+    }) as i32
 }
 
 const PAWNS_TABLE: [i8; 64] = [
@@ -80,30 +79,6 @@ const QUEEN_TABLE: [i8; 64] = [
     -10,  5,  5,  5,  5,  5,  0,-10,
     -10,  0,  5,  0,  0,  0,  0,-10,
     -20,-10,-10, -5, -5,-10,-10,-20
-];
-
-#[rustfmt::skip]
-const KING_MIDDLE_GAME: [i8; 64] = [
-    -30,-40,-40,-50,-50,-40,-40,-30,
-    -30,-40,-40,-50,-50,-40,-40,-30,
-    -30,-40,-40,-50,-50,-40,-40,-30,
-    -30,-40,-40,-50,-50,-40,-40,-30,
-    -20,-30,-30,-40,-40,-30,-30,-20,
-    -10,-20,-20,-20,-20,-20,-20,-10,
-     20, 20,  0,  0,  0,  0, 20, 20,
-     20, 30, 10,  0,  0, 10, 30, 20
-];
-
-#[rustfmt::skip]
-const KING_END_GAME: [i8; 64] = [
-    -50,-40,-30,-20,-20,-30,-40,-50,
-    -30,-20,-10,  0,  0,-10,-20,-30,
-    -30,-10, 20, 30, 30, 20,-10,-30,
-    -30,-10, 30, 40, 40, 30,-10,-30,
-    -30,-10, 30, 40, 40, 30,-10,-30,
-    -30,-10, 20, 30, 30, 20,-10,-30,
-    -30,-30,  0,  0,  0,  0,-30,-30,
-    -50,-30,-30,-30,-30,-30,-30,-50
 ];
 
 #[cfg(test)]

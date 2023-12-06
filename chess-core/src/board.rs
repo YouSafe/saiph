@@ -31,7 +31,6 @@ pub struct BoardState {
     castling_rights: CastlingRights,
     rule50: u8,
     ply: u16,
-    pinners: BitBoard,
     checkers: BitBoard,
     pinned: BitBoard,
     last_move: Option<Move>,
@@ -44,7 +43,7 @@ pub struct Board {
     occupancies: [BitBoard; NUM_COLORS],
     combined: BitBoard,
     side_to_move: Color,
-    history: Vec<BoardState>,
+    pub history: Vec<BoardState>,
     state: BoardState,
     game_ply: u16,
 }
@@ -118,10 +117,6 @@ impl Board {
 
     pub fn pinned(&self) -> BitBoard {
         self.state.pinned
-    }
-
-    pub fn pinners(&self) -> BitBoard {
-        self.state.pinners
     }
 
     pub fn castling_rights(&self) -> CastlingRights {
@@ -334,7 +329,6 @@ impl Board {
         // update pinned, checkers
         new_state.pinned = pinned;
         new_state.checkers = checkers;
-        new_state.pinners = pinners;
 
         let old_state = std::mem::replace(&mut self.state, new_state);
         self.history.push(old_state);
@@ -427,12 +421,7 @@ impl Board {
     pub fn is_repetition(&self) -> bool {
         let key = self.state.hash;
 
-        for current in self.history.iter() {
-            if key == current.hash {
-                return true;
-            }
-        }
-        return false;
+        return self.history.iter().filter(|c| key == c.hash).count() >= 1;
     }
 
     #[inline]
@@ -455,10 +444,7 @@ impl fmt::Display for Board {
             for file in 0..8 {
                 let square = Square::from_index(rank * 8 + file);
                 let symbol = if let Some(piece) = self.piece_on_square(square) {
-                    let color = self.color_on_square(square).expect(
-                        format!("piece {:?} on square {} must have a color", piece, square)
-                            .as_str(),
-                    );
+                    let color = self.color_on_square(square).ok_or(fmt::Error)?;
                     piece.to_ascii(color)
                 } else {
                     '.'
@@ -602,7 +588,7 @@ impl FromStr for Board {
             castling_rights,
         };
 
-        let (pinned, checkers, pinners) = calculate_pinned_checkers_pinners(&partial_board);
+        let (pinned, checkers, _) = calculate_pinned_checkers_pinners(&partial_board);
 
         let board = Board {
             pieces,
@@ -615,7 +601,6 @@ impl FromStr for Board {
                 castling_rights,
                 rule50: halfmove_clock,
                 ply: 0,
-                pinners,
                 checkers,
                 pinned,
                 last_move: None,
@@ -710,6 +695,8 @@ mod test {
 En passant square:	None
 Side to move:		White
 Castling rights:	KQkq
+Captured piece:	None
+Last move:	None
 Hash: 	0x4a887e3c9bc2624a
 ";
         let board = Board::default();

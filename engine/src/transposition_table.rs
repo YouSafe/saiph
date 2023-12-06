@@ -1,10 +1,9 @@
 use crate::evaluation::Evaluation;
-use crate::search::ScoringMove;
 use chess_core::board::Board;
 use chess_core::chess_move::Move;
 use chess_core::movgen::generate_moves;
 
-const TABLE_SIZE: usize = 0x100000 * 256;
+const TABLE_SIZE: usize = 0x100000 * 4096;
 const NUM_TABLE_ENTRIES: usize = TABLE_SIZE / std::mem::size_of::<Entry>();
 
 #[derive(Debug)]
@@ -40,7 +39,7 @@ impl TranspositionTable {
         let mut can_replace = false;
 
         if let Some(old_entry) = &self.table[index as usize] {
-            if old_entry.age < self.current_age || old_entry.depth <= depth {
+            if old_entry.age != self.current_age || old_entry.depth <= depth {
                 can_replace = true;
             }
         } else {
@@ -57,7 +56,7 @@ impl TranspositionTable {
             value
         };
 
-        self.table[index as usize] = Some(Entry {
+        let new_value = Some(Entry {
             hash_key: board.hash(),
             best_move,
             age: self.current_age,
@@ -65,50 +64,16 @@ impl TranspositionTable {
             value: corrected_value,
             value_type,
         });
+
+        self.table[index as usize] = new_value;
     }
 
-    pub fn probe(
-        &self,
-        board: &Board,
-        alpha: Evaluation,
-        beta: Evaluation,
-        depth: u8,
-        ply: u8,
-    ) -> Option<ScoringMove> {
+    pub fn probe(&self, board: &Board) -> Option<&Entry> {
         let index = board.hash() % NUM_TABLE_ENTRIES as u64;
 
         if let Some(entry) = &self.table[index as usize] {
-            if entry.hash_key == board.hash() && entry.depth >= depth {
-                let corrected_value = if entry.value.is_mate() {
-                    entry.value.tt_to_score(ply)
-                } else {
-                    entry.value
-                };
-
-                match entry.value_type {
-                    ValueType::Exact => {
-                        return Some(ScoringMove {
-                            evaluation: corrected_value,
-                            chess_move: entry.best_move,
-                        });
-                    }
-                    ValueType::Alpha => {
-                        if corrected_value <= alpha {
-                            return Some(ScoringMove {
-                                evaluation: alpha,
-                                chess_move: entry.best_move,
-                            });
-                        }
-                    }
-                    ValueType::Beta => {
-                        if corrected_value >= beta {
-                            return Some(ScoringMove {
-                                evaluation: beta,
-                                chess_move: entry.best_move,
-                            });
-                        }
-                    }
-                }
+            if entry.hash_key == board.hash() {
+                return Some(entry);
             }
         }
         None
@@ -125,25 +90,34 @@ impl TranspositionTable {
         None
     }
 
-    pub fn pv_line(&self, board: &Board, depth: u8) -> Vec<Move> {
+    pub fn pv_line(&self, board: &mut Board, depth: u8) -> Vec<Move> {
         let mut line: Vec<Move> = vec![];
 
         let mut count = 0;
-        let mut maybe_entry = self.probe_pv(board);
-        let mut current_board = board.clone();
+        let current_board = board;
+        let mut maybe_entry = self.probe_pv(current_board);
         while let Some(best_move) = maybe_entry.take() {
             if count >= depth {
                 break;
             }
 
-            let moves = generate_moves(&current_board);
+            // println!("{}", current_board);
+            let moves = generate_moves(current_board);
             if moves.contains(&best_move) {
                 current_board.apply_move(best_move);
                 line.push(best_move);
-                maybe_entry = self.probe_pv(&current_board);
+                maybe_entry = self.probe_pv(current_board);
+            } else {
+                break;
             }
             count += 1;
         }
+
+        for _ in 0..count {
+            current_board.undo_move();
+        }
+
+        // println!("{}", current_board);
 
         line
     }
@@ -167,6 +141,8 @@ pub struct Entry {
 #[repr(u8)]
 pub enum ValueType {
     Exact,
+    /// Upperbound
     Alpha,
+    /// Lowerbound
     Beta,
 }

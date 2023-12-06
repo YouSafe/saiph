@@ -54,6 +54,14 @@ impl Evaluation {
         Evaluation(sign * (Evaluation::IMMEDIATE_MATE_SCORE - ply_from_root as i32))
     }
 
+    pub const fn mated_in(ply_from_root: u8) -> Evaluation {
+        Evaluation(-Evaluation::IMMEDIATE_MATE_SCORE + ply_from_root as i32)
+    }
+
+    pub const fn mate_in(ply_from_root: u8) -> Evaluation {
+        Evaluation(Evaluation::IMMEDIATE_MATE_SCORE - ply_from_root as i32)
+    }
+
     pub const fn score_to_tt(&self, ply: u8) -> Evaluation {
         assert!(self.is_mate());
         Evaluation((self.0.abs() + ply as i32) * self.0.signum())

@@ -36,12 +36,13 @@ impl<'a> Search<'a> {
         &mut self,
         clock: &Clock,
         mut alpha: Evaluation,
-        beta: Evaluation,
+        mut beta: Evaluation,
         depth: u8,
         ply: u8,
         stats: &mut SearchStatistics,
     ) -> Evaluation {
-        let mut value_type = ValueType::Alpha;
+        assert!(alpha < beta);
+        let old_alpha = alpha;
 
         if let Some(optimum) = clock.optimum {
             if optimum < Instant::now() && (stats.nodes & 4095) == 0 {
@@ -50,29 +51,52 @@ impl<'a> Search<'a> {
             }
         }
 
-        if ply > 0 && self.board.is_repetition() {
-            return Evaluation(0);
+        if ply > 0 {
+            if self.board.is_repetition() {
+                return Evaluation(0);
+            }
+
+            alpha = alpha.max(Evaluation::mated_in(ply));
+            beta = beta.min(Evaluation::mate_in(ply + 1));
+            if alpha >= beta {
+                return alpha;
+            }
+        }
+
+        if ply > 0 {
+            if let Some(entry) = self.table.probe(&self.board) {
+                if entry.depth >= depth {
+                    let corrected_value = if entry.value.is_mate() {
+                        entry.value.tt_to_score(ply)
+                    } else {
+                        entry.value
+                    };
+
+                    match entry.value_type {
+                        ValueType::Exact => return corrected_value,
+                        ValueType::Alpha => {
+                            beta = beta.min(corrected_value);
+                        }
+                        ValueType::Beta => {
+                            alpha = alpha.max(corrected_value);
+                        }
+                    }
+
+                    if alpha >= beta {
+                        return corrected_value;
+                    }
+                }
+            }
         }
 
         if depth == 0 {
-            return self.quiescence(alpha, beta, ply);
+            return self.quiescence(alpha, beta, ply, stats);
         }
-
-        stats.nodes += 1;
-
-        if let Some(scoring_move) = self.table.probe(&self.board, alpha, beta, depth, ply) {
-            return scoring_move.evaluation;
-        }
-
-        let side_to_move = self.board.side_to_move();
 
         let mut moves = self.board.generate_moves();
         if moves.is_empty() {
             return if self.board.checkers() != BitBoard::EMPTY {
-                match side_to_move {
-                    Color::White => Evaluation::new_mate_eval(!side_to_move, ply),
-                    Color::Black => -Evaluation::new_mate_eval(!side_to_move, ply),
-                }
+                Evaluation::mated_in(ply)
             } else {
                 Evaluation(0)
             };
@@ -97,13 +121,13 @@ impl<'a> Search<'a> {
             0
         });
 
-        let mut local_best = ScoringMove {
-            evaluation: Evaluation::MIN,
-            chess_move: None,
-        };
+        let mut best_score = Evaluation::MIN;
+        let mut best_move = None;
 
         for chess_move in moves {
             self.board.apply_move(chess_move);
+            stats.nodes += 1;
+
             let score = -self.negamax_search(clock, -beta, -alpha, depth - 1, ply + 1, stats);
             self.board.undo_move();
 
@@ -111,72 +135,65 @@ impl<'a> Search<'a> {
                 return Evaluation(0);
             }
 
-            if score > local_best.evaluation {
-                local_best = ScoringMove {
-                    evaluation: score,
-                    chess_move: Some(chess_move),
-                };
+            if score > best_score {
+                best_score = score;
+
                 if score > alpha {
+                    best_move = Some(chess_move);
+
+                    // update pv later
+
                     if score >= beta {
-                        self.table.store(
-                            &self.board,
-                            local_best.chess_move,
-                            depth,
-                            beta,
-                            ValueType::Beta,
-                            ply,
-                        );
-
-                        // node fails high
-                        return beta;
+                        break;
+                    } else {
+                        alpha = score;
                     }
-
-                    // PV node
-                    alpha = score;
-                    value_type = ValueType::Exact;
                 }
             }
         }
 
-        self.table.store(
-            &self.board,
-            local_best.chess_move,
-            depth,
-            alpha,
-            value_type,
-            ply,
-        );
+        let value_type = if best_score >= beta {
+            ValueType::Beta
+        } else if best_score > old_alpha {
+            ValueType::Exact
+        } else {
+            ValueType::Alpha
+        };
+
+        self.table
+            .store(&self.board, best_move, depth, best_score, value_type, ply);
 
         // node fails low
-        alpha
+        best_score
     }
 
-    fn quiescence(&mut self, mut alpha: Evaluation, beta: Evaluation, ply: u8) -> Evaluation {
+    fn quiescence(
+        &mut self,
+        mut alpha: Evaluation,
+        beta: Evaluation,
+        ply: u8,
+        stats: &mut SearchStatistics,
+    ) -> Evaluation {
         let evaluation = match self.board.side_to_move() {
             Color::White => board_value(&self.board),
             Color::Black => -board_value(&self.board),
         };
 
-        if evaluation > alpha {
-            alpha = evaluation;
-
-            if evaluation >= beta {
-                return beta;
-            }
-        }
-
-        let side_to_move = self.board.side_to_move();
-
         let mut moves = self.board.generate_moves();
         if moves.is_empty() {
             return if self.board.checkers() != BitBoard::EMPTY {
-                match side_to_move {
-                    Color::White => Evaluation::new_mate_eval(!side_to_move, ply),
-                    Color::Black => -Evaluation::new_mate_eval(!side_to_move, ply),
-                }
+                Evaluation::mated_in(ply)
             } else {
                 Evaluation(0)
             };
+        }
+
+        if evaluation >= beta {
+            return evaluation;
+        }
+
+        if evaluation > alpha {
+            alpha = evaluation;
         }
 
         moves.retain(|m| m.is_capture());
@@ -189,24 +206,27 @@ impl<'a> Search<'a> {
             0
         });
 
+        let mut best_value = evaluation;
         for chess_move in moves {
             self.board.apply_move(chess_move);
-            let score = -self.quiescence(-beta, -alpha, ply + 1);
+            stats.nodes += 1;
+            let score = -self.quiescence(-beta, -alpha, ply + 1, stats);
             self.board.undo_move();
 
-            if score > alpha {
-                // PV node
-                alpha = score;
+            if score > best_value {
+                best_value = score;
 
-                if score >= beta {
-                    // node fails high
-                    return beta;
+                if score > alpha {
+                    if score >= beta {
+                        break;
+                    } else {
+                        alpha = score;
+                    }
                 }
             }
         }
 
-        // node fails low
-        alpha
+        best_value
     }
 
     pub fn find_best_move(&mut self, limits: SearchLimits) -> ScoringMove {
@@ -218,7 +238,7 @@ impl<'a> Search<'a> {
 
         let clock = Clock::new(&limits, self.board.game_ply(), self.board.side_to_move());
 
-        for max_depth in 2.. {
+        for max_depth in 1.. {
             if limits.depth != 0 && max_depth > limits.depth {
                 break;
             }
@@ -244,7 +264,7 @@ impl<'a> Search<'a> {
                 break;
             }
 
-            line = self.table.pv_line(&self.board, max_depth);
+            line = self.table.pv_line(&mut self.board, max_depth);
 
             print!("info depth {} ", max_depth);
             if evaluation.is_mate() {
@@ -491,19 +511,27 @@ mod test {
 
         let best_move = search.find_best_move(SearchLimits::new_depth_limit(40));
         eprintln!("eval: {:?}", best_move.evaluation);
-        assert_eq!(best_move.evaluation.is_mate());
+        assert!(best_move.evaluation.is_mate());
     }
 
     #[test]
     fn test_rook_vs_king() {
-        let board = Board::from_str("8/6K1/8/8/8/r6k/8/8 w - - 6 74").unwrap();
+        let mut board = Board::from_str("8/6K1/8/8/8/r6k/8/8 w - - 6 74").unwrap();
         let mut table = TranspositionTable::new();
         let stop = AtomicBool::new(false);
-        let mut search = Search::new(board, &mut table, &stop);
+        let mut search = Search::new(board.clone(), &mut table, &stop);
 
-        let best_move = search.find_best_move(SearchLimits::new_depth_limit(20));
+        let best_move = search.find_best_move(SearchLimits::new_depth_limit(22));
         assert!(best_move.evaluation.is_mate());
         eprintln!("eval: {:?}", best_move.evaluation);
+
+        let line = table.pv_line(&mut board, 21);
+
+        for mov in line {
+            board.apply_move(mov);
+        }
+
+        println!("{}", board);
     }
 
     #[test]

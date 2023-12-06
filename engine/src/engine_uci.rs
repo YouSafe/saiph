@@ -91,7 +91,7 @@ impl EngineUCI {
                 }
 
                 let moves = parts
-                    .map(|move_str| UCIMove::from_str(move_str))
+                    .map(UCIMove::from_str)
                     .collect::<Result<Vec<_>, _>>()
                     .map_err(|_| ParseCommandError::InvalidMove)?;
 

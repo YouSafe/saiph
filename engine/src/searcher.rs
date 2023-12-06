@@ -27,7 +27,7 @@ impl Searcher {
         let table = Arc::new(Mutex::new(TranspositionTable::new()));
         let stop = Arc::new(AtomicBool::new(false));
 
-        let searcher = Searcher {
+        Searcher {
             channel_sender: sender,
             table: table.clone(),
             stop: stop.clone(),
@@ -51,8 +51,7 @@ impl Searcher {
                     }
                 }
             })),
-        };
-        searcher
+        }
     }
 
     pub fn clear_tables(&mut self) {

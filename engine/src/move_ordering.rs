@@ -1,9 +1,17 @@
-use crate::evaluation::raw_piece_value;
-use chess_core::piece::Piece;
+use chess_core::piece::{Piece, NUM_PIECES};
 
-/// Most Valuable Victim - Least Valuable Aggressor
+#[rustfmt::skip]
+const MVV_LVA: [[u8; NUM_PIECES]; NUM_PIECES] = [
+    [15, 14, 13, 12, 11, 10], // victim Pawn
+    [25, 24, 23, 22, 21, 20], // victim Knight
+    [35, 34, 33, 32, 31, 30], // victim Bishop
+    [45, 44, 43, 42, 41, 40], // victim Rook
+    [55, 54, 53, 52, 51, 50], // victim Queen
+    [ 0,  0,  0,  0,  0,  0], // victim King
+];
+
 pub fn mmv_lva(src_piece: Piece, dst_piece: Piece) -> i32 {
-    10 * raw_piece_value(dst_piece) - raw_piece_value(src_piece)
+    MVV_LVA[dst_piece as usize][src_piece as usize] as i32
 }
 
 #[cfg(test)]
