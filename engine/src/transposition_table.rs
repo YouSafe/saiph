@@ -3,7 +3,7 @@ use chess_core::board::Board;
 use chess_core::chess_move::Move;
 use chess_core::movgen::generate_moves;
 
-const TABLE_SIZE: usize = 0x100000 * 4096;
+const TABLE_SIZE: usize = 0x100000 * 64;
 const NUM_TABLE_ENTRIES: usize = TABLE_SIZE / std::mem::size_of::<Entry>();
 
 #[derive(Debug)]

@@ -11,4 +11,15 @@ pub struct SearchLimits {
     pub mate: u8,
 }
 
-impl SearchLimits {}
+impl SearchLimits {
+    pub fn new_depth_limit(depth: u8) -> SearchLimits {
+        SearchLimits {
+            infinite: false,
+            time_left: [Duration::default(); 2],
+            increment: [Duration::default(); 2],
+            move_time: Default::default(),
+            depth,
+            mate: 0,
+        }
+    }
+}
