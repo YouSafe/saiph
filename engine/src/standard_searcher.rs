@@ -1,8 +1,9 @@
 use chess_core::board::Board;
 
+use crate::engine_uci::Printer;
 use crate::search::Search;
 use crate::search_limits::SearchLimits;
-use crate::searcher::Searcher;
+use crate::searcher::{Searcher, StandardPrinter};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
 use std::sync::{mpsc, Arc, Mutex};
@@ -45,7 +46,7 @@ impl Searcher for StandardSearcher {
                         let stop_ref = stop.as_ref();
                         let table_ref = &mut table.lock().unwrap();
 
-                        let mut search = Search::new(board, table_ref, stop_ref);
+                        let mut search = Search::<StandardPrinter>::new(board, table_ref, stop_ref);
 
                         let pick = search.find_best_move(limits);
                         println!("bestmove {}", pick.chess_move.unwrap());

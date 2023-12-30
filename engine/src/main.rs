@@ -1,16 +1,9 @@
 use std::io;
 use std::io::BufRead;
 
-use engine::engine_uci::{EngineUCI, Printer};
+use engine::engine_uci::EngineUCI;
+use engine::searcher::StandardPrinter;
 use engine::standard_searcher::StandardSearcher;
-
-struct StandardPrinter;
-
-impl Printer for StandardPrinter {
-    fn print(s: &str) {
-        println!("{s}");
-    }
-}
 
 fn main() {
     let stdin = io::stdin();

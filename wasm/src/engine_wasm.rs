@@ -53,7 +53,7 @@ impl Searcher for WasmSearcher {
         let stop_ref = self.stop.as_ref();
         let table_ref = &mut self.table.lock().unwrap();
 
-        let mut search = Search::new(board, table_ref, stop_ref);
+        let mut search = Search::<WasmPrinter>::new(board, table_ref, stop_ref);
 
         let pick = search.find_best_move(limits);
         output(format!("bestmove {}", pick.chess_move.unwrap()).as_str());
