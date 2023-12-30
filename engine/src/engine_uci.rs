@@ -1,8 +1,10 @@
+use crate::evaluation::Evaluation;
 use crate::search_limits::SearchLimits;
 use crate::searcher::Searcher;
 use chess_core::board::Board;
 use chess_core::color::Color;
 use chess_core::uci_move::UCIMove;
+use std::marker::PhantomData;
 use std::str::FromStr;
 use std::time::Duration;
 
@@ -16,6 +18,21 @@ enum Command {
     Stop,
 }
 
+enum InfoAttribute {
+    Depth(u8),
+    Time(Duration),
+    Nodes(u64),
+    Pv(Vec<UCIMove>),
+    Score(Evaluation),
+}
+
+enum Response {
+    UciOk,
+    ReadyOk,
+    BestMove(UCIMove),
+    Info(Vec<InfoAttribute>),
+}
+
 #[derive(Debug)]
 enum ParseCommandError {
     MissingParts,
@@ -25,28 +42,34 @@ enum ParseCommandError {
     InvalidNumber,
 }
 
+pub trait Printer {
+    fn print(s: &str);
+}
+
 #[derive(Debug, PartialEq)]
 enum StartingPosition {
     Standard,
     Custom(Board),
 }
 
-pub struct EngineUCI {
+pub struct EngineUCI<S: Searcher, P: Printer> {
     board: Board,
-    searcher: Searcher,
+    searcher: S,
+    _marker: PhantomData<P>,
 }
 
-impl Default for EngineUCI {
+impl<S: Searcher, P: Printer> Default for EngineUCI<S, P> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl EngineUCI {
+impl<S: Searcher, P: Printer> EngineUCI<S, P> {
     pub fn new() -> Self {
         EngineUCI {
-            searcher: Searcher::new(),
+            searcher: S::new(),
             board: Default::default(),
+            _marker: PhantomData,
         }
     }
 
@@ -172,10 +195,10 @@ impl EngineUCI {
     fn process_command(&mut self, command: Command) {
         match command {
             Command::Uci => {
-                println!("uciok");
+                P::print("uciok");
             }
             Command::IsReady => {
-                println!("readyok");
+                P::print("readyok");
             }
             Command::NewGame => {
                 self.searcher.clear_tables();

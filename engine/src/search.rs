@@ -7,8 +7,8 @@ use chess_core::bitboard::BitBoard;
 use chess_core::board::Board;
 use chess_core::chess_move::Move;
 use chess_core::color::Color;
+use instant::Instant;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::Instant;
 
 pub struct SearchStatistics {
     nodes: u64,

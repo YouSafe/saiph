@@ -1,6 +1,6 @@
 use crate::search_limits::SearchLimits;
 use chess_core::color::Color;
-use std::time::{Duration, Instant};
+use instant::{Instant, Duration};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Clock {
