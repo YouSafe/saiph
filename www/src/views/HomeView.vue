@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { Engine } from "@/engine/engine";
+import { ref } from "vue";
 
 import { BoardApi, TheChessboard, type BoardConfig, type SquareKey } from "vue3-chessboard";
 import "vue3-chessboard/style.css";
 
 let engine: Engine | undefined;
 let boardAPI: BoardApi | undefined;
+
+let pgn = ref<string | undefined>(undefined);
 
 const boardConfig: BoardConfig = {
   events: {
@@ -31,6 +34,7 @@ function handleBoardCreated(boardApi: BoardApi) {
 }
 
 function handleMove() {
+  pgn.value = boardAPI?.getPgn();
   const history = boardAPI?.getHistory(true);
   const moves = history?.map((move) => {
     if (typeof move === "object") {
@@ -53,4 +57,6 @@ function handleMove() {
     @move="handleMove"
     player-color="white"
   />
+
+  {{ pgn }}
 </template>
