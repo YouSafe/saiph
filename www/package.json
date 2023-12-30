@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "deploy": "vite build --base=/chess-engine/ && node utils/publish.js",
     "build": "run-p type-check \"build-only {@}\" --",
     "preview": "vite preview",
     "build-only": "vite build",
@@ -19,6 +20,7 @@
     "vue3-chessboard": "^1.3.2"
   },
   "devDependencies": {
+    "gh-pages": "^6.1.1",
     "@rushstack/eslint-patch": "^1.3.3",
     "@tsconfig/node18": "^18.2.2",
     "@types/node": "^18.19.3",
