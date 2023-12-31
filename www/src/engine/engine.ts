@@ -3,6 +3,7 @@ import { type BoardApi, type Promotion, type SquareKey } from "vue3-chessboard";
 export class Engine {
   private worker: Worker;
   private boardApi: BoardApi;
+  public displayEngineMove: boolean = false;
 
   public bestMove: string | null = null;
 
@@ -46,7 +47,27 @@ export class Engine {
           promotion: promotion
         });
       }
-      // this.boardApi.drawMove(orig, dest, "paleBlue");
+      this.showEngineMove();
+    }
+  }
+
+  public toggleDisplayEngineMove() {
+    this.displayEngineMove = !this.displayEngineMove;
+
+    if (!this.displayEngineMove) {
+      this.boardApi.hideMoves();
+    } else {
+      this.showEngineMove();
+    }
+  }
+
+  public showEngineMove() {
+    if (this.bestMove && this.displayEngineMove) {
+      this.boardApi.drawMove(
+        this.bestMove.slice(0, 2) as SquareKey,
+        this.bestMove.slice(2, 4) as SquareKey,
+        "paleBlue"
+      );
     }
   }
 
