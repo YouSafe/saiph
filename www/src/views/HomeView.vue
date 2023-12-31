@@ -57,15 +57,15 @@ function handleMove() {
       player-color="white"
       class="board"
     />
-    <div>
-      <div class="button-group">
-        <button @click="engine?.toggleDisplayEngineMove()">Display Engine Move</button>
-        <button @click="boardAPI?.viewStart()">Start</button>
-        <button @click="boardAPI?.viewPrevious()">Previous Move</button>
-        <button @click="boardAPI?.viewNext()">Next Move</button>
-        <button @click="boardAPI?.stopViewingHistory()">End</button>
-        <a :href="`https://lichess.org/analysis/pgn/${pgn}`"><button>Lichess Analysis</button></a>
-      </div>
+    <div class="button-group">
+      <button @click="engine?.toggleDisplayEngineMove()">Display Engine Move</button>
+      <button @click="boardAPI?.viewStart()">Start</button>
+      <button @click="boardAPI?.viewPrevious()">Previous Move</button>
+      <button @click="boardAPI?.viewNext()">Next Move</button>
+      <button @click="boardAPI?.stopViewingHistory()">End</button>
+      <a :href="`https://lichess.org/analysis/pgn/${pgn}`"><button>Lichess Analysis</button></a>
+    </div>
+    <div class="info">
       <p>FEN: {{ fen }}</p>
       <p>PGN: {{ pgn }}</p>
     </div>
@@ -86,5 +86,8 @@ function handleMove() {
   padding-top: 1em;
   display: flex;
   gap: 0.5em;
+}
+.info {
+  max-width: 32em;
 }
 </style>
