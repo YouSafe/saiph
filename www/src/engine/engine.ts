@@ -1,4 +1,4 @@
-import { type BoardApi, type SquareKey } from "vue3-chessboard";
+import { type BoardApi, type Promotion, type SquareKey } from "vue3-chessboard";
 
 export class Engine {
   private worker: Worker;
@@ -38,10 +38,12 @@ export class Engine {
       this.bestMove = uciStringSplitted[1];
       const orig = this.bestMove.slice(0, 2) as SquareKey;
       const dest = this.bestMove.slice(2, 4) as SquareKey;
+      const promotion = (this.bestMove.slice(4, 5) || undefined) as Promotion | undefined;
       if (this.boardApi.getTurnColor() === "black") {
         this.boardApi.move({
           from: orig,
-          to: dest
+          to: dest,
+          promotion: promotion
         });
       }
       // this.boardApi.drawMove(orig, dest, "paleBlue");
