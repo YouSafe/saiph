@@ -249,7 +249,7 @@ impl<'a, P: Printer> Search<'a, P> {
 
         let clock = Clock::new(&limits, self.board.game_ply(), self.board.side_to_move());
 
-        for max_depth in 1.. {
+        for max_depth in 1..=u8::MAX {
             if limits.depth != 0 && max_depth > limits.depth {
                 break;
             }
