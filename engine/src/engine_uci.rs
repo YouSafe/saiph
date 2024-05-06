@@ -1,4 +1,3 @@
-use crate::evaluation::Evaluation;
 use crate::search_limits::SearchLimits;
 use crate::searcher::Searcher;
 use chess_core::board::Board;
@@ -16,21 +15,6 @@ enum Command {
     Position(StartingPosition, Vec<UCIMove>),
     Go(SearchLimits),
     Stop,
-}
-
-enum InfoAttribute {
-    Depth(u8),
-    Time(Duration),
-    Nodes(u64),
-    Pv(Vec<UCIMove>),
-    Score(Evaluation),
-}
-
-enum Response {
-    UciOk,
-    ReadyOk,
-    BestMove(UCIMove),
-    Info(Vec<InfoAttribute>),
 }
 
 #[derive(Debug)]
