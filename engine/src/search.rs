@@ -617,4 +617,27 @@ mod test {
 
         assert_eq!(board.status(), BoardStatus::Checkmate);
     }
+
+    #[test]
+    fn test_tricky_mate_in_one() {
+        // Position from: https://www.stmintz.com/ccc/index.php?id=123825
+        let board =
+            Board::from_str("8/8/pppppppK/NBBR1NRp/nbbrqnrP/PPPPPPPk/8/Q7 w - - 0 1").unwrap();
+
+        let mut table = TranspositionTable::new();
+        let stop = AtomicBool::new(false);
+        let mut search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
+
+        let best_move = search.find_best_move(SearchLimits::new_depth_limit(2));
+        assert_eq!(
+            best_move.chess_move,
+            Some(Move {
+                from: Square::A1,
+                to: Square::H1,
+                promotion: None,
+                piece: Piece::Queen,
+                flags: MoveFlag::Normal,
+            })
+        );
+    }
 }
