@@ -3,7 +3,6 @@ use crate::searcher::Searcher;
 use chess_core::board::Board;
 use chess_core::color::Color;
 use chess_core::uci_move::UCIMove;
-use std::marker::PhantomData;
 use std::str::FromStr;
 use std::time::Duration;
 
@@ -27,7 +26,7 @@ enum ParseCommandError {
 }
 
 pub trait Printer {
-    fn print(s: &str);
+    fn print(&self, s: &str);
 }
 
 #[derive(Debug, PartialEq)]
@@ -39,21 +38,21 @@ enum StartingPosition {
 pub struct EngineUCI<S: Searcher, P: Printer> {
     board: Board,
     searcher: S,
-    _marker: PhantomData<P>,
+    printer: P,
 }
 
-impl<S: Searcher, P: Printer> Default for EngineUCI<S, P> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+// impl<S: Searcher, P: Printer> Default for EngineUCI<S, P> {
+//     fn default() -> Self {
+//         Self::new(P)
+//     }
+// }
 
 impl<S: Searcher, P: Printer> EngineUCI<S, P> {
-    pub fn new() -> Self {
+    pub fn new(searcher: S, printer: P) -> Self {
         EngineUCI {
-            searcher: S::new(),
+            searcher,
             board: Default::default(),
-            _marker: PhantomData,
+            printer,
         }
     }
 
@@ -179,10 +178,10 @@ impl<S: Searcher, P: Printer> EngineUCI<S, P> {
     fn process_command(&mut self, command: Command) {
         match command {
             Command::Uci => {
-                P::print("uciok");
+                self.printer.print("uciok");
             }
             Command::IsReady => {
-                P::print("readyok");
+                self.printer.print("readyok");
             }
             Command::NewGame => {
                 self.searcher.clear_tables();

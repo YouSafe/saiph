@@ -9,7 +9,17 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-wasm-bindgen = "0.2.89"
+wasm-bindgen = "0.2.92"
+web-sys = { version = "0.3.69", features = [
+    "MessageEvent",
+    "MessageChannel",
+    "MessagePort",
+    "DedicatedWorkerGlobalScope",
+    "Worker",
+    "WorkerOptions",
+    "WorkerType",
+] }
+
 console_error_panic_hook = { version = "0.1.7" }
 chess-core = { path = "../chess-core" }
 engine = { path = "../engine" }

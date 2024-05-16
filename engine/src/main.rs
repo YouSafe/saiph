@@ -9,7 +9,7 @@ fn main() {
     let stdin = io::stdin();
     let mut message = String::new();
 
-    let mut engine = EngineUCI::<StandardSearcher, StandardPrinter>::new();
+    let mut engine = EngineUCI::new(StandardSearcher::new(), StandardPrinter);
 
     while message.trim() != "quit" {
         message.clear();

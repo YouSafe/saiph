@@ -21,8 +21,8 @@ pub struct StandardSearcher {
     main_thread_handle: Option<JoinHandle<()>>,
 }
 
-impl Searcher for StandardSearcher {
-    fn new() -> Self {
+impl StandardSearcher {
+    pub fn new() -> Self {
         let (sender, receiver) = mpsc::channel();
 
         let table = Arc::new(Mutex::new(TranspositionTable::new()));
@@ -45,7 +45,7 @@ impl Searcher for StandardSearcher {
                         let stop_ref = stop.as_ref();
                         let table_ref = &mut table.lock().unwrap();
 
-                        let mut search = Search::<StandardPrinter>::new(board, table_ref, stop_ref);
+                        let mut search = Search::new(board, table_ref, stop_ref, &StandardPrinter);
 
                         let pick = search.find_best_move(limits);
                         println!("bestmove {}", pick.chess_move.unwrap());
@@ -54,7 +54,9 @@ impl Searcher for StandardSearcher {
             })),
         }
     }
+}
 
+impl Searcher for StandardSearcher {
     fn clear_tables(&mut self) {
         self.table.lock().unwrap().clear();
     }

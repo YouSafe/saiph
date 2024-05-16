@@ -3,14 +3,12 @@ use crate::engine_uci::Printer;
 use crate::evaluation::{board_value, Evaluation};
 use crate::move_ordering::mmv_lva;
 use crate::search_limits::SearchLimits;
-use crate::searcher::StandardPrinter;
 use crate::transposition_table::{TranspositionTable, ValueType};
 use chess_core::bitboard::BitBoard;
 use chess_core::board::Board;
 use chess_core::chess_move::Move;
 use chess_core::color::Color;
 use instant::Instant;
-use std::marker::PhantomData;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 pub struct SearchStatistics {
@@ -21,10 +19,8 @@ pub struct Search<'a, P: Printer> {
     board: Board,
     stop: &'a AtomicBool,
     table: &'a mut TranspositionTable,
-    _marker: PhantomData<P>,
+    printer: &'a P,
 }
-
-type StandardSearch<'a> = Search<'a, StandardPrinter>;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct ScoringMove {
@@ -33,12 +29,17 @@ pub struct ScoringMove {
 }
 
 impl<'a, P: Printer> Search<'a, P> {
-    pub fn new(board: Board, table: &'a mut TranspositionTable, stop: &'a AtomicBool) -> Self {
+    pub fn new(
+        board: Board,
+        table: &'a mut TranspositionTable,
+        stop: &'a AtomicBool,
+        printer: &'a P,
+    ) -> Self {
         Search {
             board,
             table,
             stop,
-            _marker: PhantomData,
+            printer,
         }
     }
 
@@ -293,7 +294,7 @@ impl<'a, P: Printer> Search<'a, P> {
                     .join(" ")
             );
 
-            P::print(output.as_str());
+            self.printer.print(output.as_str());
 
             // This leads to unwanted threefold repetitions
             // if evaluation.is_mate() && evaluation.mate_num_ply() >= limits.mate as i8 {
@@ -311,8 +312,9 @@ impl<'a, P: Printer> Search<'a, P> {
 #[cfg(test)]
 mod test {
     use crate::evaluation::Evaluation;
-    use crate::search::{ScoringMove, Search, StandardSearch};
+    use crate::search::{ScoringMove, Search};
     use crate::search_limits::SearchLimits;
+    use crate::searcher::StandardPrinter;
     use crate::transposition_table::TranspositionTable;
     use chess_core::board::{Board, BoardStatus};
     use chess_core::chess_move::{Move, MoveFlag};
@@ -330,7 +332,7 @@ mod test {
         let mut table = TranspositionTable::new();
         let stop = AtomicBool::new(false);
 
-        let mut search = StandardSearch::new(board, &mut table, &stop);
+        let mut search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
         let limits = SearchLimits {
             infinite: false,
             time_left: [Duration::from_secs(1); 2],
@@ -360,7 +362,7 @@ mod test {
         let mut table = TranspositionTable::new();
         let stop = AtomicBool::new(false);
 
-        let mut search = StandardSearch::new(board, &mut table, &stop);
+        let mut search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
         let best_move = search.find_best_move(SearchLimits::new_depth_limit(2));
         assert_eq!(
             best_move.chess_move,
@@ -383,7 +385,7 @@ mod test {
         let mut table = TranspositionTable::new();
         let stop = AtomicBool::new(false);
 
-        let mut search = StandardSearch::new(board, &mut table, &stop);
+        let mut search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
         let best_move = search.find_best_move(SearchLimits::new_depth_limit(2));
         assert_eq!(
             best_move.chess_move,
@@ -404,7 +406,7 @@ mod test {
 
         let mut table = TranspositionTable::new();
         let stop = AtomicBool::new(false);
-        let mut search = StandardSearch::new(board, &mut table, &stop);
+        let mut search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
 
         let best_move = search.find_best_move(SearchLimits::new_depth_limit(2));
         assert_eq!(
@@ -426,7 +428,7 @@ mod test {
 
         let mut table = TranspositionTable::new();
         let stop = AtomicBool::new(false);
-        let mut search = StandardSearch::new(board, &mut table, &stop);
+        let mut search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
 
         let best_move = search.find_best_move(SearchLimits::new_depth_limit(2));
         assert_eq!(
@@ -447,7 +449,7 @@ mod test {
 
         let mut table = TranspositionTable::new();
         let stop = AtomicBool::new(false);
-        let mut search = StandardSearch::new(board, &mut table, &stop);
+        let mut search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
 
         let best_move = search.find_best_move(SearchLimits::new_depth_limit(2));
         assert_eq!(
@@ -468,7 +470,7 @@ mod test {
 
         let mut table = TranspositionTable::new();
         let stop = AtomicBool::new(false);
-        let mut search = StandardSearch::new(board.clone(), &mut table, &stop);
+        let mut search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
 
         let best_move = search.find_best_move(SearchLimits::new_depth_limit(2));
         board.apply_move(best_move.chess_move.unwrap());
@@ -480,7 +482,7 @@ mod test {
         let mut board = Board::from_str("1r6/8/8/8/8/8/2k5/K7 w - - 0 1").unwrap();
         let mut table = TranspositionTable::new();
         let stop = AtomicBool::new(false);
-        let mut search = StandardSearch::new(board.clone(), &mut table, &stop);
+        let mut search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
 
         let whites_move = search.find_best_move(SearchLimits::new_depth_limit(3));
         assert_eq!(
@@ -497,7 +499,7 @@ mod test {
             }
         );
         board.apply_move(whites_move.chess_move.unwrap());
-        let mut search = StandardSearch::new(board.clone(), &mut table, &stop);
+        let mut search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
         let black_move = search.find_best_move(SearchLimits::new_depth_limit(3));
         assert_eq!(
             black_move,
@@ -523,7 +525,7 @@ mod test {
         // let board = Board::from_str("8/8/5K2/8/8/4r2k/8/8 w - - 0 71").unwrap();
         let mut table = TranspositionTable::new();
         let stop = AtomicBool::new(false);
-        let mut search = StandardSearch::new(board, &mut table, &stop);
+        let mut search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
 
         let best_move = search.find_best_move(SearchLimits::new_depth_limit(40));
         eprintln!("eval: {:?}", best_move.evaluation);
@@ -535,7 +537,7 @@ mod test {
         let mut board = Board::from_str("8/6K1/8/8/8/r6k/8/8 w - - 6 74").unwrap();
         let mut table = TranspositionTable::new();
         let stop = AtomicBool::new(false);
-        let mut search = StandardSearch::new(board.clone(), &mut table, &stop);
+        let mut search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
 
         let best_move = search.find_best_move(SearchLimits::new_depth_limit(22));
         assert!(best_move.evaluation.is_mate());
@@ -555,7 +557,8 @@ mod test {
         let board = Board::from_str("8/8/8/1k6/8/1K6/1P6/8 b - - 0 1").unwrap();
         let mut table = TranspositionTable::new();
         let stop = AtomicBool::new(false);
-        let mut search = StandardSearch::new(board, &mut table, &stop);
+
+        let mut search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
 
         let best_move = search.find_best_move(SearchLimits::new_depth_limit(44));
         assert!(best_move.evaluation.is_mate());
@@ -570,7 +573,7 @@ mod test {
         let mut search;
 
         for _ in 0..5 {
-            search = StandardSearch::new(board.clone(), &mut table, &stop);
+            search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
             let best_move = search.find_best_move(SearchLimits::new_depth_limit(7));
             let chess_move = best_move.chess_move;
             board.apply_move(chess_move.unwrap());
@@ -588,7 +591,7 @@ mod test {
         let mut search;
 
         for _ in 0..3 {
-            search = StandardSearch::new(board.clone(), &mut table, &stop);
+            search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
             let best_move = search.find_best_move(SearchLimits::new_depth_limit(4));
             let chess_move = best_move.chess_move;
             board.apply_move(chess_move.unwrap());
@@ -606,7 +609,7 @@ mod test {
         let mut search;
 
         for _ in 0..13 {
-            search = StandardSearch::new(board.clone(), &mut table, &stop);
+            search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
             let best_move = search.find_best_move(SearchLimits::new_depth_limit(14));
             let chess_move = best_move.chess_move;
             board.apply_move(chess_move.unwrap());
