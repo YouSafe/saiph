@@ -10,7 +10,7 @@ use crate::square::Square;
 pub struct BitBoard(pub u64);
 
 impl BitBoard {
-    pub fn get_bit(&self, square: Square) -> bool {
+    pub fn is_set(&self, square: Square) -> bool {
         (self.0 & (1 << square.to_index())) != 0
     }
 
@@ -229,10 +229,10 @@ mod test {
     #[test]
     fn test_get_bit() {
         let bitboard = BitBoard(9223372036854780032);
-        assert!(bitboard.get_bit(Square::H1));
-        assert!(bitboard.get_bit(Square::E2));
-        assert!(bitboard.get_bit(Square::H8));
-        assert!(!bitboard.get_bit(Square::F4))
+        assert!(bitboard.is_set(Square::H1));
+        assert!(bitboard.is_set(Square::E2));
+        assert!(bitboard.is_set(Square::H8));
+        assert!(!bitboard.is_set(Square::F4))
     }
 
     #[test]

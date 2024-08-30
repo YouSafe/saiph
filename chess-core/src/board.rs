@@ -71,12 +71,12 @@ impl Board {
         "rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR w KQkq e6 0 1";
 
     pub fn piece_at(&self, square: Square) -> Option<Piece> {
-        if !self.combined.get_bit(square) {
+        if !self.combined.is_set(square) {
             return None;
         }
 
         for piece in ALL_PIECES {
-            if self.pieces[piece as usize].get_bit(square) {
+            if self.pieces[piece as usize].is_set(square) {
                 return Some(piece);
             }
         }
@@ -84,11 +84,11 @@ impl Board {
     }
 
     pub fn color_at(&self, square: Square) -> Option<Color> {
-        if !self.combined.get_bit(square) {
+        if !self.combined.is_set(square) {
             return None;
         }
 
-        if self.occupancies[Color::White as usize].get_bit(square) {
+        if self.occupancies[Color::White as usize].is_set(square) {
             return Some(Color::White);
         } else {
             return Some(Color::Black);
