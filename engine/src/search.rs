@@ -119,7 +119,7 @@ impl<'a, P: Printer> Search<'a, P> {
         // move ordering
         moves.sort_by_key(|mov| {
             let src_piece = mov.piece;
-            let dst_piece = self.board.piece_on_square(mov.destination());
+            let dst_piece = self.board.piece_at(mov.destination());
 
             if let Some(pv_move) = pv_move {
                 if mov == &pv_move {
@@ -211,7 +211,7 @@ impl<'a, P: Printer> Search<'a, P> {
         moves.retain(|m| m.is_capture());
         moves.sort_by_key(|mov| {
             let src_piece = mov.piece;
-            let dst_piece = self.board.piece_on_square(mov.destination());
+            let dst_piece = self.board.piece_at(mov.destination());
             if let Some(dst_piece) = dst_piece {
                 return -mmv_lva(src_piece, dst_piece);
             }

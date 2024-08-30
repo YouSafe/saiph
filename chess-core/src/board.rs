@@ -70,28 +70,28 @@ impl Board {
     pub const KILLER_POS_FEN: &'static str =
         "rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR w KQkq e6 0 1";
 
-    pub fn piece_on_square(&self, square: Square) -> Option<Piece> {
-        let bitboard = BitBoard::from_square(square);
-        if (self.combined & bitboard) == BitBoard(0) {
-            None
-        } else {
-            for piece in ALL_PIECES {
-                if (self.pieces[piece as usize] & bitboard) != BitBoard(0) {
-                    return Some(piece);
-                }
-            }
-            None
+    pub fn piece_at(&self, square: Square) -> Option<Piece> {
+        if !self.combined.get_bit(square) {
+            return None;
         }
+
+        for piece in ALL_PIECES {
+            if self.pieces[piece as usize].get_bit(square) {
+                return Some(piece);
+            }
+        }
+        unreachable!("combined mask should guard from reaching this point")
     }
 
-    pub fn color_on_square(&self, square: Square) -> Option<Color> {
-        let bitboard = BitBoard::from_square(square);
-        if (self.occupancies[Color::White as usize] & bitboard) != BitBoard(0) {
-            Some(Color::White)
-        } else if (self.occupancies[Color::Black as usize] & bitboard) != BitBoard(0) {
-            Some(Color::Black)
+    pub fn color_at(&self, square: Square) -> Option<Color> {
+        if !self.combined.get_bit(square) {
+            return None;
+        }
+
+        if self.occupancies[Color::White as usize].get_bit(square) {
+            return Some(Color::White);
         } else {
-            None
+            return Some(Color::Black);
         }
     }
 
@@ -155,7 +155,7 @@ impl Board {
         new_state.captured_piece = None;
 
         // get piece at target square before moving
-        let target_piece = self.piece_on_square(mov.to);
+        let target_piece = self.piece_at(mov.to);
 
         // remove piece from from
         self.pieces[mov.piece as usize] ^= mov.from;
@@ -443,8 +443,8 @@ impl fmt::Display for Board {
             write!(f, "{}   ", rank + 1)?;
             for file in 0..8 {
                 let square = Square::from_index(rank * 8 + file);
-                let symbol = if let Some(piece) = self.piece_on_square(square) {
-                    let color = self.color_on_square(square).ok_or(fmt::Error)?;
+                let symbol = if let Some(piece) = self.piece_at(square) {
+                    let color = self.color_at(square).ok_or(fmt::Error)?;
                     piece.to_ascii(color)
                 } else {
                     '.'
@@ -710,17 +710,17 @@ Hash: 	0x4a887e3c9bc2624a
     fn test_fen_parsing() {
         let board = Board::from_str("2r5/8/8/3R4/2P1k3/2K5/8/8 b - - 0 1").unwrap();
 
-        assert_eq!(board.piece_on_square(Square::C3), Some(Piece::King));
-        assert_eq!(board.piece_on_square(Square::E4), Some(Piece::King));
-        assert_eq!(board.piece_on_square(Square::C4), Some(Piece::Pawn));
-        assert_eq!(board.piece_on_square(Square::D5), Some(Piece::Rook));
-        assert_eq!(board.piece_on_square(Square::C8), Some(Piece::Rook));
+        assert_eq!(board.piece_at(Square::C3), Some(Piece::King));
+        assert_eq!(board.piece_at(Square::E4), Some(Piece::King));
+        assert_eq!(board.piece_at(Square::C4), Some(Piece::Pawn));
+        assert_eq!(board.piece_at(Square::D5), Some(Piece::Rook));
+        assert_eq!(board.piece_at(Square::C8), Some(Piece::Rook));
 
-        assert_eq!(board.color_on_square(Square::C3), Some(Color::White));
-        assert_eq!(board.color_on_square(Square::E4), Some(Color::Black));
-        assert_eq!(board.color_on_square(Square::C4), Some(Color::White));
-        assert_eq!(board.color_on_square(Square::D5), Some(Color::White));
-        assert_eq!(board.color_on_square(Square::C8), Some(Color::Black));
+        assert_eq!(board.color_at(Square::C3), Some(Color::White));
+        assert_eq!(board.color_at(Square::E4), Some(Color::Black));
+        assert_eq!(board.color_at(Square::C4), Some(Color::White));
+        assert_eq!(board.color_at(Square::D5), Some(Color::White));
+        assert_eq!(board.color_at(Square::C8), Some(Color::Black));
 
         println!("{board}");
     }

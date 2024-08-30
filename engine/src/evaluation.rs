@@ -109,7 +109,7 @@ pub fn board_value(board: &Board) -> Evaluation {
     let mut result: i32 = 0;
     for piece in ALL_PIECES {
         for square in board.pieces(piece).iter() {
-            result += piece_value(piece, square, board.color_on_square(square).unwrap());
+            result += piece_value(piece, square, board.color_at(square).unwrap());
         }
     }
     Evaluation(result)

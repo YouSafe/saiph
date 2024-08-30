@@ -46,7 +46,7 @@ impl PieceMoveGenerator for SliderMoveGenerator {
         for source in ((bishops | queens) & !pinned).iter() {
             let attacks = get_bishop_attacks(source, combined) & !board.occupancies(side_to_move);
 
-            let source_piece = board.piece_on_square(source).unwrap();
+            let source_piece = board.piece_at(source).unwrap();
 
             // captures
             for target in (attacks & capture_mask).iter() {
@@ -76,7 +76,7 @@ impl PieceMoveGenerator for SliderMoveGenerator {
                 & line(king_square, source)
                 & !board.occupancies(side_to_move);
 
-            let source_piece = board.piece_on_square(source).unwrap();
+            let source_piece = board.piece_at(source).unwrap();
 
             // captures
             for target in (attacks & capture_mask).iter() {
@@ -105,7 +105,7 @@ impl PieceMoveGenerator for SliderMoveGenerator {
         for source in ((rooks | queens) & !pinned).iter() {
             let attacks = get_rook_attacks(source, combined) & !board.occupancies(side_to_move);
 
-            let source_piece = board.piece_on_square(source).unwrap();
+            let source_piece = board.piece_at(source).unwrap();
 
             // captures
             for target in (attacks & capture_mask).iter() {
@@ -135,7 +135,7 @@ impl PieceMoveGenerator for SliderMoveGenerator {
                 & line(king_square, source)
                 & !board.occupancies(side_to_move);
 
-            let source_piece = board.piece_on_square(source).unwrap();
+            let source_piece = board.piece_at(source).unwrap();
 
             // captures
             for target in (attacks & capture_mask).iter() {
