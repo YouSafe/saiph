@@ -15,6 +15,18 @@ pub const NUM_PIECES: usize = 6;
 pub const ALL_PIECES: [Piece; 6] = [Pawn, Knight, Bishop, Rook, Queen, King];
 
 impl Piece {
+    pub fn from_algebraic(letter: char) -> Option<Piece> {
+        match letter {
+            'p' | 'P' => Some(Pawn),
+            'b' | 'B' => Some(Bishop),
+            'n' | 'N' => Some(Knight),
+            'r' | 'R' => Some(Rook),
+            'q' | 'Q' => Some(Queen),
+            'k' | 'K' => Some(King),
+            _ => None,
+        }
+    }
+
     pub fn to_unicode(&self, color: Color) -> char {
         match (color, *self) {
             (Color::White, Pawn) => '♙',

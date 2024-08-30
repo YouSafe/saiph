@@ -471,98 +471,96 @@ impl fmt::Display for Board {
 
 #[derive(Debug)]
 pub enum ParseFenError {
-    PartsMissing,
+    PartMissing(&'static str),
     BadPlacement,
     NoSuchSide,
     BadCastlingRights,
     BadFullMoveNumber,
     BadHalfMoveClock,
     BadEnPassant,
-    TooManyPiecesInRank,
-    InvalidPiece,
+    TooManyFiles,
+    TooManyRanks,
+    InvalidPiece(char),
 }
 
 impl FromStr for Board {
     type Err = ParseFenError;
 
     fn from_str(fen: &str) -> Result<Self, Self::Err> {
-        let parts: Vec<&str> = fen.split(' ').collect();
-        if parts.len() != 6 {
-            return Err(ParseFenError::PartsMissing);
-        }
-
-        let (
-            placement,
-            side_to_move,
-            castling_rights,
-            en_passant_target,
-            halfmove_clock,
-            fullmove_number,
-        ) = (parts[0], parts[1], parts[2], parts[3], parts[4], parts[5]);
-
-        let ranks_str: Vec<&str> = placement.split('/').collect();
-        if ranks_str.len() != 8 {
-            return Err(ParseFenError::BadPlacement);
-        }
+        let mut parts = fen.split(" ");
 
         let mut pieces = [BitBoard(0); NUM_PIECES];
         let mut occupancies = [BitBoard(0); NUM_COLORS];
         let mut combined = BitBoard(0);
 
-        // reverse iterator to start with rank 1
-        for (rank, rank_pieces) in (0u8..).zip(ranks_str.iter().rev()) {
-            let mut file: u8 = 0;
-            for piece_char in rank_pieces.chars() {
-                match piece_char.to_digit(10) {
-                    // blanks
-                    Some(n) => {
-                        file += n as u8;
-                        if file > 8 {
-                            return Err(ParseFenError::TooManyPiecesInRank);
-                        }
+        let piece_placement_data = parts
+            .next()
+            .ok_or(ParseFenError::PartMissing("piece placement data"))?;
+
+        let mut rank: u8 = 7;
+        let mut file: u8 = 0;
+
+        for char in piece_placement_data.chars() {
+            match char {
+                'P' | 'N' | 'B' | 'R' | 'Q' | 'K' | 'p' | 'n' | 'b' | 'r' | 'q' | 'k' => {
+                    let square = Square::from_index(rank * 8 + file);
+                    let piece =
+                        Piece::from_algebraic(char).ok_or(ParseFenError::InvalidPiece(char))?;
+
+                    let color = match char.is_uppercase() {
+                        true => Color::White,
+                        false => Color::Black,
+                    };
+
+                    pieces[piece as usize] |= square;
+                    occupancies[color as usize] |= square;
+                    combined |= square;
+
+                    file += 1;
+                    if file > 8 {
+                        return Err(ParseFenError::TooManyFiles);
                     }
-                    // piece
-                    None => {
-                        let color = if piece_char.is_uppercase() {
-                            Color::White
-                        } else {
-                            Color::Black
-                        };
+                }
+                '1'..='8' => {
+                    file += char.to_digit(10).unwrap() as u8;
 
-                        let piece = match piece_char.to_ascii_lowercase() {
-                            'p' => Piece::Pawn,
-                            'n' => Piece::Knight,
-                            'b' => Piece::Bishop,
-                            'r' => Piece::Rook,
-                            'q' => Piece::Queen,
-                            'k' => Piece::King,
-                            _ => return Err(ParseFenError::InvalidPiece),
-                        };
-
-                        let square = Square::from_index(rank * 8 + file);
-
-                        // place piece
-                        pieces[piece as usize] |= square;
-                        occupancies[color as usize] |= square;
-                        combined |= square;
-
-                        file += 1;
+                    if file > 8 {
+                        return Err(ParseFenError::TooManyFiles);
                     }
+                }
+                '/' => {
+                    if rank == 0 {
+                        return Err(ParseFenError::TooManyRanks);
+                    }
+
+                    rank -= 1;
+                    file = 0;
+                }
+                _ => {
+                    return Err(ParseFenError::BadPlacement);
                 }
             }
         }
 
-        let side_to_move = match side_to_move {
-            "w" => Ok(Color::White),
-            "b" => Ok(Color::Black),
-            _ => Err(ParseFenError::NoSuchSide),
-        }?;
+        let side_to_move = match parts
+            .next()
+            .ok_or(ParseFenError::PartMissing("active color"))?
+        {
+            "w" => Color::White,
+            "b" => Color::Black,
+            _ => return Err(ParseFenError::NoSuchSide),
+        };
 
-        let castling_rights = castling_rights
+        let castling_rights = parts
+            .next()
+            .ok_or(ParseFenError::PartMissing("castling rights"))?
             .parse::<CastlingRights>()
             .map_err(|_| ParseFenError::BadCastlingRights)?;
 
-        let en_passant_target = match en_passant_target {
+        let en_passant_target = match parts
+            .next()
+            .ok_or(ParseFenError::PartMissing("en passant target"))?
+        {
             "-" => None,
             target => Some(
                 target
@@ -571,11 +569,15 @@ impl FromStr for Board {
             ),
         };
 
-        let halfmove_clock = halfmove_clock
+        let halfmove_clock = parts
+            .next()
+            .ok_or(ParseFenError::PartMissing("halfmove clock"))?
             .parse::<u8>()
             .map_err(|_| ParseFenError::BadHalfMoveClock)?;
 
-        let fullmove_number = fullmove_number
+        let fullmove_number = parts
+            .next()
+            .ok_or(ParseFenError::PartMissing("fullmove number"))?
             .parse::<u16>()
             .map_err(|_| ParseFenError::BadFullMoveNumber)?;
 
