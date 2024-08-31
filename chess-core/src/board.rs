@@ -89,9 +89,9 @@ impl Board {
         }
 
         if self.occupancies[Color::White as usize].is_set(square) {
-            return Some(Color::White);
+            Some(Color::White)
         } else {
-            return Some(Color::Black);
+            Some(Color::Black)
         }
     }
 
