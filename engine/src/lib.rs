@@ -8,5 +8,6 @@ pub mod search_limits;
 pub mod searcher;
 pub mod transposition_table;
 
+pub mod pv_table;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod standard_searcher;

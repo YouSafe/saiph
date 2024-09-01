@@ -111,7 +111,7 @@ impl<S: Searcher, P: Printer> EngineUCI<S, P> {
                 let mut increment: [Duration; 2] = Default::default();
                 let mut moves_to_go: Option<u8> = None;
                 let mut nodes: Option<u64> = None;
-                let mut infinite = false;
+                let mut infinite = true;
 
                 while let Some(token) = parts.next() {
                     match token {
