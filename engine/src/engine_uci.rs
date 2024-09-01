@@ -1,4 +1,4 @@
-use crate::search_limits::SearchLimits;
+use crate::search_limits::{SearchLimits, TimeLimits};
 use crate::searcher::Searcher;
 use chess_core::board::Board;
 use chess_core::color::Color;
@@ -104,19 +104,19 @@ impl<S: Searcher, P: Printer> EngineUCI<S, P> {
                 Command::Position(starting_pos, moves)
             }
             "go" => {
-                let mut limits = SearchLimits {
-                    infinite: false,
-                    time_left: [Duration::default(); 2],
-                    increment: [Duration::default(); 2],
-                    move_time: Duration::default(),
-                    depth: 0,
-                    mate: 0,
-                };
+                let mut depth: Option<u8> = None;
+                let mut mate: Option<u8> = None;
+                let mut time_left: [Duration; 2] = Default::default();
+                let mut move_time: Option<Duration> = None;
+                let mut increment: [Duration; 2] = Default::default();
+                let mut moves_to_go: Option<u8> = None;
+                let mut nodes: Option<u64> = None;
+                let mut infinite = false;
 
                 while let Some(token) = parts.next() {
                     match token {
                         "infinite" => {
-                            limits.infinite = true;
+                            infinite = true;
                         }
                         "wtime" | "btime" | "winc" | "binc" | "movetime" => {
                             let param = parts
@@ -125,46 +125,62 @@ impl<S: Searcher, P: Printer> EngineUCI<S, P> {
                                 .parse()
                                 .map_err(|_| ParseCommandError::InvalidNumber)?;
 
+                            let param = Duration::from_millis(param);
+
                             match token {
-                                "wtime" => {
-                                    limits.time_left[Color::White as usize] =
-                                        Duration::from_millis(param)
-                                }
-                                "btime" => {
-                                    limits.time_left[Color::Black as usize] =
-                                        Duration::from_millis(param)
-                                }
-                                "winc" => {
-                                    limits.increment[Color::White as usize] =
-                                        Duration::from_millis(param)
-                                }
-                                "binc" => {
-                                    limits.increment[Color::Black as usize] =
-                                        Duration::from_millis(param)
-                                }
-                                "movetime" => limits.move_time = Duration::from_millis(param),
-                                _ => (),
+                                "wtime" => time_left[Color::White as usize] = param,
+                                "btime" => time_left[Color::Black as usize] = param,
+                                "winc" => increment[Color::White as usize] = param,
+                                "binc" => increment[Color::Black as usize] = param,
+                                "movetime" => move_time = Some(param),
+                                _ => unreachable!(),
                             }
                         }
-                        "depth" => {
+                        "depth" | "mate" | "moves_to_go" => {
                             let param = parts
                                 .next()
                                 .ok_or(ParseCommandError::MissingParts)?
                                 .parse()
                                 .map_err(|_| ParseCommandError::InvalidNumber)?;
-                            limits.depth = param
+
+                            match token {
+                                "depth" => depth = Some(param),
+                                "mate" => mate = Some(param),
+                                "moves_to_go" => moves_to_go = Some(param),
+                                _ => unreachable!(),
+                            }
                         }
-                        "mate" => {
+                        "nodes" => {
                             let param = parts
                                 .next()
                                 .ok_or(ParseCommandError::MissingParts)?
                                 .parse()
                                 .map_err(|_| ParseCommandError::InvalidNumber)?;
-                            limits.mate = param
+
+                            nodes = Some(param);
                         }
                         _ => {}
                     }
                 }
+
+                let time = if infinite {
+                    TimeLimits::Infinite
+                } else if let Some(move_time) = move_time {
+                    TimeLimits::Fixed { move_time }
+                } else {
+                    TimeLimits::Dynamic {
+                        time_left,
+                        increment,
+                    }
+                };
+
+                let limits = SearchLimits {
+                    time,
+                    depth,
+                    mate,
+                    nodes,
+                    moves_to_go,
+                };
 
                 Command::Go(limits)
             }
