@@ -111,7 +111,7 @@ impl<S: Searcher, P: Printer> EngineUCI<S, P> {
                 let mut increment: [Duration; 2] = Default::default();
                 let mut moves_to_go: Option<u8> = None;
                 let mut nodes: Option<u64> = None;
-                let mut infinite = true;
+                let mut infinite = false;
 
                 while let Some(token) = parts.next() {
                     match token {
@@ -167,11 +167,13 @@ impl<S: Searcher, P: Printer> EngineUCI<S, P> {
                     TimeLimits::Infinite
                 } else if let Some(move_time) = move_time {
                     TimeLimits::Fixed { move_time }
-                } else {
+                } else if !time_left.contains(&Duration::default()) {
                     TimeLimits::Dynamic {
                         time_left,
                         increment,
                     }
+                } else {
+                    TimeLimits::Infinite
                 };
 
                 let limits = SearchLimits {
