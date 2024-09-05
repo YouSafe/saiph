@@ -308,7 +308,7 @@ impl Board {
             let potentially_pinned = between(square, king_square) & self.combined();
             if potentially_pinned.is_empty() {
                 checkers |= square;
-            } else if potentially_pinned.popcnt() == 1 {
+            } else if potentially_pinned.count() == 1 {
                 pinned |= potentially_pinned;
                 pinners |= potential_pinners;
             }

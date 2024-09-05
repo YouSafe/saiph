@@ -81,7 +81,7 @@ pub fn calculate_pinned_checkers_pinners(board: &PartialBoard) -> (BitBoard, Bit
         let potentially_pinned = between(square, king_square) & board.combined();
         if potentially_pinned.is_empty() {
             checkers |= square;
-        } else if potentially_pinned.popcnt() == 1 {
+        } else if potentially_pinned.count() == 1 {
             pinned |= potentially_pinned;
             pinners |= potential_pinners;
         }
@@ -116,7 +116,7 @@ pub fn generate_moves(board: &Board) -> MoveList {
     let mut move_list = MoveList::new();
 
     let checkers = board.checkers();
-    if checkers.popcnt() == 0 {
+    if checkers.count() == 0 {
         QuietPawnMoveGenerator::generate::<NotInCheck>(board, &mut move_list);
         PawnCaptureMoveGenerator::generate::<NotInCheck>(board, &mut move_list);
         EnPassantMoveGenerator::generate::<NotInCheck>(board, &mut move_list);
@@ -127,7 +127,7 @@ pub fn generate_moves(board: &Board) -> MoveList {
 
         CastlingMoveGenerator::generate::<NotInCheck>(board, &mut move_list);
         KingMoveGenerator::generate::<NotInCheck>(board, &mut move_list);
-    } else if checkers.popcnt() == 1 {
+    } else if checkers.count() == 1 {
         // a single check can be evaded by capturing the checker
 
         QuietPawnMoveGenerator::generate::<InCheck>(board, &mut move_list);

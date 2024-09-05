@@ -10,7 +10,7 @@ pub const fn generate_slider_attacks() -> [BitBoard; SLIDER_ATTACK_TABLE_SIZE] {
         // bishop attacks
         {
             let magic = &BISHOP_MAGICS[square];
-            let index = magic.mask.0;
+            let index = magic.mask;
             let mut occupancy: u64 = 0;
             loop {
                 let attack = mask_bishop_attacks_on_the_fly_const(square as i8, occupancy);
@@ -25,7 +25,7 @@ pub const fn generate_slider_attacks() -> [BitBoard; SLIDER_ATTACK_TABLE_SIZE] {
         // rook attacks
         {
             let magic = &ROOK_MAGICS[square];
-            let index = magic.mask.0;
+            let index = magic.mask;
             let mut occupancy: u64 = 0;
             loop {
                 let attack = mask_rook_attacks_on_the_fly_const(square as i8, occupancy);

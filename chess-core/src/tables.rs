@@ -28,13 +28,13 @@ static SLIDER_ATTACKS: [BitBoard; SLIDER_ATTACK_TABLE_SIZE] = generate_slider_at
 
 pub fn get_bishop_attacks(square: Square, blockers: BitBoard) -> BitBoard {
     let magic = &BISHOP_MAGICS[square as usize];
-    let magic_index = (((blockers & magic.mask) * magic.magic).0 >> (64 - 9)) + magic.offset;
+    let magic_index = ((blockers.0 & magic.mask).wrapping_mul(magic.magic) >> (64 - 9)) + magic.offset;
     SLIDER_ATTACKS[magic_index as usize]
 }
 
 pub fn get_rook_attacks(square: Square, blockers: BitBoard) -> BitBoard {
     let magic = &ROOK_MAGICS[square as usize];
-    let magic_index = (((blockers & magic.mask) * magic.magic).0 >> (64 - 12)) + magic.offset;
+    let magic_index = ((blockers.0 & magic.mask).wrapping_mul(magic.magic) >> (64 - 12)) + magic.offset;
     SLIDER_ATTACKS[magic_index as usize]
 }
 

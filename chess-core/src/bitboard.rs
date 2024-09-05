@@ -22,7 +22,7 @@ impl BitBoard {
         BitBoard(1 << square.to_index())
     }
 
-    pub const fn popcnt(&self) -> u8 {
+    pub const fn count(&self) -> u8 {
         self.0.count_ones() as u8
     }
 
@@ -30,11 +30,6 @@ impl BitBoard {
         Square::from_index(self.0.trailing_zeros() as u8)
     }
 
-    pub fn iter(&self) -> BitBoardIterator {
-        BitBoardIterator(*self)
-    }
-
-    #[inline]
     pub const fn shift(self, offset: i32) -> BitBoard {
         BitBoard(if offset >= 0 {
             self.0 << offset
@@ -44,6 +39,11 @@ impl BitBoard {
             0
         })
     }
+
+    pub fn iter(&self) -> BitBoardIterator {
+        BitBoardIterator(*self)
+    }
+
 
     pub const EMPTY: BitBoard = BitBoard(0);
 
@@ -88,6 +88,22 @@ impl fmt::Display for BitBoard {
         }
 
         write!(f, "\n\nBitboard: {}", self.0)
+    }
+}
+
+pub struct BitBoardIterator(BitBoard);
+
+impl Iterator for BitBoardIterator {
+    type Item = Square;
+
+    fn next(&mut self) -> Option<Square> {
+        if self.0.is_empty() {
+            None
+        } else {
+            let square = self.0.bit_scan();
+            self.0 ^= square;
+            Some(square)
+        }
     }
 }
 
@@ -176,14 +192,6 @@ impl Not for BitBoard {
     }
 }
 
-impl Mul<u64> for BitBoard {
-    type Output = BitBoard;
-
-    fn mul(self, rhs: u64) -> Self::Output {
-        BitBoard(self.0.wrapping_mul(rhs))
-    }
-}
-
 impl BitOrAssign<Square> for BitBoard {
     fn bitor_assign(&mut self, rhs: Square) {
         self.0 |= 1 << rhs as u64;
@@ -196,21 +204,7 @@ impl BitXorAssign<Square> for BitBoard {
     }
 }
 
-pub struct BitBoardIterator(BitBoard);
 
-impl Iterator for BitBoardIterator {
-    type Item = Square;
-
-    fn next(&mut self) -> Option<Square> {
-        if self.0.is_empty() {
-            None
-        } else {
-            let square = self.0.bit_scan();
-            self.0 ^= square;
-            Some(square)
-        }
-    }
-}
 
 #[cfg(test)]
 mod test {
