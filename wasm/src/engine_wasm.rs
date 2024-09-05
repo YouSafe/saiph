@@ -131,7 +131,7 @@ impl WasmSearcher {
                                         Search::new(board, table_ref, stop_ref, &searcher_printer);
 
                                     let pick = search.find_best_move(limits);
-                                    if let Some(bestmove) = pick.chess_move {
+                                    if let Some(bestmove) = pick {
                                         searcher_printer
                                             .print(format!("bestmove {}", bestmove).as_str());
                                     }

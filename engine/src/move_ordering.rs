@@ -10,7 +10,7 @@ const MVV_LVA: [[u8; NUM_PIECES]; NUM_PIECES] = [
     [ 0,  0,  0,  0,  0,  0], // victim King
 ];
 
-pub fn mmv_lva(src_piece: Piece, dst_piece: Piece) -> i32 {
+pub(crate) fn mmv_lva(src_piece: Piece, dst_piece: Piece) -> i32 {
     MVV_LVA[dst_piece as usize][src_piece as usize] as i32
 }
 

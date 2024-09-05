@@ -18,6 +18,8 @@ fn main() {
             .read_line(&mut message)
             .expect("failed to read line");
 
-        engine.receive_command(message.trim());
+        if !message.is_empty() {
+            engine.receive_command(message.trim());
+        }
     }
 }

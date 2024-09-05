@@ -1,9 +1,10 @@
-use crate::clock::Clock;
+use crate::clock::{self, Clock};
 use crate::engine_uci::Printer;
 use crate::evaluation::{board_value, Evaluation};
 use crate::move_ordering::mmv_lva;
+use crate::pv_table::{self, PrincipleVariationTable};
 use crate::search_limits::SearchLimits;
-use crate::transposition_table::{TranspositionTable, ValueType};
+use crate::transposition_table::{Entry, TranspositionTable, ValueType};
 use chess_core::bitboard::BitBoard;
 use chess_core::board::Board;
 use chess_core::chess_move::Move;
@@ -18,14 +19,10 @@ pub struct SearchStatistics {
 pub struct Search<'a, P: Printer> {
     board: Board,
     stop: &'a AtomicBool,
+    local_stop: bool,
     table: &'a mut TranspositionTable,
+    pv_table: PrincipleVariationTable,
     printer: &'a P,
-}
-
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub struct ScoringMove {
-    pub evaluation: Evaluation,
-    pub chess_move: Option<Move>,
 }
 
 impl<'a, P: Printer> Search<'a, P> {
@@ -40,11 +37,13 @@ impl<'a, P: Printer> Search<'a, P> {
             table,
             stop,
             printer,
+            pv_table: PrincipleVariationTable::new(),
+            local_stop: false,
         }
     }
 
-    /// Fail-hard variation of negamax search
-    fn negamax_search(
+    /// Fail soft variant of negamax search
+    fn negamax_search<const PV: bool, const ROOT: bool>(
         &mut self,
         clock: &Clock,
         mut alpha: Evaluation,
@@ -53,51 +52,22 @@ impl<'a, P: Printer> Search<'a, P> {
         ply: u8,
         stats: &mut SearchStatistics,
     ) -> Evaluation {
-        assert!(alpha < beta);
-        let old_alpha = alpha;
+        self.pv_table.clear(ply as usize);
 
-        if let Some(optimum) = clock.optimum {
-            if optimum < Instant::now() && (stats.nodes & 4095) == 0 {
-                self.stop.store(true, Ordering::SeqCst);
-                return Evaluation(0);
-            }
+        if self.should_interrupt(clock, stats.nodes) {
+            return Evaluation::INVALID;
         }
 
-        if ply > 0 {
-            if self.board.is_repetition() {
-                return Evaluation(0);
+        if !ROOT {
+            if self.board.is_repetition() || self.board.is_draw_by_fifty_move_rule() {
+                return Evaluation::EQUALITY;
             }
 
             alpha = alpha.max(Evaluation::mated_in(ply));
             beta = beta.min(Evaluation::mate_in(ply + 1));
+
             if alpha >= beta {
                 return alpha;
-            }
-        }
-
-        if ply > 0 {
-            if let Some(entry) = self.table.probe(&self.board) {
-                if entry.depth >= depth {
-                    let corrected_value = if entry.value.is_mate() {
-                        entry.value.tt_to_score(ply)
-                    } else {
-                        entry.value
-                    };
-
-                    match entry.value_type {
-                        ValueType::Exact => return corrected_value,
-                        ValueType::Alpha => {
-                            beta = beta.min(corrected_value);
-                        }
-                        ValueType::Beta => {
-                            alpha = alpha.max(corrected_value);
-                        }
-                    }
-
-                    if alpha >= beta {
-                        return corrected_value;
-                    }
-                }
             }
         }
 
@@ -105,77 +75,76 @@ impl<'a, P: Printer> Search<'a, P> {
             return self.quiescence(alpha, beta, ply, stats);
         }
 
-        let mut moves = self.board.generate_moves();
-        if moves.is_empty() {
-            return if self.board.checkers() != BitBoard::EMPTY {
-                Evaluation::mated_in(ply)
-            } else {
-                Evaluation(0)
-            };
+        stats.nodes += 1;
+
+        let entry = self.table.probe(&self.board, ply);
+        if let Some(entry) = &entry {
+            if !PV && entry.depth >= depth && tt_cutoff(entry, alpha, beta) {
+                return entry.value;
+            }
         }
 
-        let pv_move = self.table.probe_pv(&self.board);
+        let mut moves = self.board.generate_moves();
+        if moves.is_empty() {
+            if !self.board.checkers().is_empty() {
+                return Evaluation::mated_in(ply);
+            } else {
+                return Evaluation::EQUALITY;
+            }
+        }
 
-        // move ordering
+        let original_alpha = alpha;
+        let mut best_score = Evaluation::MIN;
+        let mut best_move = None;
+
         moves.sort_by_key(|mov| {
-            let src_piece = mov.piece;
-            let dst_piece = self.board.piece_at(mov.destination());
-
-            if let Some(pv_move) = pv_move {
-                if mov == &pv_move {
-                    return -20000;
+            if let Some(entry) = &entry {
+                if let Some(tt_move) = &entry.best_move {
+                    if tt_move == mov {
+                        return -200000;
+                    }
                 }
             }
 
+            let src_piece = mov.piece;
+            let dst_piece = self.board.piece_at(mov.destination());
             if let Some(dst_piece) = dst_piece {
                 return -mmv_lva(src_piece, dst_piece);
             }
             0
         });
 
-        let mut best_score = Evaluation::MIN;
-        let mut best_move = None;
-
         for chess_move in moves {
             self.board.apply_move(chess_move);
-            stats.nodes += 1;
-
-            let score = -self.negamax_search(clock, -beta, -alpha, depth - 1, ply + 1, stats);
+            let score =
+                -self.negamax_search::<PV, false>(clock, -beta, -alpha, depth - 1, ply + 1, stats);
             self.board.undo_move();
 
-            if self.stop.load(Ordering::SeqCst) {
-                return Evaluation(0);
+            if self.local_stop {
+                return Evaluation::INVALID;
             }
 
             if score > best_score {
                 best_score = score;
+                best_move = Some(chess_move);
 
                 if score > alpha {
-                    best_move = Some(chess_move);
+                    alpha = score;
 
-                    // update pv later
-
-                    if score >= beta {
-                        break;
-                    } else {
-                        alpha = score;
-                    }
+                    self.pv_table.update(ply as usize, chess_move);
                 }
+            }
+
+            if alpha >= beta {
+                break;
             }
         }
 
-        let value_type = if best_score >= beta {
-            ValueType::Beta
-        } else if best_score > old_alpha {
-            ValueType::Exact
-        } else {
-            ValueType::Alpha
-        };
+        let value_type = get_value_type(best_score, original_alpha, beta);
 
         self.table
             .store(&self.board, best_move, depth, best_score, value_type, ply);
 
-        // node fails low
         best_score
     }
 
@@ -186,29 +155,31 @@ impl<'a, P: Printer> Search<'a, P> {
         ply: u8,
         stats: &mut SearchStatistics,
     ) -> Evaluation {
+        stats.nodes += 1;
+
+        let mut moves = self.board.generate_moves();
+        if moves.is_empty() {
+            if !self.board.checkers().is_empty() {
+                return Evaluation::mated_in(ply);
+            } else {
+                return Evaluation::EQUALITY;
+            }
+        }
+
         let evaluation = match self.board.side_to_move() {
             Color::White => board_value(&self.board),
             Color::Black => -board_value(&self.board),
         };
 
-        let mut moves = self.board.generate_moves();
-        if moves.is_empty() {
-            return if self.board.checkers() != BitBoard::EMPTY {
-                Evaluation::mated_in(ply)
-            } else {
-                Evaluation(0)
-            };
-        }
 
-        if evaluation >= beta {
+        alpha = alpha.max(evaluation);
+
+        if alpha >= beta {
             return evaluation;
         }
 
-        if evaluation > alpha {
-            alpha = evaluation;
-        }
-
         moves.retain(|m| m.is_capture());
+
         moves.sort_by_key(|mov| {
             let src_piece = mov.piece;
             let dst_piece = self.board.piece_at(mov.destination());
@@ -218,77 +189,67 @@ impl<'a, P: Printer> Search<'a, P> {
             0
         });
 
-        let mut best_value = evaluation;
+        let mut best_score = evaluation;
         for chess_move in moves {
             self.board.apply_move(chess_move);
-            stats.nodes += 1;
             let score = -self.quiescence(-beta, -alpha, ply + 1, stats);
             self.board.undo_move();
 
-            if score > best_value {
-                best_value = score;
-
+            if score > best_score {
+                best_score = score;
                 if score > alpha {
-                    if score >= beta {
-                        break;
-                    } else {
-                        alpha = score;
-                    }
+                    alpha = score;
                 }
+            }
+
+            if alpha >= beta {
+                break;
+            }
+        }
+        best_score
+    }
+
+    fn should_interrupt(&mut self, clock: &Clock, nodes: u64) -> bool {
+        if nodes & 4095 == 0 {
+            return self.local_stop;
+        }
+
+        if self.stop.load(Ordering::Relaxed) {
+            self.local_stop = true;
+        } else if let Some(maximum) = clock.maximum {
+            if maximum < Instant::now() {
+                self.local_stop = true;
             }
         }
 
-        best_value
+        self.local_stop
     }
 
-    pub fn find_best_move(&mut self, limits: SearchLimits) -> ScoringMove {
-        self.table.age();
-
-        let mut evaluation = Evaluation(0);
-        let mut line = vec![];
-        let mut stats = SearchStatistics { nodes: 0 };
-
+    pub fn find_best_move(&mut self, limits: SearchLimits) -> Option<Move> {
+        let mut evaluation;
         let clock = Clock::new(&limits, self.board.game_ply(), self.board.side_to_move());
 
-        for max_depth in 1..=u8::MAX {
-            if let Some(depth) = limits.depth {
-                if max_depth > depth {
-                    break;
-                }
-            }
+        let mut stats = SearchStatistics { nodes: 0 };
 
-            evaluation = self.negamax_search(
+        for depth in 1..u8::MAX {
+            evaluation = self.negamax_search::<true, true>(
                 &clock,
                 Evaluation::MIN,
                 Evaluation::MAX,
-                max_depth,
+                depth,
                 0,
                 &mut stats,
             );
 
-            if let Some(mate) = limits.mate {
-                if evaluation.is_mate() && evaluation.mate_num_ply() < mate as i8 {
-                    break;
-                }
-            }
-            //
-            // // the eval negamax returns is from the point of view of the current side to play
-            // // however, for me it's so much more intuitive when the eval is from the point of view
-            // // of the white player
-            // if self.board.side_to_move() == Color::Black {
-            //     evaluation = -evaluation;
-            // }
-
-            if self.stop.load(Ordering::SeqCst) {
-                eprintln!("stop search");
+            if self.local_stop {
                 break;
             }
 
-            line = self.table.pv_line(&mut self.board, max_depth);
+            let line = self.pv_table.variation();
 
             let output = format!(
                 "info depth {} score {} time {} nodes {} pv {}",
-                max_depth,
+                depth,
                 if evaluation.is_mate() {
                     format!("mate {}", evaluation.mate_full_moves())
                 } else {
@@ -297,364 +258,384 @@ impl<'a, P: Printer> Search<'a, P> {
                 clock.start.elapsed().as_millis(),
                 stats.nodes,
                 line.iter()
-                    .map(|mov| mov.to_string())
+                    .filter_map(|mov| mov.map(|mov| mov.to_string()))
                     .collect::<Vec<_>>()
                     .join(" ")
             );
 
             self.printer.print(output.as_str());
 
-            // This leads to unwanted threefold repetitions
-            // if evaluation.is_mate() && evaluation.mate_num_ply() >= limits.mate as i8 {
-            //     break;
-            // }
+            if depth >= limits.depth.unwrap_or(u8::MAX) {
+                break;
+            }
+
+            if let Some(optimum) = clock.optimum {
+                if optimum < Instant::now() {
+                    break;
+                }
+            }
         }
 
-        ScoringMove {
-            evaluation,
-            chess_move: line.get(0).cloned(),
-        }
+        self.pv_table.best_move()
     }
 }
 
-#[cfg(test)]
-mod test {
-    use crate::evaluation::Evaluation;
-    use crate::search::{ScoringMove, Search};
-    use crate::search_limits::{SearchLimits, TimeLimits};
-    use crate::searcher::StandardPrinter;
-    use crate::transposition_table::TranspositionTable;
-    use chess_core::board::{Board, BoardStatus};
-    use chess_core::chess_move::{Move, MoveFlag};
-    use chess_core::color::Color;
-    use chess_core::piece::Piece;
-    use chess_core::square::Square;
-    use std::str::FromStr;
-    use std::sync::atomic::AtomicBool;
-    use std::time::Duration;
-
-    struct TestingSetup {
-        table: TranspositionTable,
-        stop: AtomicBool,
+fn get_value_type(score: Evaluation, alpha: Evaluation, beta: Evaluation) -> ValueType {
+    if score <= alpha {
+        ValueType::Upperbound
+    } else if score >= beta {
+        ValueType::Lowerbound
+    } else {
+        ValueType::Exact
     }
-
-    impl TestingSetup {
-        fn new() -> Self {
-            let table = TranspositionTable::new();
-            let stop = AtomicBool::new(false);
-
-            Self { table, stop }
-        }
-
-        fn search(&mut self, fen: &str, limits: SearchLimits, expected_best_move: Move) {
-            let board = Board::from_str(&fen).unwrap();
-            let mut search = Search::new(board, &mut self.table, &self.stop, &StandardPrinter);
-            self.stop.store(false, std::sync::atomic::Ordering::SeqCst);
-
-            let best_move = search.find_best_move(limits).chess_move.unwrap();
-            assert_eq!(best_move, expected_best_move);
-        }
-    }
-
-    #[test]
-    fn take_white_queen() {
-        TestingSetup::new().search(
-            "8/1kQ5/8/8/8/8/8/7K b - - 0 1",
-            SearchLimits {
-                time: TimeLimits::Fixed {
-                    move_time: Duration::from_secs(1),
-                },
-                depth: Some(2),
-                ..Default::default()
-            },
-            Move {
-                from: Square::B7,
-                to: Square::C7,
-                promotion: None,
-                piece: Piece::King,
-                flags: MoveFlag::Capture,
-            },
-        );
-    }
-
-    #[test]
-    fn mate_in_one() {
-        TestingSetup::new().search(
-            "8/8/8/8/8/6q1/7r/K6k b - - 6 4",
-            SearchLimits {
-                mate: Some(1),
-                ..Default::default()
-            },
-            Move {
-                from: Square::G3,
-                to: Square::E1,
-                promotion: None,
-                piece: Piece::Queen,
-                flags: MoveFlag::Normal,
-            },
-        );
-    }
-
-    //     #[test]
-    //     fn back_rank_mate_white() {
-    //         let board = Board::from_str("3r3k/8/8/8/8/8/5PPP/6K1 b - - 0 1").unwrap();
-
-    //         let mut table = TranspositionTable::new();
-    //         let stop = AtomicBool::new(false);
-
-    //         let mut search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
-    //         let best_move = search.find_best_move(SearchLimits::new_depth_limit(2));
-    //         assert_eq!(
-    //             best_move.chess_move,
-    //             Some(Move {
-    //                 from: Square::D8,
-    //                 to: Square::D1,
-    //                 promotion: None,
-    //                 piece: Piece::Rook,
-    //                 flags: MoveFlag::Normal,
-    //             })
-    //         );
-    //         println!("{}", best_move.evaluation);
-    //     }
-
-    //     #[test]
-    //     fn back_rank_mate_black() {
-    //         let board = Board::from_str("6k1/5ppp/8/8/8/8/8/K2R4 w - - 0 1").unwrap();
-
-    //         let mut table = TranspositionTable::new();
-    //         let stop = AtomicBool::new(false);
-    //         let mut search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
-
-    //         let best_move = search.find_best_move(SearchLimits::new_depth_limit(2));
-    //         assert_eq!(
-    //             best_move.chess_move,
-    //             Some(Move {
-    //                 from: Square::D1,
-    //                 to: Square::D8,
-    //                 promotion: None,
-    //                 piece: Piece::Rook,
-    //                 flags: MoveFlag::Normal,
-    //             })
-    //         );
-    //         println!("{}", best_move.evaluation);
-    //     }
-
-    //     #[test]
-    //     fn mate_in_one_queen_rook() {
-    //         let board = Board::from_str("1Q3q1k/p5pp/8/2p2P2/P1B2P1P/6K1/R7/8 w - - 4 41").unwrap();
-
-    //         let mut table = TranspositionTable::new();
-    //         let stop = AtomicBool::new(false);
-    //         let mut search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
-
-    //         let best_move = search.find_best_move(SearchLimits::new_depth_limit(2));
-    //         assert_eq!(
-    //             best_move.chess_move,
-    //             Some(Move {
-    //                 from: Square::B8,
-    //                 to: Square::F8,
-    //                 promotion: None,
-    //                 piece: Piece::Queen,
-    //                 flags: MoveFlag::Capture,
-    //             })
-    //         )
-    //     }
-
-    //     #[test]
-    //     fn mate_in_one_corner() {
-    //         let board = Board::from_str("5rk1/7p/3R2p1/3p4/7P/5pP1/5P1K/5q2 b - - 4 39").unwrap();
-
-    //         let mut table = TranspositionTable::new();
-    //         let stop = AtomicBool::new(false);
-    //         let mut search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
-
-    //         let best_move = search.find_best_move(SearchLimits::new_depth_limit(2));
-    //         assert_eq!(
-    //             best_move.chess_move,
-    //             Some(Move {
-    //                 from: Square::F1,
-    //                 to: Square::G2,
-    //                 promotion: None,
-    //                 piece: Piece::Queen,
-    //                 flags: MoveFlag::Normal,
-    //             })
-    //         );
-    //     }
-
-    //     #[test]
-    //     fn mate_in_one_two_queens() {
-    //         let mut board = Board::from_str("8/1K6/6k1/r7/8/2q5/8/3q4 b - - 1 56").unwrap();
-
-    //         let mut table = TranspositionTable::new();
-    //         let stop = AtomicBool::new(false);
-    //         let mut search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
-
-    //         let best_move = search.find_best_move(SearchLimits::new_depth_limit(2));
-    //         board.apply_move(best_move.chess_move.unwrap());
-    //         assert_eq!(board.status(), BoardStatus::Checkmate);
-    //     }
-
-    //     #[test]
-    //     fn mate_in_two_ply() {
-    //         let mut board = Board::from_str("1r6/8/8/8/8/8/2k5/K7 w - - 0 1").unwrap();
-    //         let mut table = TranspositionTable::new();
-    //         let stop = AtomicBool::new(false);
-    //         let mut search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
-
-    //         let whites_move = search.find_best_move(SearchLimits::new_depth_limit(3));
-    //         assert_eq!(
-    //             whites_move,
-    //             ScoringMove {
-    //                 evaluation: Evaluation::new_mate_eval(Color::Black, 2),
-    //                 chess_move: Some(Move {
-    //                     from: Square::A1,
-    //                     to: Square::A2,
-    //                     promotion: None,
-    //                     piece: Piece::King,
-    //                     flags: MoveFlag::Normal,
-    //                 })
-    //             }
-    //         );
-    //         board.apply_move(whites_move.chess_move.unwrap());
-    //         let mut search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
-    //         let black_move = search.find_best_move(SearchLimits::new_depth_limit(3));
-    //         assert_eq!(
-    //             black_move,
-    //             ScoringMove {
-    //                 evaluation: Evaluation::new_mate_eval(Color::White, 1),
-    //                 chess_move: Some(Move {
-    //                     from: Square::B8,
-    //                     to: Square::A8,
-    //                     promotion: None,
-    //                     piece: Piece::Rook,
-    //                     flags: MoveFlag::Normal,
-    //                 })
-    //             }
-    //         );
-    //         board.apply_move(black_move.chess_move.unwrap());
-    //         assert_eq!(board.status(), BoardStatus::Checkmate);
-    //     }
-
-    //     #[test]
-    //     fn test_deep_mate() {
-    //         // let mut board = Board::from_str("8/8/p7/K7/8/8/2k5/1R6 w - - 10 67").unwrap();
-    //         let board = Board::from_str("6r1/5K2/8/8/7k/7P/8/8 b - - 10 67").unwrap();
-    //         // let board = Board::from_str("8/8/5K2/8/8/4r2k/8/8 w - - 0 71").unwrap();
-    //         let mut table = TranspositionTable::new();
-    //         let stop = AtomicBool::new(false);
-    //         let mut search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
-
-    //         let best_move = search.find_best_move(SearchLimits::new_depth_limit(40));
-    //         eprintln!("eval: {:?}", best_move.evaluation);
-    //         assert!(best_move.evaluation.is_mate());
-    //     }
-
-    //     #[test]
-    //     fn test_rook_vs_king() {
-    //         let mut board = Board::from_str("8/6K1/8/8/8/r6k/8/8 w - - 6 74").unwrap();
-    //         let mut table = TranspositionTable::new();
-    //         let stop = AtomicBool::new(false);
-    //         let mut search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
-
-    //         let best_move = search.find_best_move(SearchLimits::new_depth_limit(22));
-    //         assert!(best_move.evaluation.is_mate());
-    //         eprintln!("eval: {:?}", best_move.evaluation);
-
-    //         let line = table.pv_line(&mut board, 21);
-
-    //         for mov in line {
-    //             board.apply_move(mov);
-    //         }
-
-    //         println!("{}", board);
-    //     }
-
-    //     #[test]
-    //     fn test_pawn_vs_king() {
-    //         let board = Board::from_str("8/8/8/1k6/8/1K6/1P6/8 b - - 0 1").unwrap();
-    //         let mut table = TranspositionTable::new();
-    //         let stop = AtomicBool::new(false);
-
-    //         let mut search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
-
-    //         let best_move = search.find_best_move(SearchLimits::new_depth_limit(44));
-    //         assert!(best_move.evaluation.is_mate());
-    //         eprintln!("eval: {:?}", best_move.evaluation);
-    //     }
-
-    //     #[test]
-    //     fn test_mate_in_three() {
-    //         let mut board = Board::from_str("8/8/3k4/7R/6Q1/8/8/7K w - - 0 1").unwrap();
-    //         let mut table = TranspositionTable::new();
-    //         let stop = AtomicBool::new(false);
-    //         let mut search;
-
-    //         for _ in 0..5 {
-    //             search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
-    //             let best_move = search.find_best_move(SearchLimits::new_depth_limit(7));
-    //             let chess_move = best_move.chess_move;
-    //             board.apply_move(chess_move.unwrap());
-    //         }
-    //         assert_eq!(board.status(), BoardStatus::Checkmate);
-    //     }
-
-    //     #[test]
-    //     fn test_mate_in_two() {
-    //         let mut board = Board::from_str("8/3k4/7R/6Q1/8/8/8/7K w - - 0 1").unwrap();
-
-    //         let mut table = TranspositionTable::new();
-    //         let stop = AtomicBool::new(false);
-
-    //         let mut search;
-
-    //         for _ in 0..3 {
-    //             search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
-    //             let best_move = search.find_best_move(SearchLimits::new_depth_limit(4));
-    //             let chess_move = best_move.chess_move;
-    //             board.apply_move(chess_move.unwrap());
-    //         }
-    //         assert_eq!(board.status(), BoardStatus::Checkmate);
-    //     }
-
-    //     #[test]
-    //     fn test_mate_in_seven() {
-    //         let mut board = Board::from_str("7k/8/1K2PPPP/8/B7/8/4pppp/8 w - - 0 1").unwrap();
-
-    //         let mut table = TranspositionTable::new();
-    //         let stop = AtomicBool::new(false);
-
-    //         let mut search;
-
-    //         for _ in 0..13 {
-    //             search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
-    //             let best_move = search.find_best_move(SearchLimits::new_depth_limit(14));
-    //             let chess_move = best_move.chess_move;
-    //             board.apply_move(chess_move.unwrap());
-    //         }
-
-    //         assert_eq!(board.status(), BoardStatus::Checkmate);
-    //     }
-
-    //     #[test]
-    //     fn test_tricky_mate_in_one() {
-    //         // Position from: https://www.stmintz.com/ccc/index.php?id=123825
-    //         let board =
-    //             Board::from_str("8/8/pppppppK/NBBR1NRp/nbbrqnrP/PPPPPPPk/8/Q7 w - - 0 1").unwrap();
-
-    //         let mut table = TranspositionTable::new();
-    //         let stop = AtomicBool::new(false);
-    //         let mut search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
-
-    //         let best_move = search.find_best_move(SearchLimits::new_depth_limit(2));
-    //         assert_eq!(
-    //             best_move.chess_move,
-    //             Some(Move {
-    //                 from: Square::A1,
-    //                 to: Square::H1,
-    //                 promotion: None,
-    //                 piece: Piece::Queen,
-    //                 flags: MoveFlag::Normal,
-    //             })
-    //         );
-    //     }
 }
+
+fn tt_cutoff(entry: &Entry, alpha: Evaluation, beta: Evaluation) -> bool {
+    match entry.value_type {
+        ValueType::Exact => true,
+        ValueType::Lowerbound => entry.value >= beta,
+        ValueType::Upperbound => entry.value <= alpha,
+    }
+}
+
+// #[cfg(test)]
+// mod test {
+//     use crate::evaluation::Evaluation;
+//     use crate::search::{ScoringMove, Search};
+//     use crate::search_limits::{SearchLimits, TimeLimits};
+//     use crate::searcher::StandardPrinter;
+//     use crate::transposition_table::TranspositionTable;
+//     use chess_core::board::{Board, BoardStatus};
+//     use chess_core::chess_move::{Move, MoveFlag};
+//     use chess_core::color::Color;
+//     use chess_core::piece::Piece;
+//     use chess_core::square::Square;
+//     use std::str::FromStr;
+//     use std::sync::atomic::AtomicBool;
+//     use std::time::Duration;
+//
+//     struct TestingSetup {
+//         table: TranspositionTable,
+//         stop: AtomicBool,
+//     }
+//
+//     impl TestingSetup {
+//         fn new() -> Self {
+//             let table = TranspositionTable::new();
+//             let stop = AtomicBool::new(false);
+//
+//             Self { table, stop }
+//         }
+//
+//         fn search(&mut self, fen: &str, limits: SearchLimits, expected_best_move: Move) {
+//             let board = Board::from_str(&fen).unwrap();
+//             let mut search = Search::new(board, &mut self.table, &self.stop, &StandardPrinter);
+//             self.stop.store(false, std::sync::atomic::Ordering::SeqCst);
+//
+//             let best_move = search.find_best_move(limits).chess_move.unwrap();
+//             assert_eq!(best_move, expected_best_move);
+//         }
+//     }
+//
+//     #[test]
+//     fn take_white_queen() {
+//         TestingSetup::new().search(
+//             "8/1kQ5/8/8/8/8/8/7K b - - 0 1",
+//             SearchLimits {
+//                 time: TimeLimits::Fixed {
+//                     move_time: Duration::from_secs(1),
+//                 },
+//                 depth: Some(2),
+//                 ..Default::default()
+//             },
+//             Move {
+//                 from: Square::B7,
+//                 to: Square::C7,
+//                 promotion: None,
+//                 piece: Piece::King,
+//                 flags: MoveFlag::Capture,
+//             },
+//         );
+//     }
+//
+//     #[test]
+//     fn mate_in_one() {
+//         TestingSetup::new().search(
+//             "8/8/8/8/8/6q1/7r/K6k b - - 6 4",
+//             SearchLimits {
+//                 mate: Some(1),
+//                 ..Default::default()
+//             },
+//             Move {
+//                 from: Square::G3,
+//                 to: Square::E1,
+//                 promotion: None,
+//                 piece: Piece::Queen,
+//                 flags: MoveFlag::Normal,
+//             },
+//         );
+//     }
+//
+//     //     #[test]
+//     //     fn back_rank_mate_white() {
+//     //         let board = Board::from_str("3r3k/8/8/8/8/8/5PPP/6K1 b - - 0 1").unwrap();
+//
+//     //         let mut table = TranspositionTable::new();
+//     //         let stop = AtomicBool::new(false);
+//
+//     //         let mut search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
+//     //         let best_move = search.find_best_move(SearchLimits::new_depth_limit(2));
+//     //         assert_eq!(
+//     //             best_move.chess_move,
+//     //             Some(Move {
+//     //                 from: Square::D8,
+//     //                 to: Square::D1,
+//     //                 promotion: None,
+//     //                 piece: Piece::Rook,
+//     //                 flags: MoveFlag::Normal,
+//     //             })
+//     //         );
+//     //         println!("{}", best_move.evaluation);
+//     //     }
+//
+//     //     #[test]
+//     //     fn back_rank_mate_black() {
+//     //         let board = Board::from_str("6k1/5ppp/8/8/8/8/8/K2R4 w - - 0 1").unwrap();
+//
+//     //         let mut table = TranspositionTable::new();
+//     //         let stop = AtomicBool::new(false);
+//     //         let mut search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
+//
+//     //         let best_move = search.find_best_move(SearchLimits::new_depth_limit(2));
+//     //         assert_eq!(
+//     //             best_move.chess_move,
+//     //             Some(Move {
+//     //                 from: Square::D1,
+//     //                 to: Square::D8,
+//     //                 promotion: None,
+//     //                 piece: Piece::Rook,
+//     //                 flags: MoveFlag::Normal,
+//     //             })
+//     //         );
+//     //         println!("{}", best_move.evaluation);
+//     //     }
+//
+//     //     #[test]
+//     //     fn mate_in_one_queen_rook() {
+//     //         let board = Board::from_str("1Q3q1k/p5pp/8/2p2P2/P1B2P1P/6K1/R7/8 w - - 4 41").unwrap();
+//
+//     //         let mut table = TranspositionTable::new();
+//     //         let stop = AtomicBool::new(false);
+//     //         let mut search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
+//
+//     //         let best_move = search.find_best_move(SearchLimits::new_depth_limit(2));
+//     //         assert_eq!(
+//     //             best_move.chess_move,
+//     //             Some(Move {
+//     //                 from: Square::B8,
+//     //                 to: Square::F8,
+//     //                 promotion: None,
+//     //                 piece: Piece::Queen,
+//     //                 flags: MoveFlag::Capture,
+//     //             })
+//     //         )
+//     //     }
+//
+//     //     #[test]
+//     //     fn mate_in_one_corner() {
+//     //         let board = Board::from_str("5rk1/7p/3R2p1/3p4/7P/5pP1/5P1K/5q2 b - - 4 39").unwrap();
+//
+//     //         let mut table = TranspositionTable::new();
+//     //         let stop = AtomicBool::new(false);
+//     //         let mut search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
+//
+//     //         let best_move = search.find_best_move(SearchLimits::new_depth_limit(2));
+//     //         assert_eq!(
+//     //             best_move.chess_move,
+//     //             Some(Move {
+//     //                 from: Square::F1,
+//     //                 to: Square::G2,
+//     //                 promotion: None,
+//     //                 piece: Piece::Queen,
+//     //                 flags: MoveFlag::Normal,
+//     //             })
+//     //         );
+//     //     }
+//
+//     //     #[test]
+//     //     fn mate_in_one_two_queens() {
+//     //         let mut board = Board::from_str("8/1K6/6k1/r7/8/2q5/8/3q4 b - - 1 56").unwrap();
+//
+//     //         let mut table = TranspositionTable::new();
+//     //         let stop = AtomicBool::new(false);
+//     //         let mut search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
+//
+//     //         let best_move = search.find_best_move(SearchLimits::new_depth_limit(2));
+//     //         board.apply_move(best_move.chess_move.unwrap());
+//     //         assert_eq!(board.status(), BoardStatus::Checkmate);
+//     //     }
+//
+//     //     #[test]
+//     //     fn mate_in_two_ply() {
+//     //         let mut board = Board::from_str("1r6/8/8/8/8/8/2k5/K7 w - - 0 1").unwrap();
+//     //         let mut table = TranspositionTable::new();
+//     //         let stop = AtomicBool::new(false);
+//     //         let mut search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
+//
+//     //         let whites_move = search.find_best_move(SearchLimits::new_depth_limit(3));
+//     //         assert_eq!(
+//     //             whites_move,
+//     //             ScoringMove {
+//     //                 evaluation: Evaluation::new_mate_eval(Color::Black, 2),
+//     //                 chess_move: Some(Move {
+//     //                     from: Square::A1,
+//     //                     to: Square::A2,
+//     //                     promotion: None,
+//     //                     piece: Piece::King,
+//     //                     flags: MoveFlag::Normal,
+//     //                 })
+//     //             }
+//     //         );
+//     //         board.apply_move(whites_move.chess_move.unwrap());
+//     //         let mut search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
+//     //         let black_move = search.find_best_move(SearchLimits::new_depth_limit(3));
+//     //         assert_eq!(
+//     //             black_move,
+//     //             ScoringMove {
+//     //                 evaluation: Evaluation::new_mate_eval(Color::White, 1),
+//     //                 chess_move: Some(Move {
+//     //                     from: Square::B8,
+//     //                     to: Square::A8,
+//     //                     promotion: None,
+//     //                     piece: Piece::Rook,
+//     //                     flags: MoveFlag::Normal,
+//     //                 })
+//     //             }
+//     //         );
+//     //         board.apply_move(black_move.chess_move.unwrap());
+//     //         assert_eq!(board.status(), BoardStatus::Checkmate);
+//     //     }
+//
+//     //     #[test]
+//     //     fn test_deep_mate() {
+//     //         // let mut board = Board::from_str("8/8/p7/K7/8/8/2k5/1R6 w - - 10 67").unwrap();
+//     //         let board = Board::from_str("6r1/5K2/8/8/7k/7P/8/8 b - - 10 67").unwrap();
+//     //         // let board = Board::from_str("8/8/5K2/8/8/4r2k/8/8 w - - 0 71").unwrap();
+//     //         let mut table = TranspositionTable::new();
+//     //         let stop = AtomicBool::new(false);
+//     //         let mut search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
+//
+//     //         let best_move = search.find_best_move(SearchLimits::new_depth_limit(40));
+//     //         eprintln!("eval: {:?}", best_move.evaluation);
+//     //         assert!(best_move.evaluation.is_mate());
+//     //     }
+//
+//     //     #[test]
+//     //     fn test_rook_vs_king() {
+//     //         let mut board = Board::from_str("8/6K1/8/8/8/r6k/8/8 w - - 6 74").unwrap();
+//     //         let mut table = TranspositionTable::new();
+//     //         let stop = AtomicBool::new(false);
+//     //         let mut search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
+//
+//     //         let best_move = search.find_best_move(SearchLimits::new_depth_limit(22));
+//     //         assert!(best_move.evaluation.is_mate());
+//     //         eprintln!("eval: {:?}", best_move.evaluation);
+//
+//     //         let line = table.pv_line(&mut board, 21);
+//
+//     //         for mov in line {
+//     //             board.apply_move(mov);
+//     //         }
+//
+//     //         println!("{}", board);
+//     //     }
+//
+//     //     #[test]
+//     //     fn test_pawn_vs_king() {
+//     //         let board = Board::from_str("8/8/8/1k6/8/1K6/1P6/8 b - - 0 1").unwrap();
+//     //         let mut table = TranspositionTable::new();
+//     //         let stop = AtomicBool::new(false);
+//
+//     //         let mut search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
+//
+//     //         let best_move = search.find_best_move(SearchLimits::new_depth_limit(44));
+//     //         assert!(best_move.evaluation.is_mate());
+//     //         eprintln!("eval: {:?}", best_move.evaluation);
+//     //     }
+//
+//     //     #[test]
+//     //     fn test_mate_in_three() {
+//     //         let mut board = Board::from_str("8/8/3k4/7R/6Q1/8/8/7K w - - 0 1").unwrap();
+//     //         let mut table = TranspositionTable::new();
+//     //         let stop = AtomicBool::new(false);
+//     //         let mut search;
+//
+//     //         for _ in 0..5 {
+//     //             search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
+//     //             let best_move = search.find_best_move(SearchLimits::new_depth_limit(7));
+//     //             let chess_move = best_move.chess_move;
+//     //             board.apply_move(chess_move.unwrap());
+//     //         }
+//     //         assert_eq!(board.status(), BoardStatus::Checkmate);
+//     //     }
+//
+//     //     #[test]
+//     //     fn test_mate_in_two() {
+//     //         let mut board = Board::from_str("8/3k4/7R/6Q1/8/8/8/7K w - - 0 1").unwrap();
+//
+//     //         let mut table = TranspositionTable::new();
+//     //         let stop = AtomicBool::new(false);
+//
+//     //         let mut search;
+//
+//     //         for _ in 0..3 {
+//     //             search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
+//     //             let best_move = search.find_best_move(SearchLimits::new_depth_limit(4));
+//     //             let chess_move = best_move.chess_move;
+//     //             board.apply_move(chess_move.unwrap());
+//     //         }
+//     //         assert_eq!(board.status(), BoardStatus::Checkmate);
+//     //     }
+//
+//     //     #[test]
+//     //     fn test_mate_in_seven() {
+//     //         let mut board = Board::from_str("7k/8/1K2PPPP/8/B7/8/4pppp/8 w - - 0 1").unwrap();
+//
+//     //         let mut table = TranspositionTable::new();
+//     //         let stop = AtomicBool::new(false);
+//
+//     //         let mut search;
+//
+//     //         for _ in 0..13 {
+//     //             search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
+//     //             let best_move = search.find_best_move(SearchLimits::new_depth_limit(14));
+//     //             let chess_move = best_move.chess_move;
+//     //             board.apply_move(chess_move.unwrap());
+//     //         }
+//
+//     //         assert_eq!(board.status(), BoardStatus::Checkmate);
+//     //     }
+//
+//     //     #[test]
+//     //     fn test_tricky_mate_in_one() {
+//     //         // Position from: https://www.stmintz.com/ccc/index.php?id=123825
+//     //         let board =
+//     //             Board::from_str("8/8/pppppppK/NBBR1NRp/nbbrqnrP/PPPPPPPk/8/Q7 w - - 0 1").unwrap();
+//
+//     //         let mut table = TranspositionTable::new();
+//     //         let stop = AtomicBool::new(false);
+//     //         let mut search = Search::new(board.clone(), &mut table, &stop, &StandardPrinter);
+//
+//     //         let best_move = search.find_best_move(SearchLimits::new_depth_limit(2));
+//     //         assert_eq!(
+//     //             best_move.chess_move,
+//     //             Some(Move {
+//     //                 from: Square::A1,
+//     //                 to: Square::H1,
+//     //                 promotion: None,
+//     //                 piece: Piece::Queen,
+//     //                 flags: MoveFlag::Normal,
+//     //             })
+//     //         );
+//     //     }
+// }

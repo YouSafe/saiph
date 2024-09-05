@@ -28,6 +28,8 @@ mod slider;
 
 pub type MoveList = ArrayVec<Move, 256>;
 
+pub type OrderingList = ArrayVec<i32, 256>;
+
 pub fn generate_attack_bitboard(board: &Board, attacking_color: Color) -> BitBoard {
     let mut attacked = BitBoard(0);
 

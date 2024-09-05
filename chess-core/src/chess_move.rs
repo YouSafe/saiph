@@ -16,7 +16,14 @@ pub enum MoveFlag {
     Castling,
 }
 
+// TODO: model null moves
 // TODO: pack data into a single u32 or even better: u16
+// packable into a single u16:
+// 000  000   00        000000      000000
+// flag piece promotion from_square to_square
+//
+// promotion bits are ignored if promotion bit is not set
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Move {
     pub from: Square,

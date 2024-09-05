@@ -8,7 +8,7 @@ use std::fmt::Formatter;
 use std::ops::Neg;
 
 #[derive(PartialEq, Clone, Copy, Debug, PartialOrd, Ord, Eq)]
-pub struct Evaluation(pub i32);
+pub struct Evaluation(i32);
 
 impl fmt::Display for Evaluation {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -21,8 +21,12 @@ impl fmt::Display for Evaluation {
 }
 
 impl Evaluation {
+    pub const INVALID: Evaluation = Evaluation(0);
+
     pub const MIN: Evaluation = Evaluation(i32::MIN + 1);
     pub const MAX: Evaluation = Evaluation(i32::MAX);
+
+    pub const EQUALITY: Evaluation = Evaluation(0);
 
     // [MIN, ..., -IMMEDIATE_MATE_SCORE, ..., IMMEDIATE_MATE_SCORE + MAX_MATE_DEPTH,
     // ..., SCORE, ...,

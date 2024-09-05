@@ -43,7 +43,7 @@ pub struct Board {
     occupancies: [BitBoard; NUM_COLORS],
     combined: BitBoard,
     side_to_move: Color,
-    pub history: Vec<BoardState>,
+    history: Vec<BoardState>,
     state: BoardState,
     game_ply: u16,
 }
@@ -71,12 +71,12 @@ impl Board {
         "rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR w KQkq e6 0 1";
 
     pub fn piece_at(&self, square: Square) -> Option<Piece> {
-        if !self.combined.is_set(square) {
+        if !self.combined.contains(square) {
             return None;
         }
 
         for piece in ALL_PIECES {
-            if self.pieces[piece as usize].is_set(square) {
+            if self.pieces[piece as usize].contains(square) {
                 return Some(piece);
             }
         }
@@ -84,11 +84,11 @@ impl Board {
     }
 
     pub fn color_at(&self, square: Square) -> Option<Color> {
-        if !self.combined.is_set(square) {
+        if !self.combined.contains(square) {
             return None;
         }
 
-        if self.occupancies[Color::White as usize].is_set(square) {
+        if self.occupancies[Color::White as usize].contains(square) {
             Some(Color::White)
         } else {
             Some(Color::Black)
@@ -419,9 +419,11 @@ impl Board {
     }
 
     pub fn is_repetition(&self) -> bool {
-        let key = self.state.hash;
+        self.history.iter().rev().take(self.state.rule50 as usize).filter(|c| self.state.hash == c.hash).count() >= 1
+    }
 
-        return self.history.iter().filter(|c| key == c.hash).count() >= 1;
+    pub fn is_draw_by_fifty_move_rule(&self) -> bool {
+        self.state.rule50 >= 100
     }
 
     #[inline]
@@ -679,6 +681,7 @@ mod test {
     use crate::color::Color;
     use crate::piece::Piece;
     use crate::square::Square;
+    use crate::uci_move::UCIMove;
 
     #[test]
     fn test_display() {
@@ -723,5 +726,21 @@ Hash: 	0x4a887e3c9bc2624a
         assert_eq!(board.color_at(Square::C8), Some(Color::Black));
 
         println!("{board}");
+    }
+
+    #[test]
+    fn test_repetition_detection() {
+        let mut board = Board::from_str("5K2/8/8/8/8/8/8/5k2 w - - 0 1").unwrap();
+        assert!(!board.is_repetition());
+        board.apply_uci_move(UCIMove::from_str("f8e8").unwrap());
+        assert!(!board.is_repetition());
+        board.apply_uci_move(UCIMove::from_str("f1e1").unwrap());
+        assert!(!board.is_repetition());
+        board.apply_uci_move(UCIMove::from_str("e8f8").unwrap());
+        assert!(!board.is_repetition());
+        board.apply_uci_move(UCIMove::from_str("e1f1").unwrap());
+        assert!(board.is_repetition());
+
+        dbg!(board.state.rule50);
     }
 }

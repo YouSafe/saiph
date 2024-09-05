@@ -41,12 +41,6 @@ pub struct EngineUCI<S: Searcher, P: Printer> {
     printer: P,
 }
 
-// impl<S: Searcher, P: Printer> Default for EngineUCI<S, P> {
-//     fn default() -> Self {
-//         Self::new(P)
-//     }
-// }
-
 impl<S: Searcher, P: Printer> EngineUCI<S, P> {
     pub fn new(searcher: S, printer: P) -> Self {
         EngineUCI {

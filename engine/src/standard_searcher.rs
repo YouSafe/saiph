@@ -48,7 +48,7 @@ impl StandardSearcher {
                         let mut search = Search::new(board, table_ref, stop_ref, &StandardPrinter);
 
                         let pick = search.find_best_move(limits);
-                        println!("bestmove {}", pick.chess_move.unwrap());
+                        println!("bestmove {}", pick.unwrap());
                     }
                 }
             })),

@@ -1,4 +1,6 @@
-use std::fmt::{self, Formatter};
+use std::{
+    fmt::{self, Formatter},
+};
 
 use chess_core::chess_move::Move;
 
@@ -7,7 +9,7 @@ const TABLE_SIZE: usize = (MAX_PLY * (MAX_PLY + 1)) / 2;
 
 type Ply = usize;
 
-/// Trianglular PV Table using a one-dimensional array for the backing datastructure
+/// Triangular PV Table using a one-dimensional array for the backing data structure
 pub struct PrincipleVariationTable {
     inner: [Option<Move>; TABLE_SIZE],
     lengths: [usize; MAX_PLY],
@@ -30,10 +32,12 @@ impl PrincipleVariationTable {
     }
 
     pub fn clear(&mut self, ply: Ply) {
+        assert!(ply < MAX_PLY);
         self.lengths[ply] = 0;
     }
 
     pub fn update(&mut self, ply: Ply, mv: Move) {
+        assert!(ply < MAX_PLY);
         self.inner[index(ply)] = Some(mv);
         self.lengths[ply] = self.lengths[ply + 1] + 1;
 

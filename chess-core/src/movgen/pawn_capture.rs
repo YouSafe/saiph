@@ -27,7 +27,7 @@ impl PieceMoveGenerator for PawnCaptureMoveGenerator {
         }
 
         for source in current_sides_pawns.iter() {
-            let capture_mask = if pinned.is_set(source) {
+            let capture_mask = if pinned.contains(source) {
                 capture_mask & line(king_square, source)
             } else {
                 capture_mask
