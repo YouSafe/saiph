@@ -2,7 +2,6 @@ use std::fmt;
 use std::fmt::Formatter;
 use std::hash::{Hash, Hasher};
 use std::str::FromStr;
-
 use crate::bitboard::BitBoard;
 use crate::castling_rights::{CastlingRights, UPDATE_CASTLING_RIGHT_TABLE};
 use crate::chess_move::Move;
@@ -594,13 +593,15 @@ impl FromStr for Board {
 
         let (pinned, checkers, _) = calculate_pinned_checkers_pinners(&partial_board);
 
+        let hash_key = partial_board.generate_hash_key();
+
         let board = Board {
-            pieces,
-            occupancies,
-            combined,
-            side_to_move,
+            pieces: partial_board.pieces,
+            occupancies: partial_board.occupancies,
+            combined: partial_board.combined,
+            side_to_move: partial_board.side_to_move,
             state: BoardState {
-                hash: partial_board.generate_hash_key(),
+                hash: hash_key,
                 en_passant_target,
                 castling_rights,
                 rule50: halfmove_clock,

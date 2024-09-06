@@ -17,18 +17,18 @@ const fn generate_update_castling_right_table() -> [CastlingRights; 64] {
 
     // updating castling rights works by taking the old castling rights and union them with the
     // entry of this table for the `from` and `to` square
-    let mut result = [CastlingRights::ALL; 64];
+    let mut result = [CastlingRights::all(); 64];
 
     // remove colors castling rights if the corresponding king moves into or away from their square
-    result[Square::E1 as usize] = CastlingRights::ALL.subtract(CastlingRights::WHITE_BOTH_SIDES);
-    result[Square::E8 as usize] = CastlingRights::ALL.subtract(CastlingRights::BLACK_BOTH_SIDES);
+    result[Square::E1 as usize] = CastlingRights::all().subtract(CastlingRights::WHITE_BOTH_SIDES);
+    result[Square::E8 as usize] = CastlingRights::all().subtract(CastlingRights::BLACK_BOTH_SIDES);
 
     // remove castling rights if a piece moves out or into the rook square
-    result[Square::A1 as usize] = CastlingRights::ALL.subtract(CastlingRights::WHITE_QUEEN_SIDE);
-    result[Square::H1 as usize] = CastlingRights::ALL.subtract(CastlingRights::WHITE_KING_SIDE);
+    result[Square::A1 as usize] = CastlingRights::all().subtract(CastlingRights::WHITE_QUEEN_SIDE);
+    result[Square::H1 as usize] = CastlingRights::all().subtract(CastlingRights::WHITE_KING_SIDE);
 
-    result[Square::A8 as usize] = CastlingRights::ALL.subtract(CastlingRights::BLACK_QUEEN_SIDE);
-    result[Square::H8 as usize] = CastlingRights::ALL.subtract(CastlingRights::BLACK_KING_SIDE);
+    result[Square::A8 as usize] = CastlingRights::all().subtract(CastlingRights::BLACK_QUEEN_SIDE);
+    result[Square::H8 as usize] = CastlingRights::all().subtract(CastlingRights::BLACK_KING_SIDE);
 
     result
 }
@@ -41,7 +41,10 @@ impl CastlingRights {
 
     pub const WHITE_BOTH_SIDES: Self = Self(3);
     pub const BLACK_BOTH_SIDES: Self = Self(12);
-    pub const ALL: Self = Self(15);
+
+    pub const fn all() -> CastlingRights {
+        Self (15)
+    }
 
     pub const fn empty() -> CastlingRights {
         Self(0)
@@ -62,7 +65,7 @@ impl CastlingRights {
 
 impl Default for CastlingRights {
     fn default() -> Self {
-        CastlingRights::ALL
+        CastlingRights::all()
     }
 }
 

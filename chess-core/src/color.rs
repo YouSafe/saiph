@@ -1,6 +1,5 @@
 use crate::bitboard::BitBoard;
 use std::ops::Not;
-
 use crate::square::Rank;
 
 #[repr(u8)]

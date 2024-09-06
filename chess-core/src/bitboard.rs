@@ -1,7 +1,7 @@
 use std::fmt;
 use std::fmt::Formatter;
 use std::ops::{
-    BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Mul, Not, Shl, Shr,
+    BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not, Shl, Shr,
 };
 
 use crate::square::Square;

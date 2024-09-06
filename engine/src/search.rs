@@ -1,11 +1,10 @@
-use crate::clock::{self, Clock};
+use crate::clock::Clock;
 use crate::engine_uci::Printer;
 use crate::evaluation::{board_value, Evaluation};
 use crate::move_ordering::mmv_lva;
-use crate::pv_table::{self, PrincipleVariationTable};
+use crate::pv_table::PrincipleVariationTable;
 use crate::search_limits::SearchLimits;
 use crate::transposition_table::{Entry, TranspositionTable, ValueType};
-use chess_core::bitboard::BitBoard;
 use chess_core::board::Board;
 use chess_core::chess_move::Move;
 use chess_core::color::Color;

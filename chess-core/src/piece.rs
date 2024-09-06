@@ -1,6 +1,7 @@
 use crate::color::Color;
 use crate::piece::Piece::{Bishop, King, Knight, Pawn, Queen, Rook};
 
+#[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Piece {
     Pawn,

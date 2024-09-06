@@ -1,23 +1,21 @@
-use std::any::TypeId;
-
 use crate::bitboard::BitBoard;
 use crate::board::Board;
 use crate::chess_move::{Move, MoveFlag};
-use crate::movgen::{CheckState, InCheck, MoveList, PieceMoveGenerator};
+use crate::movgen::{MoveList, PieceMoveGenerator};
 use crate::piece::Piece;
 use crate::tables::{between, get_bishop_attacks, get_rook_attacks, line};
 
 pub struct SliderMoveGenerator;
 
 impl PieceMoveGenerator for SliderMoveGenerator {
-    fn generate<T: CheckState + 'static>(board: &Board, move_list: &mut MoveList) {
+    fn generate<const CHECK: bool>(board: &Board, move_list: &mut MoveList) {
         let mut capture_mask = !BitBoard::EMPTY;
         let mut push_mask = !BitBoard::EMPTY;
 
         let king_square =
             (board.pieces(Piece::King) & board.occupancies(board.side_to_move())).bit_scan();
 
-        if TypeId::of::<T>() == TypeId::of::<InCheck>() {
+        if CHECK {
             let checkers = board.checkers();
             let checker = checkers.bit_scan();
 
@@ -169,7 +167,7 @@ mod test {
     use crate::board::Board;
     use crate::chess_move::{Move, MoveFlag};
     use crate::movgen::slider::SliderMoveGenerator;
-    use crate::movgen::{InCheck, MoveList, NotInCheck, PieceMoveGenerator};
+    use crate::movgen::{MoveList, PieceMoveGenerator};
     use crate::piece::Piece;
     use crate::square::Square;
 
@@ -177,7 +175,7 @@ mod test {
     fn test_move_along_pin_ray() {
         let board = Board::from_str("4k3/8/7b/3P4/8/8/3B4/2K5 w - - 3 2").unwrap();
         let mut move_list = MoveList::new();
-        SliderMoveGenerator::generate::<NotInCheck>(&board, &mut move_list);
+        SliderMoveGenerator::generate::<false>(&board, &mut move_list);
         println!("{:#?}", move_list);
         assert_eq!(move_list.len(), 4);
 
@@ -218,7 +216,7 @@ mod test {
     fn test_pinned_bishop_captures() {
         let board = Board::from_str("8/2p5/3p4/KP5r/1R3b1k/6P1/4P3/8 b - - 0 1").unwrap();
         let mut move_list = MoveList::new();
-        SliderMoveGenerator::generate::<InCheck>(&board, &mut move_list);
+        SliderMoveGenerator::generate::<true>(&board, &mut move_list);
         println!("{:#?}", move_list);
         assert_eq!(move_list.len(), 0);
     }
@@ -227,7 +225,7 @@ mod test {
     fn test_pinned_rook_captures() {
         let board = Board::from_str("8/2p5/3p4/KP5r/1R4rk/6P1/4P3/8 b - - 0 1").unwrap();
         let mut move_list = MoveList::new();
-        SliderMoveGenerator::generate::<InCheck>(&board, &mut move_list);
+        SliderMoveGenerator::generate::<true>(&board, &mut move_list);
         println!("{:#?}", move_list);
         assert_eq!(move_list.len(), 0);
     }
@@ -236,7 +234,7 @@ mod test {
     fn test_pinned_queen_captures() {
         let board = Board::from_str("8/2p5/3p4/KP5r/1R4qk/6P1/4P3/8 b - - 0 1").unwrap();
         let mut move_list = MoveList::new();
-        SliderMoveGenerator::generate::<InCheck>(&board, &mut move_list);
+        SliderMoveGenerator::generate::<true>(&board, &mut move_list);
         println!("{:#?}", move_list);
         assert_eq!(move_list.len(), 0);
     }

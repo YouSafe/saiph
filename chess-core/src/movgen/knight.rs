@@ -1,23 +1,21 @@
-use std::any::TypeId;
-
 use crate::bitboard::BitBoard;
 use crate::board::Board;
 use crate::chess_move::{Move, MoveFlag};
-use crate::movgen::{CheckState, InCheck, MoveList, PieceMoveGenerator};
+use crate::movgen::{MoveList, PieceMoveGenerator};
 use crate::piece::Piece;
 use crate::tables::{between, get_knight_attacks};
 
 pub struct KnightMoveGenerator;
 
 impl PieceMoveGenerator for KnightMoveGenerator {
-    fn generate<T: CheckState + 'static>(board: &Board, move_list: &mut MoveList) {
+    fn generate<const CHECK: bool>(board: &Board, move_list: &mut MoveList) {
         let mut capture_mask = !BitBoard::EMPTY;
         let mut push_mask = !BitBoard::EMPTY;
 
         let king_square =
             (board.pieces(Piece::King) & board.occupancies(board.side_to_move())).bit_scan();
 
-        if TypeId::of::<T>() == TypeId::of::<InCheck>() {
+        if CHECK {
             let checkers = board.checkers();
             let checker = checkers.bit_scan();
 
@@ -71,7 +69,7 @@ mod test {
     use crate::board::Board;
     use crate::chess_move::{Move, MoveFlag};
     use crate::movgen::knight::KnightMoveGenerator;
-    use crate::movgen::{InCheck, MoveList, NotInCheck, PieceMoveGenerator};
+    use crate::movgen::{MoveList, PieceMoveGenerator};
     use crate::piece::Piece;
     use crate::square::Square::*;
 
@@ -79,7 +77,7 @@ mod test {
     fn test_check_evasion() {
         let board = Board::from_str("4k2n/8/6n1/4R3/8/8/8/K7 b - - 0 1").unwrap();
         let mut move_list = MoveList::new();
-        KnightMoveGenerator::generate::<InCheck>(&board, &mut move_list);
+        KnightMoveGenerator::generate::<true>(&board, &mut move_list);
         println!("{:#?}", move_list);
 
         assert_eq!(move_list.len(), 2);
@@ -103,7 +101,7 @@ mod test {
     fn test_self_capture_prevention() {
         let board = Board::from_str("4k2n/8/6n1/8/8/8/8/K7 b - - 0 1").unwrap();
         let mut move_list = MoveList::new();
-        KnightMoveGenerator::generate::<NotInCheck>(&board, &mut move_list);
+        KnightMoveGenerator::generate::<false>(&board, &mut move_list);
         println!("{:#?}", move_list);
         assert!(!move_list.contains(&Move {
             from: G6,
@@ -125,7 +123,7 @@ mod test {
     fn test_pinned_knight_can_not_move() {
         let board = Board::from_str("4k3/8/4n3/8/8/8/8/K3R3 b - - 0 1").unwrap();
         let mut move_list = MoveList::new();
-        KnightMoveGenerator::generate::<NotInCheck>(&board, &mut move_list);
+        KnightMoveGenerator::generate::<false>(&board, &mut move_list);
         println!("{:#?}", move_list);
         assert_eq!(move_list.len(), 0);
     }
@@ -134,7 +132,7 @@ mod test {
     fn test_capture_empty_square() {
         let board = Board::from_str("3pkp2/2p3p1/4n3/2p3p1/3p4/8/8/K7 b - - 0 1").unwrap();
         let mut move_list = MoveList::new();
-        KnightMoveGenerator::generate::<NotInCheck>(&board, &mut move_list);
+        KnightMoveGenerator::generate::<false>(&board, &mut move_list);
         println!("{:#?}", move_list);
         assert_eq!(move_list.len(), 1);
         assert!(move_list.contains(&Move {
@@ -150,7 +148,7 @@ mod test {
     fn test_capture_marked_as_quiet() {
         let board = Board::from_str("3BkB2/2P3P1/4n3/2P3P1/3P4/8/8/K7 b - - 0 1").unwrap();
         let mut move_list = MoveList::new();
-        KnightMoveGenerator::generate::<NotInCheck>(&board, &mut move_list);
+        KnightMoveGenerator::generate::<false>(&board, &mut move_list);
         println!("{:#?}", move_list);
 
         assert_eq!(move_list.len(), 8);

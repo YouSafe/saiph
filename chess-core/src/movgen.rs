@@ -100,16 +100,8 @@ pub fn calculate_pinned_checkers_pinners(board: &PartialBoard) -> (BitBoard, Bit
     (pinned, checkers, pinners)
 }
 
-trait CheckState {}
-
-struct InCheck;
-struct NotInCheck;
-
-impl CheckState for InCheck {}
-impl CheckState for NotInCheck {}
-
 trait PieceMoveGenerator {
-    fn generate<T: CheckState + 'static>(board: &Board, move_list: &mut MoveList);
+    fn generate<const CHECK: bool>(board: &Board, move_list: &mut MoveList);
 }
 
 pub fn generate_moves(board: &Board) -> MoveList {
@@ -117,33 +109,33 @@ pub fn generate_moves(board: &Board) -> MoveList {
 
     let checkers = board.checkers();
     if checkers.count() == 0 {
-        QuietPawnMoveGenerator::generate::<NotInCheck>(board, &mut move_list);
-        PawnCaptureMoveGenerator::generate::<NotInCheck>(board, &mut move_list);
-        EnPassantMoveGenerator::generate::<NotInCheck>(board, &mut move_list);
+        QuietPawnMoveGenerator::generate::<false>(board, &mut move_list);
+        PawnCaptureMoveGenerator::generate::<false>(board, &mut move_list);
+        EnPassantMoveGenerator::generate::<false>(board, &mut move_list);
 
-        KnightMoveGenerator::generate::<NotInCheck>(board, &mut move_list);
+        KnightMoveGenerator::generate::<false>(board, &mut move_list);
 
-        SliderMoveGenerator::generate::<NotInCheck>(board, &mut move_list);
+        SliderMoveGenerator::generate::<false>(board, &mut move_list);
 
-        CastlingMoveGenerator::generate::<NotInCheck>(board, &mut move_list);
-        KingMoveGenerator::generate::<NotInCheck>(board, &mut move_list);
+        CastlingMoveGenerator::generate::<false>(board, &mut move_list);
+        KingMoveGenerator::generate::<false>(board, &mut move_list);
     } else if checkers.count() == 1 {
         // a single check can be evaded by capturing the checker
 
-        QuietPawnMoveGenerator::generate::<InCheck>(board, &mut move_list);
-        PawnCaptureMoveGenerator::generate::<InCheck>(board, &mut move_list);
-        EnPassantMoveGenerator::generate::<InCheck>(board, &mut move_list);
+        QuietPawnMoveGenerator::generate::<true>(board, &mut move_list);
+        PawnCaptureMoveGenerator::generate::<true>(board, &mut move_list);
+        EnPassantMoveGenerator::generate::<true>(board, &mut move_list);
 
-        KnightMoveGenerator::generate::<InCheck>(board, &mut move_list);
+        KnightMoveGenerator::generate::<true>(board, &mut move_list);
 
-        SliderMoveGenerator::generate::<InCheck>(board, &mut move_list);
+        SliderMoveGenerator::generate::<true>(board, &mut move_list);
 
         // castling is not allowed when the king is in check
-        KingMoveGenerator::generate::<InCheck>(board, &mut move_list);
+        KingMoveGenerator::generate::<true>(board, &mut move_list);
     } else {
         // double and more checkers
         // only the king can move
-        KingMoveGenerator::generate::<InCheck>(board, &mut move_list);
+        KingMoveGenerator::generate::<true>(board, &mut move_list);
     }
 
     move_list

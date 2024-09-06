@@ -1,13 +1,13 @@
 use crate::board::Board;
 use crate::chess_move::{Move, MoveFlag};
-use crate::movgen::{generate_attack_bitboard, CheckState, MoveList, PieceMoveGenerator};
+use crate::movgen::{generate_attack_bitboard, MoveList, PieceMoveGenerator};
 use crate::piece::Piece;
 use crate::tables::get_king_attacks;
 
 pub struct KingMoveGenerator;
 
 impl PieceMoveGenerator for KingMoveGenerator {
-    fn generate<T: CheckState + 'static>(board: &Board, move_list: &mut MoveList) {
+    fn generate<const CHECK: bool>(board: &Board, move_list: &mut MoveList) {
         let attacked = generate_attack_bitboard(board, !board.side_to_move());
 
         let mut capture_mask = !attacked;
@@ -56,7 +56,7 @@ mod test {
     use crate::board::Board;
     use crate::chess_move::{Move, MoveFlag};
     use crate::movgen::king::KingMoveGenerator;
-    use crate::movgen::{InCheck, MoveList, PieceMoveGenerator};
+    use crate::movgen::{MoveList, PieceMoveGenerator};
     use crate::piece::Piece;
     use crate::square::Square;
 
@@ -64,7 +64,7 @@ mod test {
     fn test_xray_attack() {
         let board = Board::from_str("8/4k3/8/8/8/4R3/8/K7 b - - 0 1").unwrap();
         let mut move_list = MoveList::new();
-        KingMoveGenerator::generate::<InCheck>(&board, &mut move_list);
+        KingMoveGenerator::generate::<true>(&board, &mut move_list);
         println!("{:#?}", move_list);
 
         assert_eq!(move_list.len(), 6);
@@ -81,7 +81,7 @@ mod test {
     fn test_forced_capture() {
         let board = Board::from_str("6Qk/8/8/8/8/2q5/8/1K6 b - - 0 1").unwrap();
         let mut move_list = MoveList::new();
-        KingMoveGenerator::generate::<InCheck>(&board, &mut move_list);
+        KingMoveGenerator::generate::<true>(&board, &mut move_list);
         println!("{:#?}", move_list);
 
         assert_eq!(move_list.len(), 1);
@@ -98,7 +98,7 @@ mod test {
     fn test_checkmate() {
         let board = Board::from_str("3Q2k1/5ppp/8/8/8/8/5PPP/6K1 b - - 0 1").unwrap();
         let mut move_list = MoveList::new();
-        KingMoveGenerator::generate::<InCheck>(&board, &mut move_list);
+        KingMoveGenerator::generate::<true>(&board, &mut move_list);
         println!("{:#?}", move_list);
 
         assert_eq!(move_list.len(), 0);
