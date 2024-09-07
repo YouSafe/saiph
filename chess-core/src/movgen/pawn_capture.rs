@@ -33,28 +33,31 @@ impl PieceMoveGenerator for PawnCaptureMoveGenerator {
             let attacks = get_pawn_attacks(source, side_to_move)
                 & board.occupancies(!side_to_move)
                 & capture_mask;
-            for target in attacks.iter() {
-                if target.on_promotion_rank(side_to_move) {
-                    // fill in promotion moves
-                    for promotion in ALL_PROMOTIONS {
-                        move_list.push(Move {
-                            from: source,
-                            to: target,
-                            piece: Piece::Pawn,
-                            promotion: Some(promotion),
-                            flags: MoveFlag::Capture,
-                        });
-                    }
-                } else {
-                    // regular pawn capture
+
+            let promotion_rank = BitBoard::mask_rank((!side_to_move).backrank());
+
+            for target in (attacks & promotion_rank).iter() {
+                // fill in promotion moves
+                for promotion in ALL_PROMOTIONS {
                     move_list.push(Move {
                         from: source,
                         to: target,
-                        promotion: None,
                         piece: Piece::Pawn,
+                        promotion: Some(promotion),
                         flags: MoveFlag::Capture,
                     });
                 }
+            }
+
+            for target in (attacks & !promotion_rank).iter() {
+                // regular pawn capture
+                move_list.push(Move {
+                    from: source,
+                    to: target,
+                    promotion: None,
+                    piece: Piece::Pawn,
+                    flags: MoveFlag::Capture,
+                });
             }
         }
     }

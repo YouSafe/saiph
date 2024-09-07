@@ -28,24 +28,29 @@ impl PieceMoveGenerator for QuietPawnMoveGenerator {
 
         // determine source squares that can move:
         // they have to either be not pinned or pinned with the king being on the same file
-        let movable_sources = current_sides_pawns & (!pinned | (pinned & king_square.file_mask()));
+        let movable_sources =
+            current_sides_pawns & (!pinned | (pinned & BitBoard::mask_file(king_square.file())));
+
+        let forward_shift: i32 = 8 - 16 * (side_to_move as i32);
 
         // those sources are then shifted one square forward and any overlaps with existing pieces
         // on the board are removed
-        let single_push = movable_sources.shift(side_to_move.forward_shift()) & !board.combined();
+        let single_push = movable_sources.shift(forward_shift) & !board.combined();
 
         // restrict the single push targets to squares they can actually move to (check evasion)
         let single_push_targets = single_push & push_mask;
 
         // move the already moved squares, remove overlaps and restrict the final target squares to
         // legal squares, respecting checks
-        let double_push_targets = single_push.shift(side_to_move.forward_shift())
+        let double_push_targets = single_push.shift(forward_shift)
             & !board.combined()
-            & side_to_move.double_pawn_push_rank()
+            & BitBoard::mask_rank(side_to_move.double_pawn_push_rank())
             & push_mask;
 
-        let non_promotions = single_push_targets & !(!side_to_move).bankrank_rank();
-        let promotions = single_push_targets & (!side_to_move).bankrank_rank();
+        let promotion_rank = BitBoard::mask_rank((!side_to_move).backrank());
+
+        let non_promotions = single_push_targets & !promotion_rank;
+        let promotions = single_push_targets & promotion_rank;
 
         for target in promotions.iter() {
             let source = target.forward(!side_to_move).unwrap();

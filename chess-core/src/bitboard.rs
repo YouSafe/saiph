@@ -1,10 +1,8 @@
 use std::fmt;
 use std::fmt::Formatter;
-use std::ops::{
-    BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not, Shl, Shr,
-};
+use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not, Shl, Shr};
 
-use crate::square::Square;
+use crate::square::{File, Rank, Square};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct BitBoard(pub u64);
@@ -44,8 +42,18 @@ impl BitBoard {
         BitBoardIterator(*self)
     }
 
+    pub const fn mask_rank(rank: Rank) -> BitBoard {
+        Self::ALL_RANKS[rank as usize]
+    }
+
+    pub const fn mask_file(file: File) -> BitBoard {
+        Self::ALL_FILES[file as usize]
+    }
 
     pub const EMPTY: BitBoard = BitBoard(0);
+
+    pub const ALL_RANKS: [BitBoard; 8] = generate_all_ranks();
+    pub const ALL_FILES: [BitBoard; 8] = generate_all_files();
 
     pub const NOT_1ST_RANK: BitBoard = BitBoard(18446744073709551360);
     pub const NOT_8TH_RANK: BitBoard = BitBoard(72057594037927935);
@@ -54,8 +62,6 @@ impl BitBoard {
     pub const NOT_H_FILE: BitBoard = BitBoard(9187201950435737471);
     pub const NOT_AB_FILE: BitBoard = BitBoard(18229723555195321596);
     pub const NOT_GH_FILE: BitBoard = BitBoard(4557430888798830399);
-
-    pub const ALL_RANKS: [BitBoard; 8] = generate_all_ranks();
 }
 
 const fn generate_all_ranks() -> [BitBoard; 8] {
@@ -66,6 +72,19 @@ const fn generate_all_ranks() -> [BitBoard; 8] {
         result[rank] = BitBoard(0xFF << (8 * rank));
         rank += 1;
     }
+    result
+}
+
+const fn generate_all_files() -> [BitBoard; 8] {
+    let mut result = [BitBoard(0); 8];
+
+    const FILE_A: u64 = 0x01_01_01_01_01_01_01_01;
+    let mut file = 0;
+    while file < 8 {
+        result[file] = BitBoard(FILE_A << file as i32);
+        file += 1;
+    }
+
     result
 }
 
@@ -204,8 +223,6 @@ impl BitXorAssign<Square> for BitBoard {
     }
 }
 
-
-
 #[cfg(test)]
 mod test {
     use crate::bitboard::BitBoard;
@@ -333,5 +350,18 @@ Bitboard: 9223372036854780032";
 
         println!("{}", BitBoard::NOT_8TH_RANK);
         assert_eq!(expected, BitBoard::NOT_8TH_RANK);
+    }
+
+    #[test]
+    fn test_all_files() {
+        for file in 0..8 {
+            let mut expected = BitBoard::EMPTY;
+            for rank in 0..8 {
+                let square = rank * 8 + file;
+                expected |= Square::from_index(square);
+            }
+            println!("file {file}:\n{}", BitBoard::ALL_FILES[file as usize]);
+            assert_eq!(expected, BitBoard::ALL_FILES[file as usize]);
+        }
     }
 }

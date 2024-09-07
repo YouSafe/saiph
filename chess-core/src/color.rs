@@ -1,6 +1,5 @@
-use crate::bitboard::BitBoard;
-use std::ops::Not;
 use crate::square::Rank;
+use std::ops::Not;
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -19,23 +18,23 @@ impl Not for Color {
 
 impl Color {
     pub const fn backrank(&self) -> Rank {
-        [Rank::R1, Rank::R8][*self as usize]
+        unsafe { self.unchecked_relative_rank(0) }
     }
 
-    pub const fn forward_shift(&self) -> i32 {
-        [8, -8][*self as usize]
+    pub const fn initial_pawn_rank(&self) -> Rank {
+        unsafe { self.unchecked_relative_rank(1) }
     }
 
-    pub const fn initial_pawn_rank(&self) -> BitBoard {
-        [BitBoard::ALL_RANKS[1], BitBoard::ALL_RANKS[6]][*self as usize]
+    pub const fn double_pawn_push_rank(&self) -> Rank {
+        unsafe { self.unchecked_relative_rank(3) }
     }
 
-    pub const fn double_pawn_push_rank(&self) -> BitBoard {
-        [BitBoard::ALL_RANKS[3], BitBoard::ALL_RANKS[4]][*self as usize]
-    }
-
-    pub const fn bankrank_rank(&self) -> BitBoard {
-        [BitBoard::ALL_RANKS[0], BitBoard::ALL_RANKS[7]][*self as usize]
+    /// # Safety:
+    ///
+    /// `index` must be between 0 to 7
+    pub const unsafe fn unchecked_relative_rank(&self, index: u8) -> Rank {
+        let index = (*self as u8) * (7 - 2 * index) + index;
+        unsafe { std::mem::transmute(index) }
     }
 }
 
@@ -45,10 +44,23 @@ pub const ALL_COLORS: [Color; 2] = [Color::White, Color::Black];
 #[cfg(test)]
 mod test {
     use crate::color::Color;
+    use crate::square::Rank;
 
     #[test]
     fn test_not() {
         assert_eq!(!Color::Black, Color::White);
         assert_eq!(!Color::White, Color::Black);
+    }
+
+    #[test]
+    fn test_special_ranks() {
+        assert_eq!(Color::White.backrank(), Rank::R1);
+        assert_eq!(Color::Black.backrank(), Rank::R8);
+
+        assert_eq!(Color::White.initial_pawn_rank(), Rank::R2);
+        assert_eq!(Color::Black.initial_pawn_rank(), Rank::R7);
+
+        assert_eq!(Color::White.double_pawn_push_rank(), Rank::R4);
+        assert_eq!(Color::Black.double_pawn_push_rank(), Rank::R5);
     }
 }
