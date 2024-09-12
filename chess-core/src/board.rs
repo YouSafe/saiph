@@ -1,7 +1,3 @@
-use std::fmt;
-use std::fmt::Formatter;
-use std::hash::{Hash, Hasher};
-use std::str::FromStr;
 use crate::bitboard::BitBoard;
 use crate::castling_rights::{CastlingRights, UPDATE_CASTLING_RIGHT_TABLE};
 use crate::chess_move::Move;
@@ -15,6 +11,10 @@ use crate::tables::{
 };
 use crate::uci_move::UCIMove;
 use crate::zobrist::{CASTLE_KEYS, EN_PASSANT_KEYS, PIECE_KEYS, SIDE_KEY};
+use std::fmt;
+use std::fmt::Formatter;
+use std::hash::{Hash, Hasher};
+use std::str::FromStr;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum BoardStatus {
@@ -135,9 +135,8 @@ impl Board {
     }
 
     pub fn apply_move(&mut self, mov: Move) {
-        // copy state and put it in
+        // start a new state based on the previous state
         let mut new_state = self.state.clone();
-        // new_state.previous = Some(self.state.clone());
 
         new_state.last_move = Some(mov);
 
@@ -177,6 +176,7 @@ impl Board {
 
             new_state.captured_piece = Some(target_piece);
 
+            // toggle target piece bitboard if it's not the same piece
             if target_piece != mov.piece {
                 self.pieces[target_piece as usize] ^= mov.to;
             }
@@ -418,7 +418,13 @@ impl Board {
     }
 
     pub fn is_repetition(&self) -> bool {
-        self.history.iter().rev().take(self.state.rule50 as usize).filter(|c| self.state.hash == c.hash).count() >= 1
+        self.history
+            .iter()
+            .rev()
+            .take(self.state.rule50 as usize)
+            .filter(|c| self.state.hash == c.hash)
+            .count()
+            >= 1
     }
 
     pub fn is_draw_by_fifty_move_rule(&self) -> bool {

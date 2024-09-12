@@ -19,7 +19,7 @@ enum Command {
 #[derive(Debug)]
 enum ParseCommandError {
     MissingParts,
-    UnknownCommand(String),
+    UnknownCommand,
     InvalidStartingPos,
     InvalidMove,
     InvalidNumber,
@@ -181,7 +181,7 @@ impl<S: Searcher, P: Printer> EngineUCI<S, P> {
                 Command::Go(limits)
             }
             "stop" => Command::Stop,
-            _ => return Err(ParseCommandError::UnknownCommand(message.to_owned())),
+            _ => return Err(ParseCommandError::UnknownCommand),
         };
 
         Ok(command)
