@@ -1,8 +1,8 @@
-use crate::piece_square_table::piece_square_table;
 use crate::board::Board;
-use crate::color::Color;
-use crate::piece::{Piece, ALL_PIECES};
-use crate::square::Square;
+use crate::piece_square_table::piece_square_table;
+use crate::types::color::Color;
+use crate::types::piece::{Piece, ALL_PIECES};
+use crate::types::square::Square;
 use std::fmt;
 use std::fmt::Formatter;
 use std::ops::Neg;
@@ -130,7 +130,7 @@ pub fn board_value(board: &Board) -> Evaluation {
 #[cfg(test)]
 mod test {
     use crate::evaluation::Evaluation;
-    use crate::color::Color;
+    use crate::types::color::Color;
 
     #[test]
     fn test_adjust_mate_ply() {

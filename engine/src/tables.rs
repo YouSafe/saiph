@@ -1,6 +1,6 @@
-use crate::bitboard::BitBoard;
-use crate::color::Color;
-use crate::square::Square;
+use crate::types::bitboard::BitBoard;
+use crate::types::color::Color;
+use crate::types::square::Square;
 
 #[repr(C)]
 pub struct Tables {
@@ -20,18 +20,19 @@ pub struct Magic {
     pub offset: u64,
 }
 
-static TABLES: Tables =
-    unsafe { std::mem::transmute(*include_bytes!("../../tables.bin")) };
+static TABLES: Tables = unsafe { std::mem::transmute(*include_bytes!("../../tables.bin")) };
 
 pub fn get_bishop_attacks(square: Square, blockers: BitBoard) -> BitBoard {
     let magic = &TABLES.bishop_magics[square as usize];
-    let magic_index = ((blockers.0 & magic.mask).wrapping_mul(magic.magic) >> (64 - 9)) + magic.offset;
+    let magic_index =
+        ((blockers.0 & magic.mask).wrapping_mul(magic.magic) >> (64 - 9)) + magic.offset;
     TABLES.slider_attacks[magic_index as usize]
 }
 
 pub fn get_rook_attacks(square: Square, blockers: BitBoard) -> BitBoard {
     let magic = &TABLES.rook_magics[square as usize];
-    let magic_index = ((blockers.0 & magic.mask).wrapping_mul(magic.magic) >> (64 - 12)) + magic.offset;
+    let magic_index =
+        ((blockers.0 & magic.mask).wrapping_mul(magic.magic) >> (64 - 12)) + magic.offset;
     TABLES.slider_attacks[magic_index as usize]
 }
 

@@ -3,7 +3,7 @@ use std::fmt::Formatter;
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
 use std::str::FromStr;
 
-use crate::square::Square;
+use crate::types::square::Square;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CastlingRights(u8);
@@ -43,7 +43,7 @@ impl CastlingRights {
     pub const BLACK_BOTH_SIDES: Self = Self(12);
 
     pub const fn all() -> CastlingRights {
-        Self (15)
+        Self(15)
     }
 
     pub const fn empty() -> CastlingRights {

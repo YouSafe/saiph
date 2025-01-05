@@ -2,7 +2,7 @@ use std::fmt;
 use std::fmt::Formatter;
 use std::str::FromStr;
 
-use crate::color::Color;
+use crate::types::color::Color;
 
 #[rustfmt::skip]
 #[repr(u8)]
@@ -124,7 +124,7 @@ impl FromStr for Square {
 
 #[cfg(test)]
 mod test {
-    use crate::square::Square;
+    use crate::types::square::Square;
 
     #[test]
     fn test_square_parsing() {

@@ -1,6 +1,6 @@
-use crate::evaluation::Evaluation;
 use crate::board::Board;
-use crate::chess_move::Move;
+use crate::evaluation::Evaluation;
+use crate::types::chess_move::Move;
 
 const TABLE_SIZE: usize = 0x100000 * 64;
 const NUM_TABLE_ENTRIES: usize = TABLE_SIZE / std::mem::size_of::<Entry>();
@@ -65,12 +65,6 @@ impl TranspositionTable {
         None
     }
 }
-
-
-
-
-
-
 
 #[derive(Debug, Clone)]
 pub struct Entry {

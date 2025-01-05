@@ -1,10 +1,10 @@
-use crate::bitboard::BitBoard;
 use crate::board::Board;
-use crate::chess_move::{Move, MoveFlag};
 use crate::move_generation::MoveList;
-use crate::piece::Piece;
-use crate::promotion::ALL_PROMOTIONS;
 use crate::tables::between;
+use crate::types::bitboard::BitBoard;
+use crate::types::chess_move::{Move, MoveFlag};
+use crate::types::piece::Piece;
+use crate::types::promotion::ALL_PROMOTIONS;
 
 pub fn generate_quiet_pawn_moves<const CHECK: bool>(board: &Board, move_list: &mut MoveList) {
     let mut push_mask = !BitBoard::EMPTY;
@@ -96,12 +96,12 @@ mod test {
     use std::str::FromStr;
 
     use crate::board::Board;
-    use crate::chess_move::{Move, MoveFlag};
     use crate::move_generation::quiet_pawn::generate_quiet_pawn_moves;
     use crate::move_generation::MoveList;
-    use crate::piece::Piece;
-    use crate::promotion::ALL_PROMOTIONS;
-    use crate::square::Square::*;
+    use crate::types::chess_move::{Move, MoveFlag};
+    use crate::types::piece::Piece;
+    use crate::types::promotion::ALL_PROMOTIONS;
+    use crate::types::square::Square::*;
 
     #[test]
     fn test_single_and_double_push() {

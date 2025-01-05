@@ -1,8 +1,8 @@
 use crate::board::Board;
-use crate::chess_move::{Move, MoveFlag};
 use crate::move_generation::{generate_attack_bitboard, MoveList};
-use crate::piece::Piece;
 use crate::tables::get_king_attacks;
+use crate::types::chess_move::{Move, MoveFlag};
+use crate::types::piece::Piece;
 
 pub fn generate_king_moves<const CHECK: bool>(board: &Board, move_list: &mut MoveList) {
     let attacked = generate_attack_bitboard(board, !board.side_to_move());
@@ -50,11 +50,11 @@ mod test {
     use std::str::FromStr;
 
     use crate::board::Board;
-    use crate::chess_move::{Move, MoveFlag};
     use crate::move_generation::king::generate_king_moves;
     use crate::move_generation::MoveList;
-    use crate::piece::Piece;
-    use crate::square::Square;
+    use crate::types::chess_move::{Move, MoveFlag};
+    use crate::types::piece::Piece;
+    use crate::types::square::Square;
 
     #[test]
     fn test_xray_attack() {

@@ -2,7 +2,7 @@ use std::fmt;
 use std::fmt::Formatter;
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not, Shl, Shr};
 
-use crate::square::{File, Rank, Square};
+use crate::types::square::{File, Rank, Square};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct BitBoard(pub u64);
@@ -225,8 +225,8 @@ impl BitXorAssign<Square> for BitBoard {
 
 #[cfg(test)]
 mod test {
-    use crate::bitboard::BitBoard;
-    use crate::square::Square;
+    use crate::types::bitboard::BitBoard;
+    use crate::types::square::Square;
 
     #[test]
     fn test_set_bit() {

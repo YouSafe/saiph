@@ -1,5 +1,5 @@
 use crate::search_limits::{SearchLimits, TimeLimit};
-use crate::color::Color;
+use crate::types::color::Color;
 use instant::{Duration, Instant};
 
 #[derive(Debug, Clone, Copy)]
@@ -73,7 +73,7 @@ impl Clock {
 mod test {
     use crate::clock::Clock;
     use crate::search_limits::{SearchLimits, TimeLimit};
-    use crate::color::Color;
+    use crate::types::color::Color;
     use std::time::Duration;
 
     #[test]

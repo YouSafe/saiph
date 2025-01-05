@@ -1,9 +1,9 @@
-use crate::bitboard::BitBoard;
 use crate::board::Board;
-use crate::chess_move::{Move, MoveFlag};
 use crate::move_generation::MoveList;
-use crate::piece::Piece;
 use crate::tables::{between, get_knight_attacks};
+use crate::types::bitboard::BitBoard;
+use crate::types::chess_move::{Move, MoveFlag};
+use crate::types::piece::Piece;
 
 pub fn generate_knight_moves<const CHECK: bool>(board: &Board, move_list: &mut MoveList) {
     let mut capture_mask = !BitBoard::EMPTY;
@@ -63,11 +63,11 @@ mod test {
     use std::str::FromStr;
 
     use crate::board::Board;
-    use crate::chess_move::{Move, MoveFlag};
     use crate::move_generation::knight::generate_knight_moves;
     use crate::move_generation::MoveList;
-    use crate::piece::Piece;
-    use crate::square::Square::*;
+    use crate::types::chess_move::{Move, MoveFlag};
+    use crate::types::piece::Piece;
+    use crate::types::square::Square::*;
 
     #[test]
     fn test_check_evasion() {

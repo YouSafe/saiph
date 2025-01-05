@@ -1,14 +1,14 @@
-use crate::bitboard::BitBoard;
-use crate::castling_rights::{CastlingRights, UPDATE_CASTLING_RIGHT_TABLE};
-use crate::chess_move::Move;
-use crate::chess_move::MoveFlag::{Capture, Castling, DoublePawnPush, EnPassant};
-use crate::color::{Color, ALL_COLORS, NUM_COLORS};
 use crate::move_generation::{calculate_pinned_checkers_pinners, generate_moves, MoveList};
-use crate::piece::{Piece, ALL_PIECES, NUM_PIECES};
-use crate::square::{File, Square};
 use crate::tables::{
     between, get_bishop_attacks, get_knight_attacks, get_pawn_attacks, get_rook_attacks,
 };
+use crate::types::bitboard::BitBoard;
+use crate::types::castling_rights::{CastlingRights, UPDATE_CASTLING_RIGHT_TABLE};
+use crate::types::chess_move::Move;
+use crate::types::chess_move::MoveFlag::{Capture, Castling, DoublePawnPush, EnPassant};
+use crate::types::color::{Color, ALL_COLORS, NUM_COLORS};
+use crate::types::piece::{Piece, ALL_PIECES, NUM_PIECES};
+use crate::types::square::{File, Square};
 use crate::uci_move::UCIMove;
 use crate::zobrist::{CASTLE_KEYS, EN_PASSANT_KEYS, PIECE_KEYS, SIDE_KEY};
 use std::fmt;
@@ -684,9 +684,9 @@ mod test {
     use std::str::FromStr;
 
     use crate::board::Board;
-    use crate::color::Color;
-    use crate::piece::Piece;
-    use crate::square::Square;
+    use crate::types::color::Color;
+    use crate::types::piece::Piece;
+    use crate::types::square::Square;
     use crate::uci_move::UCIMove;
 
     #[test]

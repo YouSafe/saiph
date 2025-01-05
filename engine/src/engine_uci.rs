@@ -1,7 +1,7 @@
+use crate::board::Board;
 use crate::search_limits::{SearchLimits, TimeLimit};
 use crate::searcher::Searcher;
-use crate::board::Board;
-use crate::color::Color;
+use crate::types::color::Color;
 use crate::uci_move::UCIMove;
 use std::str::FromStr;
 use std::time::Duration;

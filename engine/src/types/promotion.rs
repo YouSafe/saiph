@@ -1,5 +1,5 @@
-use crate::piece::Piece;
-use crate::promotion::Promotion::{Bishop, Knight, Queen, Rook};
+use crate::types::piece::Piece;
+use crate::types::promotion::Promotion::{Bishop, Knight, Queen, Rook};
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

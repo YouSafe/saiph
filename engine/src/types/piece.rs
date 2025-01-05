@@ -1,5 +1,5 @@
-use crate::color::Color;
-use crate::piece::Piece::{Bishop, King, Knight, Pawn, Queen, Rook};
+use crate::types::color::Color;
+use crate::types::piece::Piece::{Bishop, King, Knight, Pawn, Queen, Rook};
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

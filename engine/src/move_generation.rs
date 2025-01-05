@@ -7,16 +7,16 @@ use pawn_capture::generate_pawn_capture_moves;
 use quiet_pawn::generate_quiet_pawn_moves;
 use slider::generate_slider_moves;
 
-use crate::bitboard::BitBoard;
 use crate::board::{Board, PartialBoard};
-use crate::chess_move::Move;
-use crate::color::Color;
-use crate::piece::{Piece, ALL_PIECES};
-use crate::square::Square;
 use crate::tables::{
     between, get_bishop_attacks, get_king_attacks, get_knight_attacks, get_pawn_attacks,
     get_queen_attacks, get_rook_attacks,
 };
+use crate::types::bitboard::BitBoard;
+use crate::types::chess_move::Move;
+use crate::types::color::Color;
+use crate::types::piece::{Piece, ALL_PIECES};
+use crate::types::square::Square;
 
 mod castling;
 mod en_passant;
@@ -240,13 +240,13 @@ pub fn perf_driver(board: &mut Board, depth: u8, nodes: &mut u64) {
 mod test {
     use std::str::FromStr;
 
-    use crate::bitboard::BitBoard;
     use crate::board::Board;
-    use crate::color::Color;
     use crate::move_generation::{
         build_attacked_bitboard, generate_attack_bitboard, generate_moves, is_square_attacked,
     };
-    use crate::square::Square;
+    use crate::types::bitboard::BitBoard;
+    use crate::types::color::Color;
+    use crate::types::square::Square;
 
     #[test]
     fn test_is_square_attacked_pawn_attack() {

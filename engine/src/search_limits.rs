@@ -1,4 +1,4 @@
-use crate::color::NUM_COLORS;
+use crate::types::color::NUM_COLORS;
 use std::time::Duration;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]

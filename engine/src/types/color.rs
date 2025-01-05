@@ -1,4 +1,4 @@
-use crate::square::Rank;
+use crate::types::square::Rank;
 use std::ops::Not;
 
 #[repr(u8)]
@@ -43,8 +43,8 @@ pub const ALL_COLORS: [Color; 2] = [Color::White, Color::Black];
 
 #[cfg(test)]
 mod test {
-    use crate::color::Color;
-    use crate::square::Rank;
+    use crate::types::color::Color;
+    use crate::types::square::Rank;
 
     #[test]
     fn test_not() {

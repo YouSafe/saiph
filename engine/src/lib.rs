@@ -12,15 +12,9 @@ pub mod searcher;
 pub mod standard_searcher;
 pub mod transposition_table;
 
-pub mod bitboard;
 pub mod board;
-pub mod castling_rights;
-pub mod chess_move;
-pub mod color;
 pub mod move_generation;
-pub mod piece;
-pub mod promotion;
-pub mod square;
 pub mod tables;
+pub mod types;
 pub mod uci_move;
 mod zobrist;

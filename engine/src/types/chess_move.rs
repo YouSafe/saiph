@@ -1,10 +1,10 @@
 use std::fmt;
 use std::fmt::Formatter;
 
-use crate::color::Color;
-use crate::piece::Piece;
-use crate::promotion::Promotion;
-use crate::square::Square;
+use crate::types::color::Color;
+use crate::types::piece::Piece;
+use crate::types::promotion::Promotion;
+use crate::types::square::Square;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MoveFlag {
@@ -32,7 +32,7 @@ impl Move {
     pub fn destination(&self) -> Square {
         self.to
     }
-    
+
     pub fn is_capture(&self) -> bool {
         self.flags == MoveFlag::Capture
     }
@@ -56,7 +56,7 @@ impl fmt::Display for Move {
 
 #[cfg(test)]
 mod test {
-    use crate::chess_move::Move;
+    use crate::types::chess_move::Move;
 
     #[test]
     fn test() {

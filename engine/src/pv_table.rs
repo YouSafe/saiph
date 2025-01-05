@@ -1,6 +1,6 @@
 use std::fmt::{self, Formatter};
 
-use crate::chess_move::Move;
+use crate::types::chess_move::Move;
 
 const MAX_PLY: usize = 64;
 const TABLE_SIZE: usize = (MAX_PLY * (MAX_PLY + 1)) / 2;
@@ -78,7 +78,7 @@ impl fmt::Display for PrincipleVariationTable {
 #[cfg(test)]
 mod tests {
 
-    use crate::{chess_move::MoveFlag, piece::Piece, square::Square};
+    use crate::types::{chess_move::MoveFlag, piece::Piece, square::Square};
 
     use super::*;
 

@@ -1,8 +1,8 @@
 // See: https://www.chessprogramming.org/Simplified_Evaluation_Function
 
-use crate::color::Color;
-use crate::piece::Piece;
-use crate::square::Square;
+use crate::types::color::Color;
+use crate::types::piece::Piece;
+use crate::types::square::Square;
 
 pub fn piece_square_table(piece: Piece, square: Square, piece_color: Color) -> i16 {
     let square_index = square as usize;
@@ -112,9 +112,9 @@ const KING_END_GAME: [i8; 64] = [
 #[cfg(test)]
 mod test {
     use crate::piece_square_table::piece_square_table;
-    use crate::color::Color::{Black, White};
-    use crate::piece::Piece::Pawn;
-    use crate::square::Square;
+    use crate::types::color::Color::{Black, White};
+    use crate::types::piece::Piece::Pawn;
+    use crate::types::square::Square;
     use std::str::FromStr;
 
     #[test]

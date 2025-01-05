@@ -1,7 +1,7 @@
-use crate::chess_move::Move;
-use crate::promotion::Promotion;
-use crate::promotion::Promotion::{Bishop, Knight, Queen, Rook};
-use crate::square::Square;
+use crate::types::chess_move::Move;
+use crate::types::promotion::Promotion;
+use crate::types::promotion::Promotion::{Bishop, Knight, Queen, Rook};
+use crate::types::square::Square;
 use std::str::FromStr;
 
 #[derive(Debug, PartialEq)]
