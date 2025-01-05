@@ -18,6 +18,8 @@ pub enum Square {
     A1= 0, B1, C1, D1, E1, F1, G1, H1, 
 }
 
+pub const NUM_SQUARES: usize = 64;
+
 impl Square {
     pub fn to_file(&self) -> File {
         unsafe { std::mem::transmute::<u8, File>(*self as u8 % 8) }
@@ -75,6 +77,10 @@ impl Square {
 
     pub const fn rank(&self) -> Rank {
         unsafe { std::mem::transmute(*self as u8 / 8) }
+    }
+
+    pub const fn mirror_vertically(&self) -> Square {
+        Square::from_index((*self as u8) ^ 56)
     }
 }
 

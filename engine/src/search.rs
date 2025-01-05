@@ -3,7 +3,7 @@ use crate::engine_uci::Printer;
 use crate::evaluation::{board_value, Evaluation};
 use crate::move_ordering::mmv_lva;
 use crate::pv_table::PrincipleVariationTable;
-use crate::search_limits::SearchLimits;
+use crate::search_limits::{self, SearchLimits};
 use crate::transposition_table::{Entry, TranspositionTable, ValueType};
 use chess_core::board::Board;
 use chess_core::chess_move::Move;
@@ -17,10 +17,11 @@ pub struct SearchStatistics {
 
 pub struct Search<'a, P: Printer> {
     board: Board,
-    stop: &'a AtomicBool,
-    local_stop: bool,
-    table: &'a mut TranspositionTable,
+    limits: SearchLimits,
     pv_table: PrincipleVariationTable,
+    table: &'a mut TranspositionTable,
+    local_stop: bool,
+    stop: &'a AtomicBool,
     printer: &'a P,
 }
 
@@ -30,9 +31,11 @@ impl<'a, P: Printer> Search<'a, P> {
         table: &'a mut TranspositionTable,
         stop: &'a AtomicBool,
         printer: &'a P,
+        search_limits: SearchLimits,
     ) -> Self {
         Search {
             board,
+            limits: search_limits,
             table,
             stop,
             printer,
@@ -170,7 +173,6 @@ impl<'a, P: Printer> Search<'a, P> {
             Color::Black => -board_value(&self.board),
         };
 
-
         alpha = alpha.max(evaluation);
 
         if alpha >= beta {
@@ -209,6 +211,13 @@ impl<'a, P: Printer> Search<'a, P> {
     }
 
     fn should_interrupt(&mut self, clock: &Clock, nodes: u64) -> bool {
+        if let Some(max_nodes) = self.limits.nodes {
+            if nodes >= max_nodes {
+                self.local_stop = true;
+                return true;
+            }
+        }
+
         if nodes & 4095 == 0 {
             return self.local_stop;
         }
@@ -224,9 +233,13 @@ impl<'a, P: Printer> Search<'a, P> {
         self.local_stop
     }
 
-    pub fn find_best_move(&mut self, limits: SearchLimits) -> Option<Move> {
+    pub fn find_best_move(mut self) -> Option<Move> {
         let mut evaluation;
-        let clock = Clock::new(&limits, self.board.game_ply(), self.board.side_to_move());
+        let clock = Clock::new(
+            &self.limits,
+            self.board.game_ply(),
+            self.board.side_to_move(),
+        );
 
         let mut stats = SearchStatistics { nodes: 0 };
 
@@ -264,7 +277,7 @@ impl<'a, P: Printer> Search<'a, P> {
 
             self.printer.print(output.as_str());
 
-            if depth >= limits.depth.unwrap_or(u8::MAX) {
+            if depth >= self.limits.depth.unwrap_or(u8::MAX) {
                 break;
             }
 

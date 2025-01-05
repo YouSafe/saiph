@@ -1,4 +1,4 @@
-use crate::search_limits::{SearchLimits, TimeLimits};
+use crate::search_limits::{SearchLimits, TimeLimit};
 use chess_core::color::Color;
 use instant::{Duration, Instant};
 
@@ -14,17 +14,17 @@ impl Clock {
         let start = Instant::now();
 
         match limits.time {
-            TimeLimits::Infinite => Self {
+            TimeLimit::Infinite => Self {
                 start,
                 maximum: None,
                 optimum: None,
             },
-            TimeLimits::Fixed { move_time } => Self {
+            TimeLimit::Fixed { move_time } => Self {
                 start,
                 maximum: Some(start + move_time),
                 optimum: Some(start + move_time),
             },
-            TimeLimits::Dynamic {
+            TimeLimit::Dynamic {
                 time_left,
                 increment,
             } => {
@@ -72,7 +72,7 @@ impl Clock {
 #[cfg(test)]
 mod test {
     use crate::clock::Clock;
-    use crate::search_limits::{SearchLimits, TimeLimits};
+    use crate::search_limits::{SearchLimits, TimeLimit};
     use chess_core::color::Color;
     use std::time::Duration;
 
@@ -80,7 +80,7 @@ mod test {
     fn test_first_move() {
         let clock = Clock::new(
             &SearchLimits {
-                time: TimeLimits::Dynamic {
+                time: TimeLimit::Dynamic {
                     time_left: [Duration::from_secs(120); 2],
                     increment: [Duration::from_secs(1); 2],
                 },

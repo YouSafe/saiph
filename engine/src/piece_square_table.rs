@@ -4,7 +4,7 @@ use chess_core::color::Color;
 use chess_core::piece::Piece;
 use chess_core::square::Square;
 
-pub fn piece_square_table(piece: Piece, square: Square, piece_color: Color) -> i32 {
+pub fn piece_square_table(piece: Piece, square: Square, piece_color: Color) -> i16 {
     let square_index = square as usize;
 
     let rank = square.to_rank() as usize;
@@ -22,7 +22,7 @@ pub fn piece_square_table(piece: Piece, square: Square, piece_color: Color) -> i
         Piece::Rook => ROOK_TABLE[lookup_index],
         Piece::Queen => QUEEN_TABLE[lookup_index],
         Piece::King => 0,
-    }) as i32
+    }) as i16
 }
 
 #[rustfmt::skip]
@@ -111,11 +111,11 @@ const KING_END_GAME: [i8; 64] = [
 
 #[cfg(test)]
 mod test {
-    use std::str::FromStr;
+    use crate::piece_square_table::piece_square_table;
     use chess_core::color::Color::{Black, White};
     use chess_core::piece::Piece::Pawn;
     use chess_core::square::Square;
-    use crate::piece_square_table::piece_square_table;
+    use std::str::FromStr;
 
     #[test]
     fn pawn_piece_square_value() {

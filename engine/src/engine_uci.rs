@@ -1,4 +1,4 @@
-use crate::search_limits::{SearchLimits, TimeLimits};
+use crate::search_limits::{SearchLimits, TimeLimit};
 use crate::searcher::Searcher;
 use chess_core::board::Board;
 use chess_core::color::Color;
@@ -13,6 +13,8 @@ enum Command {
     NewGame,
     Position(StartingPosition, Vec<UCIMove>),
     Go(SearchLimits),
+    Debug,
+    Eval,
     Stop,
 }
 
@@ -158,16 +160,16 @@ impl<S: Searcher, P: Printer> EngineUCI<S, P> {
                 }
 
                 let time = if infinite {
-                    TimeLimits::Infinite
+                    TimeLimit::Infinite
                 } else if let Some(move_time) = move_time {
-                    TimeLimits::Fixed { move_time }
+                    TimeLimit::Fixed { move_time }
                 } else if !time_left.contains(&Duration::default()) {
-                    TimeLimits::Dynamic {
+                    TimeLimit::Dynamic {
                         time_left,
                         increment,
                     }
                 } else {
-                    TimeLimits::Infinite
+                    TimeLimit::Infinite
                 };
 
                 let limits = SearchLimits {
@@ -180,6 +182,8 @@ impl<S: Searcher, P: Printer> EngineUCI<S, P> {
 
                 Command::Go(limits)
             }
+            "debug" => Command::Debug,
+            "eval" => Command::Eval,
             "stop" => Command::Stop,
             _ => return Err(ParseCommandError::UnknownCommand),
         };
@@ -212,6 +216,13 @@ impl<S: Searcher, P: Printer> EngineUCI<S, P> {
             }
             Command::Go(limits) => {
                 self.searcher.initiate_search(self.board.clone(), limits);
+            }
+            Command::Eval => {
+                // self.printer
+                //     .print(format!("Eval: {}", self.board.evaluate()).as_str());
+            }
+            Command::Debug => {
+                self.printer.print(self.board.to_string().as_str());
             }
             Command::Stop => {
                 self.searcher.stop_search();

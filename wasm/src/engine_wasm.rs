@@ -71,8 +71,8 @@ pub fn spawn(
     f: impl FnOnce(MessagePort) + Send + 'static,
     message_port: MessagePort,
 ) -> Result<web_sys::Worker, JsValue> {
-    let mut options = WorkerOptions::new();
-    options.type_(web_sys::WorkerType::Module);
+    let options = WorkerOptions::new();
+    options.set_type(web_sys::WorkerType::Module);
     let worker = web_sys::Worker::new_with_options("./searcher-worker.js", &options)?;
     let ptr = Box::into_raw(Box::new(Box::new(f) as Box<dyn FnOnce(MessagePort)>));
 
@@ -127,10 +127,15 @@ impl WasmSearcher {
                                     let stop_ref = stop.as_ref();
                                     let table_ref = &mut table.lock().unwrap();
 
-                                    let mut search =
-                                        Search::new(board, table_ref, stop_ref, &searcher_printer);
+                                    let search = Search::new(
+                                        board,
+                                        table_ref,
+                                        stop_ref,
+                                        &searcher_printer,
+                                        limits,
+                                    );
 
-                                    let pick = search.find_best_move(limits);
+                                    let pick = search.find_best_move();
                                     if let Some(bestmove) = pick {
                                         searcher_printer
                                             .print(format!("bestmove {}", bestmove).as_str());

@@ -3,7 +3,7 @@ use std::time::Duration;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct SearchLimits {
-    pub time: TimeLimits,
+    pub time: TimeLimit,
     pub depth: Option<u8>,
     pub mate: Option<u8>,
     pub nodes: Option<u64>,
@@ -11,7 +11,7 @@ pub struct SearchLimits {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub enum TimeLimits {
+pub enum TimeLimit {
     #[default]
     Infinite,
     Fixed {

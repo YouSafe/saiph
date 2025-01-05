@@ -23,20 +23,19 @@ pub enum BoardStatus {
     Checkmate,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct BoardState {
     hash: u64,
     en_passant_target: Option<Square>,
     castling_rights: CastlingRights,
     rule50: u8,
-    ply: u16,
     checkers: BitBoard,
     pinned: BitBoard,
     last_move: Option<Move>,
     captured_piece: Option<Piece>,
 }
 
-#[derive(Debug, Clone, Eq)]
+#[derive(Debug, Clone)]
 pub struct Board {
     pieces: [BitBoard; NUM_PIECES],
     occupancies: [BitBoard; NUM_COLORS],
@@ -55,6 +54,8 @@ impl PartialEq for Board {
             && self.side_to_move == other.side_to_move
     }
 }
+
+impl Eq for Board {}
 
 impl Default for Board {
     fn default() -> Self {
@@ -141,7 +142,6 @@ impl Board {
         new_state.last_move = Some(mov);
 
         self.game_ply += 1;
-        new_state.ply += 1;
         new_state.rule50 += 1;
 
         // en passant is cleared after doing any move
@@ -437,6 +437,33 @@ impl Board {
     }
 }
 
+// #[derive(Debug, Clone, Copy)]
+// pub struct Position {
+//     pub pieces: [BitBoard; NUM_PIECES],
+//     pub colors: [BitBoard; NUM_COLORS],
+//     pub combined: BitBoard,
+// }
+
+// impl From<Board> for Position {
+//     fn from(value: Board) -> Self {
+//         Self {
+//             pieces: value.pieces,
+//             colors: value.occupancies,
+//             combined: value.combined,
+//         }
+//     }
+// }
+
+// pub struct PositionIter;
+
+// impl Iterator for PositionIter {
+//     type Item = (Piece, Color, Square);
+
+//     fn next(&mut self) -> Option<Self::Item> {
+//         todo!()
+//     }
+// }
+
 impl Hash for Board {
     fn hash<H: Hasher>(&self, state: &mut H) {
         state.write_u64(self.state.hash);
@@ -611,7 +638,6 @@ impl FromStr for Board {
                 en_passant_target,
                 castling_rights,
                 rule50: halfmove_clock,
-                ply: 0,
                 checkers,
                 pinned,
                 last_move: None,

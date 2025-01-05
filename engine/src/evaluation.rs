@@ -8,7 +8,7 @@ use std::fmt::Formatter;
 use std::ops::Neg;
 
 #[derive(PartialEq, Clone, Copy, Debug, PartialOrd, Ord, Eq)]
-pub struct Evaluation(i32);
+pub struct Evaluation(i16);
 
 impl fmt::Display for Evaluation {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -23,8 +23,8 @@ impl fmt::Display for Evaluation {
 impl Evaluation {
     pub const INVALID: Evaluation = Evaluation(0);
 
-    pub const MIN: Evaluation = Evaluation(i32::MIN + 1);
-    pub const MAX: Evaluation = Evaluation(i32::MAX);
+    pub const MIN: Evaluation = Evaluation(-32001);
+    pub const MAX: Evaluation = Evaluation(32001);
 
     pub const EQUALITY: Evaluation = Evaluation(0);
 
@@ -32,8 +32,8 @@ impl Evaluation {
     // ..., SCORE, ...,
     // IMMEDIATE_MATE_SCORE - MAX_MATE_DEPTH, ..., IMMEDIATE_MATE_SCORE, ..., MAX]
 
-    const IMMEDIATE_MATE_SCORE: i32 = 100_000;
-    const MAX_MATE_DEPTH: i32 = 100;
+    const IMMEDIATE_MATE_SCORE: i16 = 32000;
+    const MAX_MATE_DEPTH: i16 = 100;
 
     pub const fn is_mate(&self) -> bool {
         self.0.abs() > (Evaluation::IMMEDIATE_MATE_SCORE - Evaluation::MAX_MATE_DEPTH)
@@ -55,25 +55,29 @@ impl Evaluation {
             Color::Black => -1,
         };
 
-        Evaluation(sign * (Evaluation::IMMEDIATE_MATE_SCORE - ply_from_root as i32))
+        Evaluation(sign * (Evaluation::IMMEDIATE_MATE_SCORE - ply_from_root as i16))
     }
 
     pub const fn mated_in(ply_from_root: u8) -> Evaluation {
-        Evaluation(-Evaluation::IMMEDIATE_MATE_SCORE + ply_from_root as i32)
+        Evaluation(-Evaluation::IMMEDIATE_MATE_SCORE + ply_from_root as i16)
     }
 
     pub const fn mate_in(ply_from_root: u8) -> Evaluation {
-        Evaluation(Evaluation::IMMEDIATE_MATE_SCORE - ply_from_root as i32)
+        Evaluation(Evaluation::IMMEDIATE_MATE_SCORE - ply_from_root as i16)
     }
 
     pub const fn score_to_tt(&self, ply: u8) -> Evaluation {
         assert!(self.is_mate());
-        Evaluation((self.0.abs() + ply as i32) * self.0.signum())
+        Evaluation((self.0.abs() + ply as i16) * self.0.signum())
     }
 
     pub const fn tt_to_score(&self, ply: u8) -> Evaluation {
         assert!(self.is_mate());
-        Evaluation((self.0.abs() - ply as i32) * self.0.signum())
+        Evaluation((self.0.abs() - ply as i16) * self.0.signum())
+    }
+
+    pub const fn val(&self) -> i16 {
+        self.0
     }
 }
 
@@ -85,18 +89,22 @@ impl Neg for Evaluation {
     }
 }
 
-pub const fn raw_piece_value(piece: Piece) -> i32 {
+pub const fn raw_piece_value(piece: Piece) -> i16 {
     match piece {
         Piece::Pawn => 100,
         Piece::Knight => 320,
         Piece::Bishop => 330,
         Piece::Rook => 500,
         Piece::Queen => 900,
-        Piece::King => 20000,
+        // The value of king is defined to be 0 to avoid arithmetic overflow. This is valid because
+        // both sides always have exactly one king. In classic chess the king can not be captured
+        // but other chess variants might allow capturing the king. However, other variants are not
+        // supported yet by this chess engine.
+        Piece::King => 0,
     }
 }
 
-fn piece_value(piece: Piece, square: Square, piece_color: Color) -> i32 {
+fn piece_value(piece: Piece, square: Square, piece_color: Color) -> i16 {
     let sign = match piece_color {
         Color::White => 1,
         Color::Black => -1,
@@ -110,7 +118,7 @@ fn piece_value(piece: Piece, square: Square, piece_color: Color) -> i32 {
 }
 
 pub fn board_value(board: &Board) -> Evaluation {
-    let mut result: i32 = 0;
+    let mut result: i16 = 0;
     for piece in ALL_PIECES {
         for square in board.pieces(piece).iter() {
             result += piece_value(piece, square, board.color_at(square).unwrap());
@@ -210,13 +218,13 @@ mod test {
         for i in (0..10).rev() {
             let eval = Evaluation::new_mate_eval(Color::Black, i);
             println!("-{i} -> {}", expected(eval));
-            assert_eq!(expected(eval), eval.mate_full_moves() as i32, "{eval}");
+            assert_eq!(expected(eval), eval.mate_full_moves() as i16, "{eval}");
         }
 
         for i in 0..10 {
             let eval = Evaluation::new_mate_eval(Color::White, i);
             println!("{i} -> {}", expected(eval));
-            assert_eq!(expected(eval), eval.mate_full_moves() as i32, "{eval}");
+            assert_eq!(expected(eval), eval.mate_full_moves() as i16, "{eval}");
         }
     }
 }

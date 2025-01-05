@@ -27,6 +27,7 @@ impl StandardSearcher {
 
         let table = Arc::new(Mutex::new(TranspositionTable::new()));
         let stop = Arc::new(AtomicBool::new(false));
+        let printer = StandardPrinter;
 
         StandardSearcher {
             channel_sender: sender,
@@ -45,9 +46,9 @@ impl StandardSearcher {
                         let stop_ref = stop.as_ref();
                         let table_ref = &mut table.lock().unwrap();
 
-                        let mut search = Search::new(board, table_ref, stop_ref, &StandardPrinter);
+                        let search = Search::new(board, table_ref, stop_ref, &printer, limits);
 
-                        let pick = search.find_best_move(limits);
+                        let pick = search.find_best_move();
                         println!("bestmove {}", pick.unwrap());
                     }
                 }
