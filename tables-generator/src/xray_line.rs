@@ -1,7 +1,6 @@
-use crate::bitboard::BitBoard;
+use crate::BitBoard;
 
-// TODO: remove code duplication
-pub const fn generate_xray_lines() -> [[BitBoard; 64]; 64] {
+pub const fn generate_squares_line() -> [[BitBoard; 64]; 64] {
     let mut result = [[BitBoard(0); 64]; 64];
 
     const fn to_square_bitboard(rank: i8, file: i8) -> u64 {
@@ -70,13 +69,15 @@ pub const fn generate_xray_lines() -> [[BitBoard; 64]; 64] {
 
 #[cfg(test)]
 mod test {
-    use crate::tables::SQUARES_LINE;
+    use super::generate_squares_line;
 
     #[test]
     fn test_generate_xray_lines() {
+        let ray = generate_squares_line();
+
         for from in 0..64 {
             for target in 0..64 {
-                let line = SQUARES_LINE[from][target];
+                let line = ray[from][target];
                 println!("from: {from} to: {target} {line}");
             }
         }

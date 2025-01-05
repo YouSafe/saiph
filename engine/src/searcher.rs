@@ -1,6 +1,6 @@
 use crate::{engine_uci::Printer, search_limits::SearchLimits};
 
-use chess_core::board::Board;
+use crate::board::Board;
 
 pub trait Searcher {
     fn clear_tables(&mut self);

@@ -1,5 +1,5 @@
-use crate::bitboard::BitBoard;
-use crate::square::Square;
+use crate::Square;
+use crate::BitBoard;
 
 pub const fn generate_king_attacks() -> [BitBoard; 64] {
     let mut result = [BitBoard(0); 64];
@@ -61,9 +61,9 @@ const fn mask_king_attacks(square: Square) -> BitBoard {
 
 #[cfg(test)]
 mod test {
-    use crate::bitboard::BitBoard;
-    use crate::square::Square;
-    use crate::tables::king_move::mask_king_attacks;
+    use crate::king_move::mask_king_attacks;
+    use crate::BitBoard;
+    use crate::Square;
 
     #[test]
     fn test_king_attack_a1() {

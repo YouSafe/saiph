@@ -1,6 +1,6 @@
-use crate::bitboard::BitBoard;
-use crate::color::Color;
-use crate::square::Square;
+use crate::BitBoard;
+use crate::Color;
+use crate::Square;
 
 pub const fn generate_pawn_attacks() -> [[BitBoard; 64]; 2] {
     let mut result = [[BitBoard(0); 64]; 2];
@@ -39,10 +39,10 @@ const fn mask_pawn_attacks(square: Square, side: Color) -> BitBoard {
 
 #[cfg(test)]
 mod test {
-    use crate::bitboard::BitBoard;
-    use crate::color::Color;
-    use crate::square::Square;
-    use crate::tables::pawn_move::mask_pawn_attacks;
+    use crate::BitBoard;
+    use crate::Color;
+    use crate::Square;
+    use crate::pawn_move::mask_pawn_attacks;
 
     #[test]
     fn test_pawn_attack_white_e4() {

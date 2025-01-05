@@ -1,6 +1,6 @@
 use crate::evaluation::Evaluation;
-use chess_core::board::Board;
-use chess_core::chess_move::Move;
+use crate::board::Board;
+use crate::chess_move::Move;
 
 const TABLE_SIZE: usize = 0x100000 * 64;
 const NUM_TABLE_ENTRIES: usize = TABLE_SIZE / std::mem::size_of::<Entry>();

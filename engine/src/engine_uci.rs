@@ -1,8 +1,8 @@
 use crate::search_limits::{SearchLimits, TimeLimit};
 use crate::searcher::Searcher;
-use chess_core::board::Board;
-use chess_core::color::Color;
-use chess_core::uci_move::UCIMove;
+use crate::board::Board;
+use crate::color::Color;
+use crate::uci_move::UCIMove;
 use std::str::FromStr;
 use std::time::Duration;
 

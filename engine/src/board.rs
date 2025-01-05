@@ -3,7 +3,7 @@ use crate::castling_rights::{CastlingRights, UPDATE_CASTLING_RIGHT_TABLE};
 use crate::chess_move::Move;
 use crate::chess_move::MoveFlag::{Capture, Castling, DoublePawnPush, EnPassant};
 use crate::color::{Color, ALL_COLORS, NUM_COLORS};
-use crate::movgen::{calculate_pinned_checkers_pinners, generate_moves, MoveList};
+use crate::move_generation::{calculate_pinned_checkers_pinners, generate_moves, MoveList};
 use crate::piece::{Piece, ALL_PIECES, NUM_PIECES};
 use crate::square::{File, Square};
 use crate::tables::{
@@ -436,33 +436,6 @@ impl Board {
         self.state.hash
     }
 }
-
-// #[derive(Debug, Clone, Copy)]
-// pub struct Position {
-//     pub pieces: [BitBoard; NUM_PIECES],
-//     pub colors: [BitBoard; NUM_COLORS],
-//     pub combined: BitBoard,
-// }
-
-// impl From<Board> for Position {
-//     fn from(value: Board) -> Self {
-//         Self {
-//             pieces: value.pieces,
-//             colors: value.occupancies,
-//             combined: value.combined,
-//         }
-//     }
-// }
-
-// pub struct PositionIter;
-
-// impl Iterator for PositionIter {
-//     type Item = (Piece, Color, Square);
-
-//     fn next(&mut self) -> Option<Self::Item> {
-//         todo!()
-//     }
-// }
 
 impl Hash for Board {
     fn hash<H: Hasher>(&self, state: &mut H) {

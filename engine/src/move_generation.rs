@@ -243,7 +243,7 @@ mod test {
     use crate::bitboard::BitBoard;
     use crate::board::Board;
     use crate::color::Color;
-    use crate::movgen::{
+    use crate::move_generation::{
         build_attacked_bitboard, generate_attack_bitboard, generate_moves, is_square_attacked,
     };
     use crate::square::Square;

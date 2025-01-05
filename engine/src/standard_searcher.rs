@@ -1,4 +1,4 @@
-use chess_core::board::Board;
+use crate::board::Board;
 
 use crate::search::Search;
 use crate::search_limits::SearchLimits;

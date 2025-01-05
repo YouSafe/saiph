@@ -1,6 +1,6 @@
-use crate::bitboard::BitBoard;
+use crate::BitBoard;
 
-pub const fn generate_rays_between() -> [[BitBoard; 64]; 64] {
+pub const fn generate_squares_between() -> [[BitBoard; 64]; 64] {
     let mut result = [[BitBoard(0); 64]; 64];
 
     const fn to_square_bitboard(rank: i8, file: i8) -> u64 {
@@ -66,13 +66,13 @@ pub const fn generate_rays_between() -> [[BitBoard; 64]; 64] {
 
 #[cfg(test)]
 mod test {
-    use crate::bitboard::BitBoard;
-    use crate::square::Square;
-    use crate::tables::rays_between::generate_rays_between;
+    use crate::BitBoard;
+    use crate::Square;
+    use crate::rays_between::generate_squares_between;
 
     #[test]
     fn test_generate_rays_between_negative_diagonal() {
-        let between = generate_rays_between();
+        let between = generate_squares_between();
         let ray = between[Square::A8 as usize][Square::H1 as usize];
 
         println!("{ray}");
@@ -81,7 +81,7 @@ mod test {
 
     #[test]
     fn test_generate_rays_between_negative_diagonal_backwards() {
-        let between = generate_rays_between();
+        let between = generate_squares_between();
         let ray = between[Square::H1 as usize][Square::A8 as usize];
 
         println!("{ray}");
@@ -90,7 +90,7 @@ mod test {
 
     #[test]
     fn test_generate_rays_between_horizontal() {
-        let between = generate_rays_between();
+        let between = generate_squares_between();
         let ray = between[Square::A8 as usize][Square::H8 as usize];
 
         println!("{ray}");
@@ -99,7 +99,7 @@ mod test {
 
     #[test]
     fn test_generate_rays_between_vertical() {
-        let between = generate_rays_between();
+        let between = generate_squares_between();
         let ray = between[Square::H1 as usize][Square::H8 as usize];
 
         println!("{ray}");
@@ -108,7 +108,7 @@ mod test {
 
     #[test]
     fn test_generate_rays_between_positive_diagonal() {
-        let between = generate_rays_between();
+        let between = generate_squares_between();
         let ray = between[Square::A1 as usize][Square::H8 as usize];
 
         println!("{ray}");
@@ -116,7 +116,7 @@ mod test {
     }
     #[test]
     fn test_generate_rays_between_neighbours() {
-        let between = generate_rays_between();
+        let between = generate_squares_between();
         let ray = between[Square::D5 as usize][Square::E5 as usize];
 
         println!("{ray}");

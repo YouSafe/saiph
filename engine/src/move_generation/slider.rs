@@ -1,7 +1,7 @@
 use crate::bitboard::BitBoard;
 use crate::board::Board;
 use crate::chess_move::{Move, MoveFlag};
-use crate::movgen::MoveList;
+use crate::move_generation::MoveList;
 use crate::piece::Piece;
 use crate::tables::{between, get_bishop_attacks, get_rook_attacks, line};
 
@@ -162,8 +162,8 @@ mod test {
 
     use crate::board::Board;
     use crate::chess_move::{Move, MoveFlag};
-    use crate::movgen::slider::generate_slider_moves;
-    use crate::movgen::MoveList;
+    use crate::move_generation::slider::generate_slider_moves;
+    use crate::move_generation::MoveList;
     use crate::piece::Piece;
     use crate::square::Square;
 

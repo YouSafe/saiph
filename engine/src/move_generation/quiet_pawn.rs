@@ -1,7 +1,7 @@
 use crate::bitboard::BitBoard;
 use crate::board::Board;
 use crate::chess_move::{Move, MoveFlag};
-use crate::movgen::MoveList;
+use crate::move_generation::MoveList;
 use crate::piece::Piece;
 use crate::promotion::ALL_PROMOTIONS;
 use crate::tables::between;
@@ -97,8 +97,8 @@ mod test {
 
     use crate::board::Board;
     use crate::chess_move::{Move, MoveFlag};
-    use crate::movgen::quiet_pawn::generate_quiet_pawn_moves;
-    use crate::movgen::MoveList;
+    use crate::move_generation::quiet_pawn::generate_quiet_pawn_moves;
+    use crate::move_generation::MoveList;
     use crate::piece::Piece;
     use crate::promotion::ALL_PROMOTIONS;
     use crate::square::Square::*;

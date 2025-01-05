@@ -3,8 +3,8 @@ use std::time::Duration;
 
 use criterion::{criterion_group, criterion_main, Criterion};
 
-use chess_core::board::Board;
-use chess_core::movgen::perf_driver;
+use engine::board::Board;
+use engine::move_generation::perf_driver;
 
 fn perf_test(depth: u8, fen: &str, expected_total_nodes: u64) {
     let mut board = Board::from_str(fen).unwrap();

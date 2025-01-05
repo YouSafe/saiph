@@ -10,9 +10,8 @@ use std::{
 
 use anyhow::Context;
 use bulletformat::{BulletFormat, ChessBoard};
-use chess_core::{board::Board, color::Color, piece::Piece, square::Square};
 use clap::Parser;
-use engine::evaluation::Evaluation;
+use engine::board::Board;
 use rand::{thread_rng, Rng};
 
 #[derive(Debug, Parser)]

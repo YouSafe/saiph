@@ -1,5 +1,5 @@
-use crate::bitboard::BitBoard;
-use crate::square::Square;
+use crate::BitBoard;
+use crate::Square;
 
 pub const fn generate_knight_attacks() -> [BitBoard; 64] {
     let mut result = [BitBoard(0); 64];
@@ -61,9 +61,9 @@ const fn mask_knight_attack(square: Square) -> BitBoard {
 
 #[cfg(test)]
 mod test {
-    use crate::bitboard::BitBoard;
-    use crate::square::Square;
-    use crate::tables::knight_move::mask_knight_attack;
+    use crate::knight_move::mask_knight_attack;
+    use crate::BitBoard;
+    use crate::Square;
 
     #[test]
     fn test_knight_attack_a1() {

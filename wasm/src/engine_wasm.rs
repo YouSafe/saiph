@@ -4,7 +4,7 @@ use std::sync::{
     Arc, Mutex,
 };
 
-use chess_core::board::Board;
+use engine::board::Board;
 use engine::{
     engine_uci::{EngineUCI, Printer},
     search::Search,

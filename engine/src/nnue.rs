@@ -1,6 +1,6 @@
-use chess_core::color::Color;
-use chess_core::piece::{Piece, NUM_PIECES};
-use chess_core::square::{Square, NUM_SQUARES};
+use crate::color::Color;
+use crate::piece::{Piece, NUM_PIECES};
+use crate::square::{Square, NUM_SQUARES};
 
 pub type Matrix<T, const ROWS: usize, const COLS: usize> = [[T; ROWS]; COLS];
 

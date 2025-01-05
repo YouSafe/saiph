@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["chess-core", "engine", "wasm", "datagen"]
+members = ["tables-generator", "engine", "wasm", "datagen"]
 
 [profile.release]
 opt-level = 3

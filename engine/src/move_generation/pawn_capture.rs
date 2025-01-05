@@ -1,7 +1,7 @@
 use crate::bitboard::BitBoard;
 use crate::board::Board;
 use crate::chess_move::{Move, MoveFlag};
-use crate::movgen::MoveList;
+use crate::move_generation::MoveList;
 use crate::piece::Piece;
 use crate::promotion::ALL_PROMOTIONS;
 use crate::tables::{get_pawn_attacks, line};
@@ -66,8 +66,8 @@ mod test {
 
     use crate::board::Board;
     use crate::chess_move::{Move, MoveFlag};
-    use crate::movgen::pawn_capture::generate_pawn_capture_moves;
-    use crate::movgen::MoveList;
+    use crate::move_generation::pawn_capture::generate_pawn_capture_moves;
+    use crate::move_generation::MoveList;
     use crate::piece::Piece;
     use crate::promotion::ALL_PROMOTIONS;
     use crate::square::Square::*;

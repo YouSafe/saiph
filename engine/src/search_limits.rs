@@ -1,4 +1,4 @@
-use chess_core::color::NUM_COLORS;
+use crate::color::NUM_COLORS;
 use std::time::Duration;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]

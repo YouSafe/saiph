@@ -8,6 +8,5 @@ anyhow = "1.0.88"
 bulletformat = "1.7.0"
 clap = { version = "4.5.17", features = ["derive"] }
 engine = { path="../engine"}
-chess-core = { path = "../chess-core"}
 ctrlc = "3.4.5"
 rand = "0.8.5"

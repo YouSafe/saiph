@@ -1,6 +1,6 @@
 use crate::board::Board;
 use crate::chess_move::{Move, MoveFlag};
-use crate::movgen::{generate_attack_bitboard, MoveList};
+use crate::move_generation::{generate_attack_bitboard, MoveList};
 use crate::piece::Piece;
 use crate::tables::get_king_attacks;
 
@@ -51,8 +51,8 @@ mod test {
 
     use crate::board::Board;
     use crate::chess_move::{Move, MoveFlag};
-    use crate::movgen::king::generate_king_moves;
-    use crate::movgen::MoveList;
+    use crate::move_generation::king::generate_king_moves;
+    use crate::move_generation::MoveList;
     use crate::piece::Piece;
     use crate::square::Square;
 

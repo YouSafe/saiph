@@ -1,7 +1,7 @@
 use crate::bitboard::BitBoard;
 use crate::board::Board;
 use crate::chess_move::{Move, MoveFlag};
-use crate::movgen::MoveList;
+use crate::move_generation::MoveList;
 use crate::piece::Piece;
 use crate::square::Square;
 use crate::tables::{get_bishop_attacks, get_pawn_attacks, get_rook_attacks};
@@ -37,8 +37,7 @@ pub fn generate_en_passant_move<const CHECK: bool>(board: &Board, move_list: &mu
         let current_sides_pawns = board.pieces(Piece::Pawn) & board.occupancies(side_to_move);
 
         for source in current_sides_pawns.iter() {
-            let attack =
-                get_pawn_attacks(source, side_to_move) & BitBoard::from_square(ep_square);
+            let attack = get_pawn_attacks(source, side_to_move) & BitBoard::from_square(ep_square);
 
             for destination in attack.iter() {
                 let capture = destination.forward(!side_to_move).unwrap();
@@ -63,8 +62,8 @@ mod test {
 
     use crate::board::Board;
     use crate::chess_move::{Move, MoveFlag};
-    use crate::movgen::en_passant::generate_en_passant_move;
-    use crate::movgen::MoveList;
+    use crate::move_generation::en_passant::generate_en_passant_move;
+    use crate::move_generation::MoveList;
     use crate::piece::Piece;
     use crate::square::Square;
 

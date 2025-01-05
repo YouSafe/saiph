@@ -3,7 +3,7 @@ use crate::board::Board;
 use crate::castling_rights::CastlingRights;
 use crate::chess_move::{Move, MoveFlag};
 use crate::color::NUM_COLORS;
-use crate::movgen::{is_square_attacked, MoveList};
+use crate::move_generation::{is_square_attacked, MoveList};
 use crate::piece::Piece;
 use crate::square::Square;
 use crate::tables::between;
@@ -58,8 +58,7 @@ pub fn generate_castling_moves<const CHECK: bool>(board: &Board, move_list: &mut
 
     for config in &CASTLING_CONFIGS[side_to_move as usize] {
         if castling_rights.contains(config.required_rights)
-            && (board.combined() & between(king_square, config.accompanied_rook))
-                == BitBoard::EMPTY
+            && (board.combined() & between(king_square, config.accompanied_rook)) == BitBoard::EMPTY
             && !is_square_attacked(board, config.safe_squares[0], !side_to_move)
             && !is_square_attacked(board, config.safe_squares[1], !side_to_move)
         {
@@ -80,8 +79,8 @@ mod test {
 
     use crate::board::Board;
     use crate::chess_move::{Move, MoveFlag};
-    use crate::movgen::castling::generate_castling_moves;
-    use crate::movgen::MoveList;
+    use crate::move_generation::castling::generate_castling_moves;
+    use crate::move_generation::MoveList;
     use crate::piece::Piece;
     use crate::square::Square::*;
 
