@@ -3,7 +3,7 @@ use crate::board::Board;
 use crate::castling_rights::CastlingRights;
 use crate::chess_move::{Move, MoveFlag};
 use crate::color::NUM_COLORS;
-use crate::movgen::{is_square_attacked, MoveList, PieceMoveGenerator};
+use crate::movgen::{is_square_attacked, MoveList};
 use crate::piece::Piece;
 use crate::square::Square;
 use crate::tables::between;
@@ -48,32 +48,28 @@ static CASTLING_CONFIGS: [[CastlingConfig; 2]; NUM_COLORS] = [
     ],
 ];
 
-pub struct CastlingMoveGenerator;
+pub fn generate_castling_moves<const CHECK: bool>(board: &Board, move_list: &mut MoveList) {
+    assert!(!CHECK, "can not castle in check");
 
-impl PieceMoveGenerator for CastlingMoveGenerator {
-    fn generate<const CHECK: bool>(board: &Board, move_list: &mut MoveList) {
-        assert!(!CHECK, "can not castle in check");
+    let castling_rights = board.castling_rights();
 
-        let castling_rights = board.castling_rights();
+    let side_to_move = board.side_to_move();
+    let king_square = (board.pieces(Piece::King) & board.occupancies(side_to_move)).bit_scan();
 
-        let side_to_move = board.side_to_move();
-        let king_square = (board.pieces(Piece::King) & board.occupancies(side_to_move)).bit_scan();
-
-        for config in &CASTLING_CONFIGS[side_to_move as usize] {
-            if castling_rights.contains(config.required_rights)
-                && (board.combined() & between(king_square, config.accompanied_rook))
-                    == BitBoard::EMPTY
-                && !is_square_attacked(board, config.safe_squares[0], !side_to_move)
-                && !is_square_attacked(board, config.safe_squares[1], !side_to_move)
-            {
-                move_list.push(Move {
-                    from: king_square,
-                    to: config.king_target,
-                    promotion: None,
-                    piece: Piece::King,
-                    flags: MoveFlag::Castling,
-                })
-            }
+    for config in &CASTLING_CONFIGS[side_to_move as usize] {
+        if castling_rights.contains(config.required_rights)
+            && (board.combined() & between(king_square, config.accompanied_rook))
+                == BitBoard::EMPTY
+            && !is_square_attacked(board, config.safe_squares[0], !side_to_move)
+            && !is_square_attacked(board, config.safe_squares[1], !side_to_move)
+        {
+            move_list.push(Move {
+                from: king_square,
+                to: config.king_target,
+                promotion: None,
+                piece: Piece::King,
+                flags: MoveFlag::Castling,
+            })
         }
     }
 }
@@ -84,8 +80,8 @@ mod test {
 
     use crate::board::Board;
     use crate::chess_move::{Move, MoveFlag};
-    use crate::movgen::castling::CastlingMoveGenerator;
-    use crate::movgen::{MoveList, PieceMoveGenerator};
+    use crate::movgen::castling::generate_castling_moves;
+    use crate::movgen::MoveList;
     use crate::piece::Piece;
     use crate::square::Square::*;
 
@@ -93,7 +89,7 @@ mod test {
     fn test_white_castling() {
         let board = Board::from_str("r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1").unwrap();
         let mut move_list = MoveList::new();
-        CastlingMoveGenerator::generate::<false>(&board, &mut move_list);
+        generate_castling_moves::<false>(&board, &mut move_list);
         println!("{:#?}", move_list);
 
         assert_eq!(move_list.len(), 2);
@@ -119,7 +115,7 @@ mod test {
     fn test_black_castling() {
         let board = Board::from_str("r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R b KQkq - 0 1").unwrap();
         let mut move_list = MoveList::new();
-        CastlingMoveGenerator::generate::<false>(&board, &mut move_list);
+        generate_castling_moves::<false>(&board, &mut move_list);
         println!("{:#?}", move_list);
 
         assert_eq!(move_list.len(), 2);
@@ -146,7 +142,7 @@ mod test {
         let board =
             Board::from_str("r3k2r/pppppppp/8/6b1/8/8/PPP1PPPP/R3K2R w KQkq - 0 1").unwrap();
         let mut move_list = MoveList::new();
-        CastlingMoveGenerator::generate::<false>(&board, &mut move_list);
+        generate_castling_moves::<false>(&board, &mut move_list);
         println!("{:#?}", move_list);
 
         assert_eq!(move_list.len(), 1);
@@ -165,7 +161,7 @@ mod test {
         let board =
             Board::from_str("r3k2r/pppppppp/8/2b5/8/5P2/PPPPP1PP/R3K2R w KQkq - 0 1").unwrap();
         let mut move_list = MoveList::new();
-        CastlingMoveGenerator::generate::<false>(&board, &mut move_list);
+        generate_castling_moves::<false>(&board, &mut move_list);
         println!("{:#?}", move_list);
 
         assert_eq!(move_list.len(), 1);
@@ -184,7 +180,7 @@ mod test {
         let board =
             Board::from_str("r3k2r/pppppppp/8/8/8/1b5b/PP1PPP1P/R3K2R w KQkq - 0 1").unwrap();
         let mut move_list = MoveList::new();
-        CastlingMoveGenerator::generate::<false>(&board, &mut move_list);
+        generate_castling_moves::<false>(&board, &mut move_list);
         println!("{:#?}", move_list);
 
         assert_eq!(move_list.len(), 0);

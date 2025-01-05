@@ -1,161 +1,157 @@
 use crate::bitboard::BitBoard;
 use crate::board::Board;
 use crate::chess_move::{Move, MoveFlag};
-use crate::movgen::{MoveList, PieceMoveGenerator};
+use crate::movgen::MoveList;
 use crate::piece::Piece;
 use crate::tables::{between, get_bishop_attacks, get_rook_attacks, line};
 
-pub struct SliderMoveGenerator;
+pub fn generate_slider_moves<const CHECK: bool>(board: &Board, move_list: &mut MoveList) {
+    let mut capture_mask = !BitBoard::EMPTY;
+    let mut push_mask = !BitBoard::EMPTY;
 
-impl PieceMoveGenerator for SliderMoveGenerator {
-    fn generate<const CHECK: bool>(board: &Board, move_list: &mut MoveList) {
-        let mut capture_mask = !BitBoard::EMPTY;
-        let mut push_mask = !BitBoard::EMPTY;
+    let king_square =
+        (board.pieces(Piece::King) & board.occupancies(board.side_to_move())).bit_scan();
 
-        let king_square =
-            (board.pieces(Piece::King) & board.occupancies(board.side_to_move())).bit_scan();
+    if CHECK {
+        let checkers = board.checkers();
+        let checker = checkers.bit_scan();
 
-        if CHECK {
-            let checkers = board.checkers();
-            let checker = checkers.bit_scan();
+        capture_mask = checkers;
+        push_mask = between(king_square, checker);
+    }
 
-            capture_mask = checkers;
-            push_mask = between(king_square, checker);
+    let side_to_move = board.side_to_move();
+
+    let pinned = board.pinned();
+
+    // limit captures to the opponent pieces
+    capture_mask &= board.occupancies(!side_to_move);
+    // avoid opponent pieces on quiet moves
+    push_mask &= !board.occupancies(!side_to_move);
+
+    let bishops = board.pieces(Piece::Bishop) & board.occupancies(side_to_move);
+    let rooks = board.pieces(Piece::Rook) & board.occupancies(side_to_move);
+    let queens = board.pieces(Piece::Queen) & board.occupancies(side_to_move);
+
+    let combined = board.combined();
+
+    // TODO: refactor to avoid code duplication
+
+    // diagonal attackers
+    for source in ((bishops | queens) & !pinned).iter() {
+        let attacks = get_bishop_attacks(source, combined) & !board.occupancies(side_to_move);
+
+        let source_piece = board.piece_at(source).unwrap();
+
+        // captures
+        for target in (attacks & capture_mask).iter() {
+            move_list.push(Move {
+                from: source,
+                to: target,
+                promotion: None,
+                piece: source_piece,
+                flags: MoveFlag::Capture,
+            })
         }
 
-        let side_to_move = board.side_to_move();
+        // quiet
+        for target in (attacks & push_mask).iter() {
+            move_list.push(Move {
+                from: source,
+                to: target,
+                promotion: None,
+                piece: source_piece,
+                flags: MoveFlag::Normal,
+            });
+        }
+    }
 
-        let pinned = board.pinned();
+    for source in ((bishops | queens) & pinned).iter() {
+        let attacks = get_bishop_attacks(source, combined)
+            & line(king_square, source)
+            & !board.occupancies(side_to_move);
 
-        // limit captures to the opponent pieces
-        capture_mask &= board.occupancies(!side_to_move);
-        // avoid opponent pieces on quiet moves
-        push_mask &= !board.occupancies(!side_to_move);
+        let source_piece = board.piece_at(source).unwrap();
 
-        let bishops = board.pieces(Piece::Bishop) & board.occupancies(side_to_move);
-        let rooks = board.pieces(Piece::Rook) & board.occupancies(side_to_move);
-        let queens = board.pieces(Piece::Queen) & board.occupancies(side_to_move);
-
-        let combined = board.combined();
-
-        // TODO: refactor to avoid code duplication
-
-        // diagonal attackers
-        for source in ((bishops | queens) & !pinned).iter() {
-            let attacks = get_bishop_attacks(source, combined) & !board.occupancies(side_to_move);
-
-            let source_piece = board.piece_at(source).unwrap();
-
-            // captures
-            for target in (attacks & capture_mask).iter() {
-                move_list.push(Move {
-                    from: source,
-                    to: target,
-                    promotion: None,
-                    piece: source_piece,
-                    flags: MoveFlag::Capture,
-                })
-            }
-
-            // quiet
-            for target in (attacks & push_mask).iter() {
-                move_list.push(Move {
-                    from: source,
-                    to: target,
-                    promotion: None,
-                    piece: source_piece,
-                    flags: MoveFlag::Normal,
-                });
-            }
+        // captures
+        for target in (attacks & capture_mask).iter() {
+            move_list.push(Move {
+                from: source,
+                to: target,
+                promotion: None,
+                piece: source_piece,
+                flags: MoveFlag::Capture,
+            })
         }
 
-        for source in ((bishops | queens) & pinned).iter() {
-            let attacks = get_bishop_attacks(source, combined)
-                & line(king_square, source)
-                & !board.occupancies(side_to_move);
+        // quiet
+        for target in (attacks & push_mask).iter() {
+            move_list.push(Move {
+                from: source,
+                to: target,
+                promotion: None,
+                piece: source_piece,
+                flags: MoveFlag::Normal,
+            });
+        }
+    }
 
-            let source_piece = board.piece_at(source).unwrap();
+    // line attackers
+    for source in ((rooks | queens) & !pinned).iter() {
+        let attacks = get_rook_attacks(source, combined) & !board.occupancies(side_to_move);
 
-            // captures
-            for target in (attacks & capture_mask).iter() {
-                move_list.push(Move {
-                    from: source,
-                    to: target,
-                    promotion: None,
-                    piece: source_piece,
-                    flags: MoveFlag::Capture,
-                })
-            }
+        let source_piece = board.piece_at(source).unwrap();
 
-            // quiet
-            for target in (attacks & push_mask).iter() {
-                move_list.push(Move {
-                    from: source,
-                    to: target,
-                    promotion: None,
-                    piece: source_piece,
-                    flags: MoveFlag::Normal,
-                });
-            }
+        // captures
+        for target in (attacks & capture_mask).iter() {
+            move_list.push(Move {
+                from: source,
+                to: target,
+                promotion: None,
+                piece: source_piece,
+                flags: MoveFlag::Capture,
+            })
         }
 
-        // line attackers
-        for source in ((rooks | queens) & !pinned).iter() {
-            let attacks = get_rook_attacks(source, combined) & !board.occupancies(side_to_move);
+        // quiet
+        for target in (attacks & push_mask).iter() {
+            move_list.push(Move {
+                from: source,
+                to: target,
+                promotion: None,
+                piece: source_piece,
+                flags: MoveFlag::Normal,
+            });
+        }
+    }
 
-            let source_piece = board.piece_at(source).unwrap();
+    for source in ((rooks | queens) & pinned).iter() {
+        let attacks = get_rook_attacks(source, combined)
+            & line(king_square, source)
+            & !board.occupancies(side_to_move);
 
-            // captures
-            for target in (attacks & capture_mask).iter() {
-                move_list.push(Move {
-                    from: source,
-                    to: target,
-                    promotion: None,
-                    piece: source_piece,
-                    flags: MoveFlag::Capture,
-                })
-            }
+        let source_piece = board.piece_at(source).unwrap();
 
-            // quiet
-            for target in (attacks & push_mask).iter() {
-                move_list.push(Move {
-                    from: source,
-                    to: target,
-                    promotion: None,
-                    piece: source_piece,
-                    flags: MoveFlag::Normal,
-                });
-            }
+        // captures
+        for target in (attacks & capture_mask).iter() {
+            move_list.push(Move {
+                from: source,
+                to: target,
+                promotion: None,
+                piece: source_piece,
+                flags: MoveFlag::Capture,
+            })
         }
 
-        for source in ((rooks | queens) & pinned).iter() {
-            let attacks = get_rook_attacks(source, combined)
-                & line(king_square, source)
-                & !board.occupancies(side_to_move);
-
-            let source_piece = board.piece_at(source).unwrap();
-
-            // captures
-            for target in (attacks & capture_mask).iter() {
-                move_list.push(Move {
-                    from: source,
-                    to: target,
-                    promotion: None,
-                    piece: source_piece,
-                    flags: MoveFlag::Capture,
-                })
-            }
-
-            // quiet
-            for target in (attacks & push_mask).iter() {
-                move_list.push(Move {
-                    from: source,
-                    to: target,
-                    promotion: None,
-                    piece: source_piece,
-                    flags: MoveFlag::Normal,
-                });
-            }
+        // quiet
+        for target in (attacks & push_mask).iter() {
+            move_list.push(Move {
+                from: source,
+                to: target,
+                promotion: None,
+                piece: source_piece,
+                flags: MoveFlag::Normal,
+            });
         }
     }
 }
@@ -166,8 +162,8 @@ mod test {
 
     use crate::board::Board;
     use crate::chess_move::{Move, MoveFlag};
-    use crate::movgen::slider::SliderMoveGenerator;
-    use crate::movgen::{MoveList, PieceMoveGenerator};
+    use crate::movgen::slider::generate_slider_moves;
+    use crate::movgen::MoveList;
     use crate::piece::Piece;
     use crate::square::Square;
 
@@ -175,7 +171,7 @@ mod test {
     fn test_move_along_pin_ray() {
         let board = Board::from_str("4k3/8/7b/3P4/8/8/3B4/2K5 w - - 3 2").unwrap();
         let mut move_list = MoveList::new();
-        SliderMoveGenerator::generate::<false>(&board, &mut move_list);
+        generate_slider_moves::<false>(&board, &mut move_list);
         println!("{:#?}", move_list);
         assert_eq!(move_list.len(), 4);
 
@@ -216,7 +212,7 @@ mod test {
     fn test_pinned_bishop_captures() {
         let board = Board::from_str("8/2p5/3p4/KP5r/1R3b1k/6P1/4P3/8 b - - 0 1").unwrap();
         let mut move_list = MoveList::new();
-        SliderMoveGenerator::generate::<true>(&board, &mut move_list);
+        generate_slider_moves::<true>(&board, &mut move_list);
         println!("{:#?}", move_list);
         assert_eq!(move_list.len(), 0);
     }
@@ -225,7 +221,7 @@ mod test {
     fn test_pinned_rook_captures() {
         let board = Board::from_str("8/2p5/3p4/KP5r/1R4rk/6P1/4P3/8 b - - 0 1").unwrap();
         let mut move_list = MoveList::new();
-        SliderMoveGenerator::generate::<true>(&board, &mut move_list);
+        generate_slider_moves::<true>(&board, &mut move_list);
         println!("{:#?}", move_list);
         assert_eq!(move_list.len(), 0);
     }
@@ -234,7 +230,7 @@ mod test {
     fn test_pinned_queen_captures() {
         let board = Board::from_str("8/2p5/3p4/KP5r/1R4qk/6P1/4P3/8 b - - 0 1").unwrap();
         let mut move_list = MoveList::new();
-        SliderMoveGenerator::generate::<true>(&board, &mut move_list);
+        generate_slider_moves::<true>(&board, &mut move_list);
         println!("{:#?}", move_list);
         assert_eq!(move_list.len(), 0);
     }
