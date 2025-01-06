@@ -1,9 +1,9 @@
 use std::env;
 use std::str::FromStr;
 
-use chess_core::board::Board;
-use chess_core::movgen::perf_test;
-use chess_core::uci_move::UCIMove;
+use engine::board::Board;
+use engine::move_generation::perf_test;
+use engine::uci_move::UCIMove;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
