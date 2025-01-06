@@ -128,7 +128,6 @@ impl Iterator for BitBoardIterator {
 
 macro_rules! impl_bitwise_op {
     ($struct_name:ident, $op_trait:ident, $op_assign_trait:ident, $op_fn:ident, $op_assign_fn:ident, $op_sym:tt, $op_assign_sym:tt) => {
-        // regular
         impl $op_trait for $struct_name {
             type Output = $struct_name;
 
@@ -137,46 +136,9 @@ macro_rules! impl_bitwise_op {
                 $struct_name(self.0 $op_sym other.0)
             }
         }
-
-        impl $op_trait for &$struct_name {
-            type Output = $struct_name;
-
-            #[inline]
-            fn $op_fn(self, other: &$struct_name) -> $struct_name {
-                $struct_name(self.0 $op_sym other.0)
-            }
-        }
-
-        impl $op_trait<$struct_name> for &$struct_name {
-            type Output = $struct_name;
-
-            #[inline]
-            fn $op_fn(self, other: $struct_name) -> $struct_name {
-                $struct_name(self.0 $op_sym other.0)
-            }
-        }
-
-        impl $op_trait<&$struct_name> for $struct_name {
-            type Output = $struct_name;
-
-            #[inline]
-            fn $op_fn(self, other: &$struct_name) -> $struct_name {
-                $struct_name(self.0 $op_sym other.0)
-            }
-        }
-
-        // assign
-
         impl $op_assign_trait for $struct_name {
             #[inline]
             fn $op_assign_fn(&mut self, other: $struct_name) {
-                self.0 $op_assign_sym other.0
-            }
-        }
-
-        impl $op_assign_trait<&$struct_name> for $struct_name {
-            #[inline]
-            fn $op_assign_fn(&mut self, other: &$struct_name)  {
                 self.0 $op_assign_sym other.0
             }
         }
