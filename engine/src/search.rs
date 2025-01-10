@@ -1,6 +1,5 @@
 use crate::board::Board;
 use crate::clock::Clock;
-use crate::engine_uci::Printer;
 use crate::evaluation::{board_value, Evaluation};
 use crate::move_ordering::mmv_lva;
 use crate::pv_table::PrincipleVariationTable;
@@ -8,6 +7,7 @@ use crate::search_limits::SearchLimits;
 use crate::transposition_table::{Entry, TranspositionTable, ValueType};
 use crate::types::chess_move::Move;
 use crate::types::color::Color;
+use crate::Printer;
 use instant::Instant;
 use std::sync::atomic::{AtomicBool, Ordering};
 

@@ -1,8 +1,8 @@
 use crate::board::Board;
 use crate::search_limits::{SearchLimits, TimeLimit};
-use crate::searcher::Searcher;
 use crate::types::color::Color;
 use crate::uci_move::UCIMove;
+use crate::{Printer, SearchWorkerPool};
 use std::str::FromStr;
 use std::time::Duration;
 
@@ -27,8 +27,12 @@ enum ParseCommandError {
     InvalidNumber,
 }
 
-pub trait Printer {
-    fn print(&self, s: &str);
+pub struct StandardPrinter;
+
+impl Printer for StandardPrinter {
+    fn print(&self, s: &str) {
+        println!("{s}");
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -37,16 +41,16 @@ enum StartingPosition {
     Custom(Board),
 }
 
-pub struct EngineUCI<S: Searcher, P: Printer> {
+pub struct EngineUCI<S: SearchWorkerPool, P: Printer> {
     board: Board,
-    searcher: S,
+    workers: S,
     printer: P,
 }
 
-impl<S: Searcher, P: Printer> EngineUCI<S, P> {
-    pub fn new(searcher: S, printer: P) -> Self {
+impl<S: SearchWorkerPool, P: Printer> EngineUCI<S, P> {
+    pub fn new(workers: S, printer: P) -> Self {
         EngineUCI {
-            searcher,
+            workers,
             board: Default::default(),
             printer,
         }
@@ -200,7 +204,7 @@ impl<S: Searcher, P: Printer> EngineUCI<S, P> {
                 self.printer.print("readyok");
             }
             Command::NewGame => {
-                self.searcher.clear_tables();
+                self.workers.clear_tables();
             }
             Command::Position(start_pos, moves) => {
                 let mut board = match start_pos {
@@ -215,7 +219,7 @@ impl<S: Searcher, P: Printer> EngineUCI<S, P> {
                 self.board = board;
             }
             Command::Go(limits) => {
-                self.searcher.initiate_search(self.board.clone(), limits);
+                self.workers.initiate_search(self.board.clone(), limits);
             }
             Command::Eval => {
                 // self.printer
@@ -225,8 +229,11 @@ impl<S: Searcher, P: Printer> EngineUCI<S, P> {
                 self.printer.print(self.board.to_string().as_str());
             }
             Command::Stop => {
-                self.searcher.stop_search();
+                self.workers.stop_search();
             }
         }
     }
+
+
+
 }

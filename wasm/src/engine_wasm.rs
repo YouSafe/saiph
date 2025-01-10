@@ -4,17 +4,15 @@ use std::sync::{
     Arc, Mutex,
 };
 
-use engine::board::Board;
+use engine::{board::Board, Printer, SearchWorkerPool};
 use engine::{
-    engine_uci::{EngineUCI, Printer},
-    search::Search,
-    search_limits::SearchLimits,
-    searcher::Searcher,
+    engine_uci::EngineUCI, search::Search, search_limits::SearchLimits,
     transposition_table::TranspositionTable,
 };
 use wasm_bindgen::prelude::*;
 use web_sys::{js_sys, DedicatedWorkerGlobalScope, MessageChannel, MessagePort, WorkerOptions};
 
+/// Printer for the parent webworker 
 struct EnginePrinter {
     worker_scope: DedicatedWorkerGlobalScope,
 }
@@ -33,17 +31,18 @@ impl Printer for EnginePrinter {
     }
 }
 
-struct SearcherPrinter {
+/// Printer for the search worker webworker communicating with the parent webworker
+struct SearchPrinter {
     port: MessagePort,
 }
 
-impl SearcherPrinter {
+impl SearchPrinter {
     pub fn new(port: MessagePort) -> Self {
         Self { port }
     }
 }
 
-impl Printer for SearcherPrinter {
+impl Printer for SearchPrinter {
     fn print(&self, s: &str) {
         self.port.post_message(&JsValue::from_str(s)).unwrap();
     }
@@ -51,24 +50,24 @@ impl Printer for SearcherPrinter {
 
 #[wasm_bindgen]
 pub struct Engine {
-    engine_uci: EngineUCI<WasmSearcher, EnginePrinter>,
+    engine_uci: EngineUCI<WasmSearchWorkerPool, EnginePrinter>,
     _message_channel: MessageChannel,
 }
 
-enum SearcherMessage {
+enum SearchWorkerPoolMessage {
     NewSearchTask(Board, SearchLimits),
     Quit,
 }
 
-pub struct WasmSearcher {
-    channel_sender: Sender<SearcherMessage>,
+pub struct WasmSearchWorkerPool {
+    channel_sender: Sender<SearchWorkerPoolMessage>,
     table: Arc<Mutex<TranspositionTable>>,
     stop: Arc<AtomicBool>,
     main_thread_handle: Option<web_sys::Worker>,
 }
 
 pub fn spawn(
-    f: impl FnOnce(MessagePort) + Send + 'static,
+    f: impl FnOnce(MessagePort),
     message_port: MessagePort,
 ) -> Result<web_sys::Worker, JsValue> {
     let options = WorkerOptions::new();
@@ -98,7 +97,7 @@ pub fn worker_entry_point(addr: u32, message_port: MessagePort) {
     (*closure)(message_port);
 }
 
-impl WasmSearcher {
+impl WasmSearchWorkerPool {
     fn new(message_port: MessagePort) -> Self {
         let (sender, receiver) = mpsc::channel();
 
@@ -112,17 +111,17 @@ impl WasmSearcher {
             main_thread_handle: Some(
                 spawn(
                     move |p_message_port| {
-                        let searcher_printer = SearcherPrinter::new(p_message_port);
+                        let search_printer = SearchPrinter::new(p_message_port);
 
                         loop {
                             let message = receiver.recv().unwrap();
 
                             match message {
-                                SearcherMessage::Quit => {
+                                SearchWorkerPoolMessage::Quit => {
                                     eprintln!("not accepting any more search requests");
                                     break;
                                 }
-                                SearcherMessage::NewSearchTask(board, limits) => {
+                                SearchWorkerPoolMessage::NewSearchTask(board, limits) => {
                                     stop.store(false, Ordering::SeqCst);
                                     let stop_ref = stop.as_ref();
                                     let table_ref = &mut table.lock().unwrap();
@@ -131,13 +130,13 @@ impl WasmSearcher {
                                         board,
                                         table_ref,
                                         stop_ref,
-                                        &searcher_printer,
+                                        &search_printer,
                                         limits,
                                     );
 
                                     let pick = search.find_best_move();
                                     if let Some(bestmove) = pick {
-                                        searcher_printer
+                                        search_printer
                                             .print(format!("bestmove {}", bestmove).as_str());
                                     }
                                 }
@@ -152,14 +151,14 @@ impl WasmSearcher {
     }
 }
 
-impl Searcher for WasmSearcher {
+impl SearchWorkerPool for WasmSearchWorkerPool {
     fn clear_tables(&mut self) {
         self.table.lock().unwrap().clear();
     }
 
     fn initiate_search(&self, board: Board, limits: SearchLimits) {
         self.channel_sender
-            .send(SearcherMessage::NewSearchTask(board, limits))
+            .send(SearchWorkerPoolMessage::NewSearchTask(board, limits))
             .expect("could not send new search task");
     }
 
@@ -168,12 +167,12 @@ impl Searcher for WasmSearcher {
     }
 }
 
-impl Drop for WasmSearcher {
+impl Drop for WasmSearchWorkerPool {
     fn drop(&mut self) {
         eprintln!("shutting down searcher thread");
         self.stop_search();
         self.channel_sender
-            .send(SearcherMessage::Quit)
+            .send(SearchWorkerPoolMessage::Quit)
             .expect("could not send quit message");
         if let Some(handle) = self.main_thread_handle.take() {
             handle.terminate()
@@ -202,7 +201,7 @@ impl Engine {
 
         closure.forget();
 
-        let wasm_searcher = WasmSearcher::new(message_channel.port2());
+        let wasm_searcher = WasmSearchWorkerPool::new(message_channel.port2());
 
         Engine {
             engine_uci: EngineUCI::new(wasm_searcher, engine_printer),

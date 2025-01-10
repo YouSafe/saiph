@@ -1,15 +1,16 @@
 use std::io;
 use std::io::BufRead;
 
-use engine::engine_uci::EngineUCI;
-use engine::searcher::StandardPrinter;
-use engine::standard_searcher::StandardSearcher;
+use engine::{
+    engine_uci::{EngineUCI, StandardPrinter},
+    standard_searcher::StandardSearchWorkerPool,
+};
 
 fn main() {
     let stdin = io::stdin();
     let mut message = String::new();
 
-    let mut engine = EngineUCI::new(StandardSearcher::new(), StandardPrinter);
+    let mut engine = EngineUCI::new(StandardSearchWorkerPool::new(), StandardPrinter);
 
     while message.trim() != "quit" {
         message.clear();

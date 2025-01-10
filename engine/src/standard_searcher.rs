@@ -1,8 +1,9 @@
 use crate::board::Board;
 
+use crate::engine_uci::StandardPrinter;
 use crate::search::Search;
 use crate::search_limits::SearchLimits;
-use crate::searcher::{Searcher, StandardPrinter};
+use crate::SearchWorkerPool;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
 use std::sync::{mpsc, Arc, Mutex};
@@ -14,14 +15,14 @@ enum SearcherMessage {
     NewSearchTask(Board, SearchLimits),
     Quit,
 }
-pub struct StandardSearcher {
+pub struct StandardSearchWorkerPool {
     channel_sender: Sender<SearcherMessage>,
     table: Arc<Mutex<TranspositionTable>>,
     stop: Arc<AtomicBool>,
     main_thread_handle: Option<JoinHandle<()>>,
 }
 
-impl StandardSearcher {
+impl StandardSearchWorkerPool {
     pub fn new() -> Self {
         let (sender, receiver) = mpsc::channel();
 
@@ -29,7 +30,7 @@ impl StandardSearcher {
         let stop = Arc::new(AtomicBool::new(false));
         let printer = StandardPrinter;
 
-        StandardSearcher {
+        StandardSearchWorkerPool {
             channel_sender: sender,
             table: table.clone(),
             stop: stop.clone(),
@@ -57,7 +58,7 @@ impl StandardSearcher {
     }
 }
 
-impl Searcher for StandardSearcher {
+impl SearchWorkerPool for StandardSearchWorkerPool {
     fn clear_tables(&mut self) {
         self.table.lock().unwrap().clear();
     }
@@ -73,7 +74,7 @@ impl Searcher for StandardSearcher {
     }
 }
 
-impl Drop for StandardSearcher {
+impl Drop for StandardSearchWorkerPool {
     fn drop(&mut self) {
         eprintln!("shutting down searcher thread");
         self.stop_search();
