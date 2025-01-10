@@ -1,4 +1,4 @@
-use crate::move_generation::{calculate_pinned_checkers_pinners, generate_moves, MoveList};
+use crate::move_generation::{generate_moves, MoveList};
 use crate::tables::{
     between, get_bishop_attacks, get_knight_attacks, get_pawn_attacks, get_rook_attacks,
 };
@@ -6,8 +6,8 @@ use crate::types::bitboard::BitBoard;
 use crate::types::castling_rights::{CastlingRights, UPDATE_CASTLING_RIGHT_TABLE};
 use crate::types::chess_move::Move;
 use crate::types::chess_move::MoveFlag::{Capture, Castling, DoublePawnPush, EnPassant};
-use crate::types::color::{Color, ALL_COLORS, NUM_COLORS};
-use crate::types::piece::{Piece, ALL_PIECES, NUM_PIECES};
+use crate::types::color::{Color, NUM_COLORS};
+use crate::types::piece::{Piece, NUM_PIECES};
 use crate::types::square::{File, Square, NUM_SQUARES};
 use crate::uci_move::UCIMove;
 use crate::zobrist::{CASTLE_KEYS, EN_PASSANT_KEYS, PIECE_KEYS, SIDE_KEY};
@@ -47,69 +47,12 @@ pub struct Board {
     game_ply: u16,
 }
 
-impl PartialEq for Board {
-    fn eq(&self, other: &Self) -> bool {
-        self.pieces == other.pieces
-            && self.occupancies == other.occupancies
-            && self.combined == other.combined
-            && self.side_to_move == other.side_to_move
-    }
-}
-
-impl Eq for Board {}
-
-impl Default for Board {
-    fn default() -> Self {
-        Board::STARTING_POS_FEN.parse().unwrap()
-    }
-}
-
 impl Board {
     pub const STARTING_POS_FEN: &'static str =
         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
     pub const KILLER_POS_FEN: &'static str =
         "rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR w KQkq e6 0 1";
-
-    pub fn piece_at(&self, square: Square) -> Option<Piece> {
-        self.mailbox[square as usize].map(|(piece, _)| piece)
-    }
-
-    pub fn color_at(&self, square: Square) -> Option<Color> {
-        self.mailbox[square as usize].map(|(_, color)| color)
-    }
-
-    pub fn pieces(&self, piece: Piece) -> BitBoard {
-        self.pieces[piece as usize]
-    }
-
-    pub fn occupancies(&self, color: Color) -> BitBoard {
-        self.occupancies[color as usize]
-    }
-
-    pub fn combined(&self) -> BitBoard {
-        self.combined
-    }
-
-    pub fn side_to_move(&self) -> Color {
-        self.side_to_move
-    }
-
-    pub fn checkers(&self) -> BitBoard {
-        self.state.checkers
-    }
-
-    pub fn pinned(&self) -> BitBoard {
-        self.state.pinned
-    }
-
-    pub fn castling_rights(&self) -> CastlingRights {
-        self.state.castling_rights
-    }
-
-    pub fn en_passant_target(&self) -> Option<Square> {
-        self.state.en_passant_target
-    }
 
     pub fn apply_uci_move(&mut self, uci_move: UCIMove) {
         let chess_move = generate_moves(self)
@@ -277,7 +220,6 @@ impl Board {
         self.side_to_move = !self.side_to_move;
         new_state.hash ^= SIDE_KEY;
 
-        // TODO: update incrementally instead
         let king_square =
             (self.pieces(Piece::King) & self.occupancies(self.side_to_move())).bit_scan();
 
@@ -297,25 +239,20 @@ impl Board {
         // limit to opponent's pieces
         potential_pinners &= self.occupancies(!self.side_to_move());
 
-        let mut pinners = BitBoard(0);
-
         for square in potential_pinners.iter() {
             let potentially_pinned = between(square, king_square) & self.combined();
             if potentially_pinned.is_empty() {
                 checkers |= square;
             } else if potentially_pinned.count() == 1 {
                 pinned |= potentially_pinned;
-                pinners |= potential_pinners;
             }
         }
 
-        // TODO: only update when knight moved
         // now pretend the king is a knight and check if it attacks an enemy knight
         checkers |= get_knight_attacks(king_square)
             & self.pieces(Piece::Knight)
             & self.occupancies(!self.side_to_move());
 
-        // TODO: only update when pawn moved
         // do the same thing for pawns
         checkers |= get_pawn_attacks(king_square, self.side_to_move())
             & self.pieces(Piece::Pawn)
@@ -405,10 +342,6 @@ impl Board {
         }
     }
 
-    pub fn game_ply(&self) -> u16 {
-        self.game_ply
-    }
-
     pub fn generate_moves(&self) -> MoveList {
         generate_moves(self)
     }
@@ -435,6 +368,50 @@ impl Board {
             .filter(|c| self.state.hash == c.hash)
             .count()
             >= 1
+    }
+
+    pub fn game_ply(&self) -> u16 {
+        self.game_ply
+    }
+
+    pub fn piece_at(&self, square: Square) -> Option<Piece> {
+        self.mailbox[square as usize].map(|(piece, _)| piece)
+    }
+
+    pub fn color_at(&self, square: Square) -> Option<Color> {
+        self.mailbox[square as usize].map(|(_, color)| color)
+    }
+
+    pub fn pieces(&self, piece: Piece) -> BitBoard {
+        self.pieces[piece as usize]
+    }
+
+    pub fn occupancies(&self, color: Color) -> BitBoard {
+        self.occupancies[color as usize]
+    }
+
+    pub fn combined(&self) -> BitBoard {
+        self.combined
+    }
+
+    pub fn side_to_move(&self) -> Color {
+        self.side_to_move
+    }
+
+    pub fn checkers(&self) -> BitBoard {
+        self.state.checkers
+    }
+
+    pub fn pinned(&self) -> BitBoard {
+        self.state.pinned
+    }
+
+    pub fn castling_rights(&self) -> CastlingRights {
+        self.state.castling_rights
+    }
+
+    pub fn en_passant_target(&self) -> Option<Square> {
+        self.state.en_passant_target
     }
 
     pub fn is_draw_by_fifty_move_rule(&self) -> bool {
@@ -511,6 +488,8 @@ impl FromStr for Board {
 
         let mut mailbox: [Option<(Piece, Color)>; NUM_SQUARES] = [None; NUM_SQUARES];
 
+        let mut hash = 0;
+
         let piece_placement_data = parts
             .next()
             .ok_or(ParseFenError::PartMissing("piece placement data"))?;
@@ -535,6 +514,8 @@ impl FromStr for Board {
                     combined |= square;
 
                     mailbox[square as usize] = Some((piece, color));
+
+                    hash ^= PIECE_KEYS[color as usize][piece as usize][square as usize];
 
                     file += 1;
                     if file > 8 {
@@ -601,27 +582,65 @@ impl FromStr for Board {
             .parse::<u16>()
             .map_err(|_| ParseFenError::BadFullMoveNumber)?;
 
-        let partial_board = PartialBoard {
+        if let Some(en_passant_target) = en_passant_target {
+            hash ^= EN_PASSANT_KEYS[en_passant_target.to_file() as usize];
+        }
+
+        hash ^= CASTLE_KEYS[castling_rights.to_usize()];
+
+        if side_to_move == Color::Black {
+            hash ^= SIDE_KEY;
+        }
+
+        // ========== CALCULATE PINNED & CHECKERS ==========
+        let king_square =
+            (pieces[Piece::King as usize] & occupancies[side_to_move as usize]).bit_scan();
+
+        let mut potential_pinners = BitBoard(0);
+        let mut pinned = BitBoard(0);
+
+        let mut checkers = BitBoard(0);
+
+        // pretend king is a bishop and see if any other bishop OR queen is attacked by that
+        potential_pinners |= get_bishop_attacks(king_square, BitBoard(0))
+            & (pieces[Piece::Bishop as usize] | pieces[Piece::Queen as usize]);
+
+        // now pretend the king is a rook and so the same procedure
+        potential_pinners |= get_rook_attacks(king_square, BitBoard(0))
+            & (pieces[Piece::Rook as usize] | pieces[Piece::Queen as usize]);
+
+        // limit to opponent's pieces
+        potential_pinners &= occupancies[!side_to_move as usize];
+
+        for square in potential_pinners.iter() {
+            let potentially_pinned = between(square, king_square) & combined;
+            if potentially_pinned.is_empty() {
+                checkers |= square;
+            } else if potentially_pinned.count() == 1 {
+                pinned |= potentially_pinned;
+            }
+        }
+
+        // now pretend the king is a knight and check if it attacks an enemy knight
+        checkers |= get_knight_attacks(king_square)
+            & pieces[Piece::Knight as usize]
+            & occupancies[!side_to_move as usize];
+
+        // do the same thing for pawns
+        checkers |= get_pawn_attacks(king_square, side_to_move)
+            & pieces[Piece::Pawn as usize]
+            & occupancies[!side_to_move as usize];
+
+        // ======================================================
+
+        let board = Board {
             pieces,
             occupancies,
             combined,
             side_to_move,
-            en_passant_target,
-            castling_rights,
-        };
-
-        let (pinned, checkers, _) = calculate_pinned_checkers_pinners(&partial_board);
-
-        let hash_key = partial_board.generate_hash_key();
-
-        let board = Board {
-            pieces: partial_board.pieces,
-            occupancies: partial_board.occupancies,
-            combined: partial_board.combined,
-            side_to_move: partial_board.side_to_move,
             mailbox,
             state: BoardState {
-                hash: hash_key,
+                hash,
                 en_passant_target,
                 castling_rights,
                 rule50: halfmove_clock,
@@ -640,56 +659,20 @@ impl FromStr for Board {
     }
 }
 
-pub struct PartialBoard {
-    pieces: [BitBoard; NUM_PIECES],
-    occupancies: [BitBoard; NUM_COLORS],
-    en_passant_target: Option<Square>,
-    castling_rights: CastlingRights,
-    combined: BitBoard,
-    side_to_move: Color,
+impl PartialEq for Board {
+    fn eq(&self, other: &Self) -> bool {
+        self.pieces == other.pieces
+            && self.occupancies == other.occupancies
+            && self.combined == other.combined
+            && self.side_to_move == other.side_to_move
+    }
 }
 
-impl PartialBoard {
-    pub fn pieces(&self, piece: Piece) -> BitBoard {
-        self.pieces[piece as usize]
-    }
+impl Eq for Board {}
 
-    pub fn occupancies(&self, color: Color) -> BitBoard {
-        self.occupancies[color as usize]
-    }
-
-    pub fn combined(&self) -> BitBoard {
-        self.combined
-    }
-
-    pub fn side_to_move(&self) -> Color {
-        self.side_to_move
-    }
-
-    fn generate_hash_key(&self) -> u64 {
-        let mut key = 0;
-
-        for color in ALL_COLORS {
-            for piece in ALL_PIECES {
-                let piece_bitboard = self.pieces(piece) & self.occupancies(color);
-
-                for square in piece_bitboard.iter() {
-                    key ^= PIECE_KEYS[color as usize][piece as usize][square as usize];
-                }
-            }
-        }
-
-        if let Some(en_passant_target) = self.en_passant_target {
-            key ^= EN_PASSANT_KEYS[en_passant_target.to_file() as usize];
-        }
-
-        key ^= CASTLE_KEYS[self.castling_rights.to_usize()];
-
-        if self.side_to_move == Color::Black {
-            key ^= SIDE_KEY;
-        }
-
-        key
+impl Default for Board {
+    fn default() -> Self {
+        Board::STARTING_POS_FEN.parse().unwrap()
     }
 }
 

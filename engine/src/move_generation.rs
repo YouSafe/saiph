@@ -7,10 +7,10 @@ use pawn_capture::generate_pawn_capture_moves;
 use quiet_pawn::generate_quiet_pawn_moves;
 use slider::generate_slider_moves;
 
-use crate::board::{Board, PartialBoard};
+use crate::board::Board;
 use crate::tables::{
-    between, get_bishop_attacks, get_king_attacks, get_knight_attacks, get_pawn_attacks,
-    get_queen_attacks, get_rook_attacks,
+    get_bishop_attacks, get_king_attacks, get_knight_attacks, get_pawn_attacks, get_queen_attacks,
+    get_rook_attacks,
 };
 use crate::types::bitboard::BitBoard;
 use crate::types::chess_move::Move;
@@ -53,51 +53,6 @@ pub fn generate_attack_bitboard(board: &Board, attacking_color: Color) -> BitBoa
     }
 
     attacked
-}
-
-pub fn calculate_pinned_checkers_pinners(board: &PartialBoard) -> (BitBoard, BitBoard, BitBoard) {
-    let king_square =
-        (board.pieces(Piece::King) & board.occupancies(board.side_to_move())).bit_scan();
-
-    let mut potential_pinners = BitBoard(0);
-    let mut pinned = BitBoard(0);
-
-    let mut checkers = BitBoard(0);
-
-    // pretend king is a bishop and see if any other bishop OR queen is attacked by that
-    potential_pinners |= get_bishop_attacks(king_square, BitBoard(0))
-        & (board.pieces(Piece::Bishop) | board.pieces(Piece::Queen));
-
-    // now pretend the king is a rook and so the same procedure
-    potential_pinners |= get_rook_attacks(king_square, BitBoard(0))
-        & (board.pieces(Piece::Rook) | board.pieces(Piece::Queen));
-
-    // limit to opponent's pieces
-    potential_pinners &= board.occupancies(!board.side_to_move());
-
-    let mut pinners = BitBoard(0);
-
-    for square in potential_pinners.iter() {
-        let potentially_pinned = between(square, king_square) & board.combined();
-        if potentially_pinned.is_empty() {
-            checkers |= square;
-        } else if potentially_pinned.count() == 1 {
-            pinned |= potentially_pinned;
-            pinners |= potential_pinners;
-        }
-    }
-
-    // now pretend the king is a knight and check if it attacks an enemy knight
-    checkers |= get_knight_attacks(king_square)
-        & board.pieces(Piece::Knight)
-        & board.occupancies(!board.side_to_move());
-
-    // do the same thing for pawns
-    checkers |= get_pawn_attacks(king_square, board.side_to_move())
-        & board.pieces(Piece::Pawn)
-        & board.occupancies(!board.side_to_move());
-
-    (pinned, checkers, pinners)
 }
 
 pub fn generate_moves(board: &Board) -> MoveList {
@@ -342,17 +297,6 @@ mod test {
         println!("{test}");
         assert_eq!(attacked, test);
     }
-
-    // #[test]
-    // fn test_generate_pinned_checkers() {
-    //     let board = Board::from_str("Q2k3Q/1N2PN2/1QN1NQ2/8/3R4/3K4/8/8 b - - 0 1").unwrap();
-    //
-    //     let (pinned, checkers, _pinners) = calculate_pinned_checkers_pinners(&board);
-    //
-    //     println!("{board}");
-    //     println!("pinned: {pinned}");
-    //     println!("checkers: {checkers}");
-    // }
 
     #[test]
     fn moves_at_startpos() {
