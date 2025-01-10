@@ -8,7 +8,7 @@ use crate::types::chess_move::Move;
 use crate::types::chess_move::MoveFlag::{Capture, Castling, DoublePawnPush, EnPassant};
 use crate::types::color::{Color, ALL_COLORS, NUM_COLORS};
 use crate::types::piece::{Piece, ALL_PIECES, NUM_PIECES};
-use crate::types::square::{File, Square};
+use crate::types::square::{File, Square, NUM_SQUARES};
 use crate::uci_move::UCIMove;
 use crate::zobrist::{CASTLE_KEYS, EN_PASSANT_KEYS, PIECE_KEYS, SIDE_KEY};
 use std::fmt;
@@ -40,6 +40,7 @@ pub struct Board {
     pieces: [BitBoard; NUM_PIECES],
     occupancies: [BitBoard; NUM_COLORS],
     combined: BitBoard,
+    mailbox: [Option<(Piece, Color)>; NUM_SQUARES],
     side_to_move: Color,
     history: Vec<BoardState>,
     state: BoardState,
@@ -71,28 +72,11 @@ impl Board {
         "rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR w KQkq e6 0 1";
 
     pub fn piece_at(&self, square: Square) -> Option<Piece> {
-        if !self.combined.contains(square) {
-            return None;
-        }
-
-        for piece in ALL_PIECES {
-            if self.pieces[piece as usize].contains(square) {
-                return Some(piece);
-            }
-        }
-        unreachable!("combined mask should guard from reaching this point")
+        self.mailbox[square as usize].map(|(piece, _)| piece)
     }
 
     pub fn color_at(&self, square: Square) -> Option<Color> {
-        if !self.combined.contains(square) {
-            return None;
-        }
-
-        if self.occupancies[Color::White as usize].contains(square) {
-            Some(Color::White)
-        } else {
-            Some(Color::Black)
-        }
+        self.mailbox[square as usize].map(|(_, color)| color)
     }
 
     pub fn pieces(&self, piece: Piece) -> BitBoard {
@@ -162,12 +146,16 @@ impl Board {
         new_state.hash ^=
             PIECE_KEYS[self.side_to_move as usize][mov.piece as usize][mov.from as usize];
 
+        self.mailbox[mov.from as usize] = None;
+
         // set piece in to
         self.pieces[mov.piece as usize] |= mov.to;
         self.occupancies[self.side_to_move as usize] |= mov.to;
         self.combined |= mov.to;
         new_state.hash ^=
             PIECE_KEYS[self.side_to_move as usize][mov.piece as usize][mov.to as usize];
+
+        self.mailbox[mov.to as usize] = Some((mov.piece, self.side_to_move));
 
         if mov.flags == Capture {
             // replace opponents piece with your own
@@ -207,6 +195,8 @@ impl Board {
             // add to new piece type
             self.pieces[promotion.as_piece() as usize] |= mov.to;
 
+            self.mailbox[mov.to as usize] = Some((promotion.as_piece(), self.side_to_move));
+
             new_state.hash ^=
                 PIECE_KEYS[self.side_to_move as usize][mov.piece as usize][mov.to as usize];
             new_state.hash ^= PIECE_KEYS[self.side_to_move as usize][promotion.as_piece() as usize]
@@ -225,6 +215,8 @@ impl Board {
             self.pieces[Piece::Pawn as usize] ^= capture_piece;
             self.occupancies[!self.side_to_move as usize] ^= capture_piece;
             self.combined ^= capture_piece;
+
+            self.mailbox[capture_piece as usize] = None;
 
             new_state.hash ^= PIECE_KEYS[!self.side_to_move as usize][Piece::Pawn as usize]
                 [capture_piece as usize];
@@ -248,12 +240,16 @@ impl Board {
             new_state.hash ^= PIECE_KEYS[self.side_to_move as usize][Piece::Rook as usize]
                 [rook_start_square as usize];
 
+            self.mailbox[rook_start_square as usize] = None;
+
             // set piece in to
             self.pieces[Piece::Rook as usize] |= rook_end_square;
             self.occupancies[self.side_to_move as usize] |= rook_end_square;
             self.combined |= rook_end_square;
             new_state.hash ^= PIECE_KEYS[self.side_to_move as usize][Piece::Rook as usize]
                 [rook_end_square as usize];
+
+            self.mailbox[rook_end_square as usize] = Some((Piece::Rook, self.side_to_move));
         }
 
         if mov.piece == Piece::Pawn {
@@ -352,9 +348,13 @@ impl Board {
                 self.occupancies[self.side_to_move as usize] |= rook_start_square;
                 self.combined |= rook_start_square;
 
+                self.mailbox[rook_start_square as usize] = Some((Piece::Rook, self.side_to_move));
+
                 self.pieces[Piece::Rook as usize] ^= rook_end_square;
                 self.occupancies[self.side_to_move as usize] ^= rook_end_square;
                 self.combined ^= rook_end_square;
+
+                self.mailbox[rook_end_square as usize] = None;
             }
 
             // undo promotion
@@ -363,21 +363,29 @@ impl Board {
                 self.pieces[last_move.piece as usize] |= last_move.to;
                 // add to new piece type
                 self.pieces[promotion.as_piece() as usize] ^= last_move.to;
+
+                self.mailbox[last_move.to as usize] = Some((last_move.piece, self.side_to_move));
             }
 
             self.pieces[last_move.piece as usize] |= last_move.from;
             self.occupancies[self.side_to_move as usize] |= last_move.from;
             self.combined |= last_move.from;
 
+            self.mailbox[last_move.from as usize] = Some((last_move.piece, self.side_to_move));
+
             self.pieces[last_move.piece as usize] ^= last_move.to;
             self.occupancies[self.side_to_move as usize] ^= last_move.to;
             self.combined ^= last_move.to;
+
+            self.mailbox[last_move.to as usize] = None;
 
             // undo capture
             if let Some(captured_piece) = self.state.captured_piece {
                 self.pieces[captured_piece as usize] |= last_move.to;
                 self.occupancies[!self.side_to_move as usize] |= last_move.to;
                 self.combined |= last_move.to;
+
+                self.mailbox[last_move.to as usize] = Some((captured_piece, !self.side_to_move))
             }
 
             if last_move.flags == EnPassant {
@@ -385,6 +393,8 @@ impl Board {
                 self.pieces[Piece::Pawn as usize] |= capture_piece;
                 self.occupancies[!self.side_to_move as usize] |= capture_piece;
                 self.combined |= capture_piece;
+
+                self.mailbox[capture_piece as usize] = Some((Piece::Pawn, !self.side_to_move));
             }
         }
 
@@ -450,8 +460,7 @@ impl fmt::Display for Board {
             write!(f, "{}   ", rank + 1)?;
             for file in 0..8 {
                 let square = Square::from_index(rank * 8 + file);
-                let symbol = if let Some(piece) = self.piece_at(square) {
-                    let color = self.color_at(square).ok_or(fmt::Error)?;
+                let symbol = if let Some((piece, color)) = self.mailbox[square as usize] {
                     piece.to_ascii(color)
                 } else {
                     '.'
@@ -500,6 +509,8 @@ impl FromStr for Board {
         let mut occupancies = [BitBoard(0); NUM_COLORS];
         let mut combined = BitBoard(0);
 
+        let mut mailbox: [Option<(Piece, Color)>; NUM_SQUARES] = [None; NUM_SQUARES];
+
         let piece_placement_data = parts
             .next()
             .ok_or(ParseFenError::PartMissing("piece placement data"))?;
@@ -522,6 +533,8 @@ impl FromStr for Board {
                     pieces[piece as usize] |= square;
                     occupancies[color as usize] |= square;
                     combined |= square;
+
+                    mailbox[square as usize] = Some((piece, color));
 
                     file += 1;
                     if file > 8 {
@@ -606,6 +619,7 @@ impl FromStr for Board {
             occupancies: partial_board.occupancies,
             combined: partial_board.combined,
             side_to_move: partial_board.side_to_move,
+            mailbox,
             state: BoardState {
                 hash: hash_key,
                 en_passant_target,
