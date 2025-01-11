@@ -62,6 +62,8 @@ impl Board {
         self.apply_move(chess_move);
     }
 
+    /// Applies a move to the position. It is the callers responsibility to
+    /// ensure the move is legal.
     pub fn apply_move(&mut self, mov: Move) {
         // start a new state based on the previous state
         let mut new_state = self.state.clone();
