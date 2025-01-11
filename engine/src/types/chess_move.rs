@@ -36,7 +36,7 @@ impl Move {
     }
 
     pub const fn from(&self) -> Square {
-        Square::from_index(((self.0 >> 0) & 0x3f) as u8)
+        Square::from_index((self.0 & 0x3f) as u8)
     }
 
     pub const fn to(&self) -> Square {
