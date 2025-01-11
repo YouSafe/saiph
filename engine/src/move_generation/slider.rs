@@ -5,7 +5,10 @@ use crate::types::bitboard::BitBoard;
 use crate::types::chess_move::{Move, MoveFlag};
 use crate::types::piece::Piece;
 
-pub fn generate_slider_moves<const CHECK: bool>(board: &Board, move_list: &mut MoveList) {
+pub fn generate_slider_moves<const CHECK: bool, const CAPTURE_ONLY: bool>(
+    board: &Board,
+    move_list: &mut MoveList,
+) {
     let mut capture_mask = !BitBoard::EMPTY;
     let mut push_mask = !BitBoard::EMPTY;
 
@@ -46,9 +49,11 @@ pub fn generate_slider_moves<const CHECK: bool>(board: &Board, move_list: &mut M
             move_list.push(Move::new(source, target, MoveFlag::Capture));
         }
 
-        // quiet
-        for target in (attacks & push_mask).iter() {
-            move_list.push(Move::new(source, target, MoveFlag::Normal));
+        if !CAPTURE_ONLY {
+            // quiet
+            for target in (attacks & push_mask).iter() {
+                move_list.push(Move::new(source, target, MoveFlag::Normal));
+            }
         }
     }
 
@@ -62,9 +67,11 @@ pub fn generate_slider_moves<const CHECK: bool>(board: &Board, move_list: &mut M
             move_list.push(Move::new(source, target, MoveFlag::Capture));
         }
 
-        // quiet
-        for target in (attacks & push_mask).iter() {
-            move_list.push(Move::new(source, target, MoveFlag::Normal));
+        if !CAPTURE_ONLY {
+            // quiet
+            for target in (attacks & push_mask).iter() {
+                move_list.push(Move::new(source, target, MoveFlag::Normal));
+            }
         }
     }
 
@@ -77,9 +84,11 @@ pub fn generate_slider_moves<const CHECK: bool>(board: &Board, move_list: &mut M
             move_list.push(Move::new(source, target, MoveFlag::Capture))
         }
 
-        // quiet
-        for target in (attacks & push_mask).iter() {
-            move_list.push(Move::new(source, target, MoveFlag::Normal));
+        if !CAPTURE_ONLY {
+            // quiet
+            for target in (attacks & push_mask).iter() {
+                move_list.push(Move::new(source, target, MoveFlag::Normal));
+            }
         }
     }
 
@@ -93,9 +102,11 @@ pub fn generate_slider_moves<const CHECK: bool>(board: &Board, move_list: &mut M
             move_list.push(Move::new(source, target, MoveFlag::Capture))
         }
 
-        // quiet
-        for target in (attacks & push_mask).iter() {
-            move_list.push(Move::new(source, target, MoveFlag::Normal));
+        if !CAPTURE_ONLY {
+            // quiet
+            for target in (attacks & push_mask).iter() {
+                move_list.push(Move::new(source, target, MoveFlag::Normal));
+            }
         }
     }
 }
@@ -114,7 +125,7 @@ mod test {
     fn test_move_along_pin_ray() {
         let board = Board::from_str("4k3/8/7b/3P4/8/8/3B4/2K5 w - - 3 2").unwrap();
         let mut move_list = MoveList::new();
-        generate_slider_moves::<false>(&board, &mut move_list);
+        generate_slider_moves::<false, false>(&board, &mut move_list);
         println!("{:#?}", move_list);
         assert_eq!(move_list.len(), 4);
 
@@ -131,7 +142,7 @@ mod test {
     fn test_pinned_bishop_captures() {
         let board = Board::from_str("8/2p5/3p4/KP5r/1R3b1k/6P1/4P3/8 b - - 0 1").unwrap();
         let mut move_list = MoveList::new();
-        generate_slider_moves::<true>(&board, &mut move_list);
+        generate_slider_moves::<true, false>(&board, &mut move_list);
         println!("{:#?}", move_list);
         assert_eq!(move_list.len(), 0);
     }
@@ -140,7 +151,7 @@ mod test {
     fn test_pinned_rook_captures() {
         let board = Board::from_str("8/2p5/3p4/KP5r/1R4rk/6P1/4P3/8 b - - 0 1").unwrap();
         let mut move_list = MoveList::new();
-        generate_slider_moves::<true>(&board, &mut move_list);
+        generate_slider_moves::<true, false>(&board, &mut move_list);
         println!("{:#?}", move_list);
         assert_eq!(move_list.len(), 0);
     }
@@ -149,7 +160,7 @@ mod test {
     fn test_pinned_queen_captures() {
         let board = Board::from_str("8/2p5/3p4/KP5r/1R4qk/6P1/4P3/8 b - - 0 1").unwrap();
         let mut move_list = MoveList::new();
-        generate_slider_moves::<true>(&board, &mut move_list);
+        generate_slider_moves::<true, false>(&board, &mut move_list);
         println!("{:#?}", move_list);
         assert_eq!(move_list.len(), 0);
     }

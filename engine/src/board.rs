@@ -331,7 +331,11 @@ impl Board {
     }
 
     pub fn generate_moves(&self) -> MoveList {
-        generate_moves(self)
+        generate_moves::<false>(self)
+    }
+
+    pub fn generate_moves_captures_only(&self) -> MoveList {
+        generate_moves::<true>(self)
     }
 
     pub fn is_repetition(&self) -> bool {

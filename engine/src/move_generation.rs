@@ -55,22 +55,27 @@ pub fn generate_attack_bitboard(board: &Board, attacking_color: Color) -> BitBoa
     attacked
 }
 
-pub fn generate_moves(board: &Board) -> MoveList {
+pub fn generate_moves<const CAPTURE_ONLY: bool>(board: &Board) -> MoveList {
     let mut move_list = MoveList::new();
 
     let checkers = board.checkers();
     if checkers.count() == 0 {
-        generate_quiet_pawn_moves::<false>(board, &mut move_list);
+        if !CAPTURE_ONLY {
+            generate_quiet_pawn_moves::<false>(board, &mut move_list);
+        }
+
         generate_pawn_capture_moves::<false>(board, &mut move_list);
         generate_en_passant_move::<false>(board, &mut move_list);
 
-        generate_knight_moves::<false>(board, &mut move_list);
+        generate_knight_moves::<false, CAPTURE_ONLY>(board, &mut move_list);
 
-        generate_slider_moves::<false>(board, &mut move_list);
+        generate_slider_moves::<false, CAPTURE_ONLY>(board, &mut move_list);
 
-        generate_castling_moves::<false>(board, &mut move_list);
+        if !CAPTURE_ONLY {
+            generate_castling_moves::<false>(board, &mut move_list);
+        }
 
-        generate_king_moves::<false>(board, &mut move_list);
+        generate_king_moves::<false, CAPTURE_ONLY>(board, &mut move_list);
     } else if checkers.count() == 1 {
         // a single check can be evaded by capturing the checker, blocking the check or by moving the king
 
@@ -78,16 +83,16 @@ pub fn generate_moves(board: &Board) -> MoveList {
         generate_pawn_capture_moves::<true>(board, &mut move_list);
         generate_en_passant_move::<true>(board, &mut move_list);
 
-        generate_knight_moves::<true>(board, &mut move_list);
+        generate_knight_moves::<true, CAPTURE_ONLY>(board, &mut move_list);
 
-        generate_slider_moves::<true>(board, &mut move_list);
+        generate_slider_moves::<true, CAPTURE_ONLY>(board, &mut move_list);
 
         // castling is not allowed when the king is in check
-        generate_king_moves::<true>(board, &mut move_list);
+        generate_king_moves::<true, CAPTURE_ONLY>(board, &mut move_list);
     } else {
         // double and more checkers
         // only the king can move
-        generate_king_moves::<true>(board, &mut move_list);
+        generate_king_moves::<true, CAPTURE_ONLY>(board, &mut move_list);
     }
 
     move_list
@@ -301,7 +306,7 @@ mod test {
     #[test]
     fn moves_at_startpos() {
         let board = Board::default();
-        let moves = generate_moves(&board);
+        let moves = generate_moves::<false>(&board);
 
         println!("{:#?}", moves);
         assert_eq!(moves.len(), 20);
@@ -313,9 +318,21 @@ mod test {
             "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",
         )
         .unwrap();
-        let moves = generate_moves(&board);
+        let moves = generate_moves::<false>(&board);
         println!("{:#?}", moves);
 
         assert_eq!(moves.len(), 46);
+    }
+
+    #[test]
+    fn captures_only() {
+        let board = Board::from_str(
+            "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",
+        )
+        .unwrap();
+        let moves = generate_moves::<true>(&board);
+        println!("{:#?}", moves);
+
+        assert_eq!(moves.len(), 4);
     }
 }
