@@ -19,7 +19,14 @@ fn main() {
 
     if let Some(moves) = moves {
         for mov in moves.split_whitespace() {
-            board.apply_uci_move(UCIMove::from_str(mov).unwrap());
+            let uci_move = UCIMove::from_str(mov).unwrap();
+
+            let chess_move = board
+                .generate_moves()
+                .into_iter()
+                .find(|m| uci_move == m)
+                .unwrap();
+            board.apply_move(chess_move);
         }
     }
 

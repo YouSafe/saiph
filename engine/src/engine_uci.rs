@@ -212,8 +212,13 @@ impl<S: SearchWorkerPool, P: Printer> EngineUCI<S, P> {
                     StartingPosition::Custom(board) => board,
                 };
 
-                for chess_move in moves {
-                    board.apply_uci_move(chess_move);
+                for uci_move in moves {
+                    let chess_move = board
+                        .generate_moves()
+                        .into_iter()
+                        .find(|m| uci_move == m)
+                        .unwrap();
+                    board.apply_move(chess_move);
                 }
 
                 self.board = board;
@@ -233,7 +238,4 @@ impl<S: SearchWorkerPool, P: Printer> EngineUCI<S, P> {
             }
         }
     }
-
-
-
 }

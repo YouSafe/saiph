@@ -9,11 +9,9 @@ use crate::types::chess_move::MoveFlag::{Capture, Castling, DoublePawnPush, EnPa
 use crate::types::color::{Color, NUM_COLORS};
 use crate::types::piece::{Piece, NUM_PIECES};
 use crate::types::square::{File, Square, NUM_SQUARES};
-use crate::uci_move::UCIMove;
 use crate::zobrist::{CASTLE_KEYS, EN_PASSANT_KEYS, PIECE_KEYS, SIDE_KEY};
 use std::fmt;
 use std::fmt::Formatter;
-use std::hash::{Hash, Hasher};
 use std::str::FromStr;
 
 #[derive(Debug, Eq, PartialEq)]
@@ -53,14 +51,6 @@ impl Board {
 
     pub const KILLER_POS_FEN: &'static str =
         "rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR w KQkq e6 0 1";
-
-    pub fn apply_uci_move(&mut self, uci_move: UCIMove) {
-        let chess_move = generate_moves(self)
-            .into_iter()
-            .find(|m| uci_move == m)
-            .unwrap();
-        self.apply_move(chess_move);
-    }
 
     /// Applies a move to the position. It is the callers responsibility to
     /// ensure the move is legal.
@@ -426,12 +416,6 @@ impl Board {
     }
 }
 
-impl Hash for Board {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        state.write_u64(self.state.hash);
-    }
-}
-
 impl fmt::Display for Board {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         writeln!(f)?;
@@ -686,7 +670,6 @@ mod test {
     use crate::types::color::Color;
     use crate::types::piece::Piece;
     use crate::types::square::Square;
-    use crate::uci_move::UCIMove;
 
     #[test]
     fn test_display() {
@@ -731,21 +714,5 @@ Hash: 	0x4a887e3c9bc2624a
         assert_eq!(board.color_at(Square::C8), Some(Color::Black));
 
         println!("{board}");
-    }
-
-    #[test]
-    fn test_repetition_detection() {
-        let mut board = Board::from_str("5K2/8/8/8/8/8/8/5k2 w - - 0 1").unwrap();
-        assert!(!board.is_repetition());
-        board.apply_uci_move(UCIMove::from_str("f8e8").unwrap());
-        assert!(!board.is_repetition());
-        board.apply_uci_move(UCIMove::from_str("f1e1").unwrap());
-        assert!(!board.is_repetition());
-        board.apply_uci_move(UCIMove::from_str("e8f8").unwrap());
-        assert!(!board.is_repetition());
-        board.apply_uci_move(UCIMove::from_str("e1f1").unwrap());
-        assert!(board.is_repetition());
-
-        dbg!(board.state.rule50);
     }
 }
