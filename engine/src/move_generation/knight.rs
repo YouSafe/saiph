@@ -36,24 +36,12 @@ pub fn generate_knight_moves<const CHECK: bool>(board: &Board, move_list: &mut M
 
         // captures
         for target in (attacks & capture_mask).iter() {
-            move_list.push(Move {
-                from: source,
-                to: target,
-                promotion: None,
-                piece: Piece::Knight,
-                flags: MoveFlag::Capture,
-            })
+            move_list.push(Move::new(source, target, MoveFlag::Capture))
         }
 
         // quiet
         for target in (attacks & push_mask).iter() {
-            move_list.push(Move {
-                from: source,
-                to: target,
-                promotion: None,
-                piece: Piece::Knight,
-                flags: MoveFlag::Normal,
-            });
+            move_list.push(Move::new(source, target, MoveFlag::Normal));
         }
     }
 }
@@ -66,7 +54,6 @@ mod test {
     use crate::move_generation::knight::generate_knight_moves;
     use crate::move_generation::MoveList;
     use crate::types::chess_move::{Move, MoveFlag};
-    use crate::types::piece::Piece;
     use crate::types::square::Square::*;
 
     #[test]
@@ -77,20 +64,8 @@ mod test {
         println!("{:#?}", move_list);
 
         assert_eq!(move_list.len(), 2);
-        assert!(move_list.contains(&Move {
-            from: G6,
-            to: E5,
-            promotion: None,
-            piece: Piece::Knight,
-            flags: MoveFlag::Capture,
-        }));
-        assert!(move_list.contains(&Move {
-            from: G6,
-            to: E7,
-            promotion: None,
-            piece: Piece::Knight,
-            flags: MoveFlag::Normal,
-        }));
+        assert!(move_list.contains(&Move::new(G6, E5, MoveFlag::Capture)));
+        assert!(move_list.contains(&Move::new(G6, E7, MoveFlag::Normal)));
     }
 
     #[test]
@@ -99,20 +74,8 @@ mod test {
         let mut move_list = MoveList::new();
         generate_knight_moves::<false>(&board, &mut move_list);
         println!("{:#?}", move_list);
-        assert!(!move_list.contains(&Move {
-            from: G6,
-            to: H8,
-            promotion: None,
-            piece: Piece::Knight,
-            flags: MoveFlag::Capture,
-        }));
-        assert!(!move_list.contains(&Move {
-            from: H8,
-            to: G6,
-            promotion: None,
-            piece: Piece::Knight,
-            flags: MoveFlag::Capture,
-        }));
+        assert!(!move_list.contains(&Move::new(G6, H8, MoveFlag::Capture)));
+        assert!(!move_list.contains(&Move::new(H8, G6, MoveFlag::Capture)));
     }
 
     #[test]
@@ -131,13 +94,7 @@ mod test {
         generate_knight_moves::<false>(&board, &mut move_list);
         println!("{:#?}", move_list);
         assert_eq!(move_list.len(), 1);
-        assert!(move_list.contains(&Move {
-            from: E6,
-            to: F4,
-            promotion: None,
-            piece: Piece::Knight,
-            flags: MoveFlag::Normal,
-        }));
+        assert!(move_list.contains(&Move::new(E6, F4, MoveFlag::Normal)));
     }
 
     #[test]
@@ -149,12 +106,6 @@ mod test {
 
         assert_eq!(move_list.len(), 8);
 
-        assert!(!move_list.contains(&Move {
-            from: E6,
-            to: D4,
-            promotion: None,
-            piece: Piece::Knight,
-            flags: MoveFlag::Normal,
-        }))
+        assert!(!move_list.contains(&Move::new(E6, D4, MoveFlag::Normal)))
     }
 }

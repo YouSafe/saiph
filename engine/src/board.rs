@@ -4,8 +4,8 @@ use crate::tables::{
 };
 use crate::types::bitboard::BitBoard;
 use crate::types::castling_rights::{CastlingRights, UPDATE_CASTLING_RIGHT_TABLE};
-use crate::types::chess_move::Move;
-use crate::types::chess_move::MoveFlag::{Capture, Castling, DoublePawnPush, EnPassant};
+use crate::types::chess_move::MoveFlag::{Castling, DoublePawnPush, EnPassant};
+use crate::types::chess_move::{Move, MoveFlag};
 use crate::types::color::{Color, NUM_COLORS};
 use crate::types::piece::{Piece, NUM_PIECES};
 use crate::types::square::{File, Square, NUM_SQUARES};
@@ -64,28 +64,30 @@ impl Board {
 
         new_state.captured_piece = None;
 
+        let source_piece = self.piece_at(mov.from()).unwrap();
+
         // get piece at target square before moving
-        let target_piece = self.piece_at(mov.to);
+        let target_piece = self.piece_at(mov.to());
 
         // remove piece from from
-        self.pieces[mov.piece as usize] ^= mov.from;
-        self.occupancies[self.side_to_move as usize] ^= mov.from;
-        self.combined ^= mov.from;
+        self.pieces[source_piece as usize] ^= mov.from();
+        self.occupancies[self.side_to_move as usize] ^= mov.from();
+        self.combined ^= mov.from();
         new_state.hash ^=
-            PIECE_KEYS[self.side_to_move as usize][mov.piece as usize][mov.from as usize];
+            PIECE_KEYS[self.side_to_move as usize][source_piece as usize][mov.from() as usize];
 
-        self.mailbox[mov.from as usize] = None;
+        self.mailbox[mov.from() as usize] = None;
 
         // set piece in to
-        self.pieces[mov.piece as usize] |= mov.to;
-        self.occupancies[self.side_to_move as usize] |= mov.to;
-        self.combined |= mov.to;
+        self.pieces[source_piece as usize] |= mov.to();
+        self.occupancies[self.side_to_move as usize] |= mov.to();
+        self.combined |= mov.to();
         new_state.hash ^=
-            PIECE_KEYS[self.side_to_move as usize][mov.piece as usize][mov.to as usize];
+            PIECE_KEYS[self.side_to_move as usize][source_piece as usize][mov.to() as usize];
 
-        self.mailbox[mov.to as usize] = Some((mov.piece, self.side_to_move));
+        self.mailbox[mov.to() as usize] = Some((source_piece, self.side_to_move));
 
-        if mov.flags == Capture {
+        if mov.is_capture() && mov.flag() != MoveFlag::EnPassant {
             // replace opponents piece with your own
             // get piece that was at the target square before the move
             let target_piece = target_piece.expect("captures require a piece on the target square");
@@ -93,12 +95,12 @@ impl Board {
             new_state.captured_piece = Some(target_piece);
 
             // toggle target piece bitboard if it's not the same piece
-            if target_piece != mov.piece {
-                self.pieces[target_piece as usize] ^= mov.to;
+            if target_piece != source_piece {
+                self.pieces[target_piece as usize] ^= mov.to();
             }
-            self.occupancies[!self.side_to_move as usize] ^= mov.to;
+            self.occupancies[!self.side_to_move as usize] ^= mov.to();
             new_state.hash ^=
-                PIECE_KEYS[!self.side_to_move as usize][target_piece as usize][mov.to as usize];
+                PIECE_KEYS[!self.side_to_move as usize][target_piece as usize][mov.to() as usize];
 
             // combined is unchanged here
 
@@ -107,8 +109,8 @@ impl Board {
                 // remove castling rights from hash
                 new_state.hash ^= CASTLE_KEYS[new_state.castling_rights.to_usize()];
 
-                new_state.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[mov.from as usize];
-                new_state.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[mov.to as usize];
+                new_state.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[mov.from() as usize];
+                new_state.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[mov.to() as usize];
 
                 // add castling rights to hash
                 new_state.hash ^= CASTLE_KEYS[new_state.castling_rights.to_usize()];
@@ -117,29 +119,29 @@ impl Board {
             new_state.rule50 = 0;
         }
 
-        if let Some(promotion) = mov.promotion {
+        if let Some(promotion) = mov.promotion() {
             // remove old piece type
-            self.pieces[mov.piece as usize] ^= mov.to;
+            self.pieces[source_piece as usize] ^= mov.to();
             // add to new piece type
-            self.pieces[promotion.as_piece() as usize] |= mov.to;
+            self.pieces[promotion.as_piece() as usize] |= mov.to();
 
-            self.mailbox[mov.to as usize] = Some((promotion.as_piece(), self.side_to_move));
+            self.mailbox[mov.to() as usize] = Some((promotion.as_piece(), self.side_to_move));
 
             new_state.hash ^=
-                PIECE_KEYS[self.side_to_move as usize][mov.piece as usize][mov.to as usize];
+                PIECE_KEYS[self.side_to_move as usize][source_piece as usize][mov.to() as usize];
             new_state.hash ^= PIECE_KEYS[self.side_to_move as usize][promotion.as_piece() as usize]
-                [mov.to as usize];
+                [mov.to() as usize];
         }
 
-        if mov.flags == DoublePawnPush {
+        if mov.flag() == DoublePawnPush {
             // update en_passant_target when double pushing
-            new_state.en_passant_target = Some(mov.to.forward(!self.side_to_move).unwrap());
+            new_state.en_passant_target = Some(mov.to().forward(!self.side_to_move).unwrap());
 
-            new_state.hash ^= EN_PASSANT_KEYS[mov.to.to_file() as usize];
+            new_state.hash ^= EN_PASSANT_KEYS[mov.to().to_file() as usize];
         }
 
-        if mov.flags == EnPassant {
-            let capture_piece = mov.to.forward(!self.side_to_move).unwrap();
+        if mov.flag() == EnPassant {
+            let capture_piece = mov.to().forward(!self.side_to_move).unwrap();
             self.pieces[Piece::Pawn as usize] ^= capture_piece;
             self.occupancies[!self.side_to_move as usize] ^= capture_piece;
             self.combined ^= capture_piece;
@@ -152,9 +154,9 @@ impl Board {
 
         const CASTLE_CONFIG: [(File, File); 2] = [(File::A, File::D), (File::H, File::F)];
 
-        if mov.flags == Castling {
+        if mov.flag() == Castling {
             let backrank = self.side_to_move.backrank();
-            let target_file = mov.to.to_file();
+            let target_file = mov.to().to_file();
             let (rook_start_file, rook_end_file) = CASTLE_CONFIG[target_file as usize / 4];
             let (rook_start_square, rook_end_square) = (
                 Square::from(backrank, rook_start_file),
@@ -180,18 +182,18 @@ impl Board {
             self.mailbox[rook_end_square as usize] = Some((Piece::Rook, self.side_to_move));
         }
 
-        if mov.piece == Piece::Pawn {
+        if source_piece == Piece::Pawn {
             new_state.rule50 = 0;
         }
 
         // update castling rights
-        if mov.piece == Piece::Rook {
+        if source_piece == Piece::Rook {
             // rook moved
             new_state.hash ^= CASTLE_KEYS[new_state.castling_rights.to_usize()];
-            new_state.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[mov.from as usize];
-            new_state.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[mov.to as usize];
+            new_state.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[mov.from() as usize];
+            new_state.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[mov.to() as usize];
             new_state.hash ^= CASTLE_KEYS[new_state.castling_rights.to_usize()];
-        } else if mov.piece == Piece::King {
+        } else if source_piece == Piece::King {
             // remove castling rights for side if king moved (includes castling)
             new_state.hash ^= CASTLE_KEYS[new_state.castling_rights.to_usize()];
             new_state.castling_rights -= match self.side_to_move {
@@ -257,9 +259,9 @@ impl Board {
             self.side_to_move = !self.side_to_move;
             const CASTLE_CONFIG: [(File, File); 2] = [(File::A, File::D), (File::H, File::F)];
 
-            if last_move.flags == Castling {
+            if last_move.flag() == Castling {
                 let backrank = self.side_to_move.backrank();
-                let target_file = last_move.to.to_file();
+                let target_file = last_move.to().to_file();
                 let (rook_start_file, rook_end_file) = CASTLE_CONFIG[target_file as usize / 4];
                 let (rook_start_square, rook_end_square) = (
                     Square::from(backrank, rook_start_file),
@@ -279,44 +281,45 @@ impl Board {
                 self.mailbox[rook_end_square as usize] = None;
             }
 
-            // undo promotion
-            if let Some(promotion) = last_move.promotion {
-                // remove old piece type
-                self.pieces[last_move.piece as usize] |= last_move.to;
-                // add to new piece type
-                self.pieces[promotion.as_piece() as usize] ^= last_move.to;
-
-                self.mailbox[last_move.to as usize] = Some((last_move.piece, self.side_to_move));
-            }
-
-            self.pieces[last_move.piece as usize] |= last_move.from;
-            self.occupancies[self.side_to_move as usize] |= last_move.from;
-            self.combined |= last_move.from;
-
-            self.mailbox[last_move.from as usize] = Some((last_move.piece, self.side_to_move));
-
-            self.pieces[last_move.piece as usize] ^= last_move.to;
-            self.occupancies[self.side_to_move as usize] ^= last_move.to;
-            self.combined ^= last_move.to;
-
-            self.mailbox[last_move.to as usize] = None;
-
-            // undo capture
-            if let Some(captured_piece) = self.state.captured_piece {
-                self.pieces[captured_piece as usize] |= last_move.to;
-                self.occupancies[!self.side_to_move as usize] |= last_move.to;
-                self.combined |= last_move.to;
-
-                self.mailbox[last_move.to as usize] = Some((captured_piece, !self.side_to_move))
-            }
-
-            if last_move.flags == EnPassant {
-                let capture_piece = last_move.to.forward(!self.side_to_move).unwrap();
+            if last_move.flag() == EnPassant {
+                let capture_piece = last_move.to().forward(!self.side_to_move).unwrap();
                 self.pieces[Piece::Pawn as usize] |= capture_piece;
                 self.occupancies[!self.side_to_move as usize] |= capture_piece;
                 self.combined |= capture_piece;
 
                 self.mailbox[capture_piece as usize] = Some((Piece::Pawn, !self.side_to_move));
+            }
+
+            // undo promotion
+            if let Some(promotion) = last_move.promotion() {
+                // remove new piece type
+                self.pieces[promotion.as_piece() as usize] ^= last_move.to();
+                // add old piece type
+                self.pieces[Piece::Pawn as usize] |= last_move.to();
+                self.mailbox[last_move.to() as usize] = Some((Piece::Pawn, self.side_to_move));
+            }
+
+            let source_piece = self.piece_at(last_move.to()).unwrap();
+
+            self.pieces[source_piece as usize] |= last_move.from();
+            self.occupancies[self.side_to_move as usize] |= last_move.from();
+            self.combined |= last_move.from();
+
+            self.mailbox[last_move.from() as usize] = Some((source_piece, self.side_to_move));
+
+            self.pieces[source_piece as usize] ^= last_move.to();
+            self.occupancies[self.side_to_move as usize] ^= last_move.to();
+            self.combined ^= last_move.to();
+
+            self.mailbox[last_move.to() as usize] = None;
+
+            // undo capture
+            if let Some(captured_piece) = self.state.captured_piece {
+                self.pieces[captured_piece as usize] |= last_move.to();
+                self.occupancies[!self.side_to_move as usize] |= last_move.to();
+                self.combined |= last_move.to();
+
+                self.mailbox[last_move.to() as usize] = Some((captured_piece, !self.side_to_move));
             }
         }
 

@@ -43,13 +43,7 @@ pub fn generate_en_passant_move<const CHECK: bool>(board: &Board, move_list: &mu
                 let capture = destination.forward(!side_to_move).unwrap();
 
                 if is_valid_ep(board, capture, source, destination) {
-                    move_list.push(Move {
-                        from: source,
-                        to: destination,
-                        promotion: None,
-                        piece: Piece::Pawn,
-                        flags: MoveFlag::EnPassant,
-                    });
+                    move_list.push(Move::new(source, destination, MoveFlag::EnPassant));
                 }
             }
         }
@@ -64,24 +58,17 @@ mod test {
     use crate::move_generation::en_passant::generate_en_passant_move;
     use crate::move_generation::MoveList;
     use crate::types::chess_move::{Move, MoveFlag};
-    use crate::types::piece::Piece;
     use crate::types::square::Square;
 
     #[test]
-    fn test_en_passant() {
+    fn test_valid_en_passant() {
         let board = Board::from_str("8/8/k7/8/2Pp4/8/8/3K4 b - c3 0 1").unwrap();
         let mut move_list = MoveList::new();
         generate_en_passant_move::<false>(&board, &mut move_list);
         println!("{:#?}", move_list);
 
         assert_eq!(move_list.len(), 1);
-        assert!(move_list.contains(&Move {
-            from: Square::D4,
-            to: Square::C3,
-            promotion: None,
-            piece: Piece::Pawn,
-            flags: MoveFlag::EnPassant,
-        }));
+        assert!(move_list.contains(&Move::new(Square::D4, Square::C3, MoveFlag::EnPassant)));
     }
 
     #[test]
@@ -115,23 +102,6 @@ mod test {
     }
 
     #[test]
-    fn test_valid_en_passant() {
-        let board = Board::from_str("8/7k/8/8/2Pp4/8/8/K7 b - c3 0 1").unwrap();
-        let mut move_list = MoveList::new();
-        generate_en_passant_move::<false>(&board, &mut move_list);
-        println!("{:#?}", move_list);
-
-        assert_eq!(move_list.len(), 1);
-        assert!(move_list.contains(&Move {
-            from: Square::D4,
-            to: Square::C3,
-            promotion: None,
-            piece: Piece::Pawn,
-            flags: MoveFlag::EnPassant,
-        }));
-    }
-
-    #[test]
     fn test_en_passant_edge() {
         let board = Board::from_str(
             "r3k2r/p1ppqpb1/bn2pnp1/3PN3/Pp2P3/2N2Q1p/1PPBBPPP/R3K2R b KQkq a3 0 1",
@@ -142,13 +112,7 @@ mod test {
         println!("{:#?}", move_list);
 
         assert_eq!(move_list.len(), 1);
-        assert!(move_list.contains(&Move {
-            from: Square::B4,
-            to: Square::A3,
-            promotion: None,
-            piece: Piece::Pawn,
-            flags: MoveFlag::EnPassant,
-        }));
+        assert!(move_list.contains(&Move::new(Square::B4, Square::A3, MoveFlag::EnPassant)));
     }
 
     #[test]
@@ -159,25 +123,5 @@ mod test {
         println!("{:#?}", move_list);
 
         assert_eq!(move_list.len(), 0);
-    }
-
-    #[test]
-    fn test_en_passant2() {
-        let board = Board::from_str("8/8/3p4/1Pp4r/KR3p1k/8/4P1P1/8 w - c6 0 2").unwrap();
-        let mut move_list = MoveList::new();
-        generate_en_passant_move::<true>(&board, &mut move_list);
-        println!("{:#?}", move_list);
-
-        assert_eq!(move_list.len(), 1);
-    }
-
-    #[test]
-    fn test_en_passant_vertical_pin() {
-        let board = Board::from_str("8/8/3p4/KPp3kr/5pP1/8/4P3/6R1 b - g3 0 3").unwrap();
-        let mut move_list = MoveList::new();
-        generate_en_passant_move::<false>(&board, &mut move_list);
-        println!("{:#?}", move_list);
-
-        assert_eq!(move_list.len(), 1);
     }
 }

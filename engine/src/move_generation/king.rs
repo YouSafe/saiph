@@ -24,24 +24,12 @@ pub fn generate_king_moves<const CHECK: bool>(board: &Board, move_list: &mut Mov
 
     // quiet
     for target in (attacks & push_mask).iter() {
-        move_list.push(Move {
-            from: king_square,
-            to: target,
-            promotion: None,
-            piece: Piece::King,
-            flags: MoveFlag::Normal,
-        });
+        move_list.push(Move::new(king_square, target, MoveFlag::Normal));
     }
 
     // capture
     for target in (attacks & capture_mask).iter() {
-        move_list.push(Move {
-            from: king_square,
-            to: target,
-            promotion: None,
-            piece: Piece::King,
-            flags: MoveFlag::Capture,
-        });
+        move_list.push(Move::new(king_square, target, MoveFlag::Capture));
     }
 }
 
@@ -53,7 +41,6 @@ mod test {
     use crate::move_generation::king::generate_king_moves;
     use crate::move_generation::MoveList;
     use crate::types::chess_move::{Move, MoveFlag};
-    use crate::types::piece::Piece;
     use crate::types::square::Square;
 
     #[test]
@@ -64,13 +51,17 @@ mod test {
         println!("{:#?}", move_list);
 
         assert_eq!(move_list.len(), 6);
-        assert!(!move_list.contains(&Move {
-            from: Square::E7,
-            to: Square::E8,
-            promotion: None,
-            piece: Piece::King,
-            flags: MoveFlag::Normal,
-        }));
+        assert!(!move_list.contains(&Move::new(Square::E7, Square::E8, MoveFlag::Normal)));
+        assert!(!move_list.contains(&Move::new(Square::E7, Square::E6, MoveFlag::Normal)));
+
+        assert!(move_list.contains(&Move::new(Square::E7, Square::F6, MoveFlag::Normal)));
+        assert!(move_list.contains(&Move::new(Square::E7, Square::F7, MoveFlag::Normal)));
+        assert!(move_list.contains(&Move::new(Square::E7, Square::F8, MoveFlag::Normal)));
+
+        assert!(move_list.contains(&Move::new(Square::E7, Square::D6, MoveFlag::Normal)));
+        assert!(move_list.contains(&Move::new(Square::E7, Square::D7, MoveFlag::Normal)));
+        assert!(move_list.contains(&Move::new(Square::E7, Square::D8, MoveFlag::Normal)));
+
     }
 
     #[test]
@@ -81,13 +72,7 @@ mod test {
         println!("{:#?}", move_list);
 
         assert_eq!(move_list.len(), 1);
-        assert!(move_list.contains(&Move {
-            from: Square::H8,
-            to: Square::G8,
-            promotion: None,
-            piece: Piece::King,
-            flags: MoveFlag::Capture,
-        }))
+        assert!(move_list.contains(&Move::new(Square::H8, Square::G8, MoveFlag::Capture)));
     }
 
     #[test]

@@ -78,7 +78,7 @@ impl fmt::Display for PrincipleVariationTable {
 #[cfg(test)]
 mod tests {
 
-    use crate::types::{chess_move::MoveFlag, piece::Piece, square::Square};
+    use crate::types::{chess_move::MoveFlag, square::Square};
 
     use super::*;
 
@@ -95,27 +95,9 @@ mod tests {
     fn test_update() {
         let mut pv_table = PrincipleVariationTable::new();
         eprintln!("{}", pv_table);
-        pv_table.update(
-            4,
-            Move {
-                from: Square::A4,
-                to: Square::A5,
-                promotion: None,
-                piece: Piece::Pawn,
-                flags: MoveFlag::Normal,
-            },
-        );
+        pv_table.update(4, Move::new(Square::A4, Square::A5, MoveFlag::Normal));
         eprintln!("{}", pv_table);
-        pv_table.update(
-            3,
-            Move {
-                from: Square::A3,
-                to: Square::A5,
-                promotion: None,
-                piece: Piece::Queen,
-                flags: MoveFlag::Normal,
-            },
-        );
+        pv_table.update(3, Move::new(Square::A3, Square::A5, MoveFlag::Normal));
         eprintln!("{}", pv_table);
     }
 }

@@ -4,7 +4,6 @@ use crate::tables::{get_pawn_attacks, line};
 use crate::types::bitboard::BitBoard;
 use crate::types::chess_move::{Move, MoveFlag};
 use crate::types::piece::Piece;
-use crate::types::promotion::ALL_PROMOTIONS;
 
 pub fn generate_pawn_capture_moves<const CHECK: bool>(board: &Board, move_list: &mut MoveList) {
     let mut capture_mask = !BitBoard::EMPTY;
@@ -35,26 +34,15 @@ pub fn generate_pawn_capture_moves<const CHECK: bool>(board: &Board, move_list: 
 
         for target in (attacks & promotion_rank).iter() {
             // fill in promotion moves
-            for promotion in ALL_PROMOTIONS {
-                move_list.push(Move {
-                    from: source,
-                    to: target,
-                    piece: Piece::Pawn,
-                    promotion: Some(promotion),
-                    flags: MoveFlag::Capture,
-                });
-            }
+            move_list.push(Move::new(source, target, MoveFlag::KnightPromotionCapture));
+            move_list.push(Move::new(source, target, MoveFlag::BishopPromotionCapture));
+            move_list.push(Move::new(source, target, MoveFlag::RookPromotionCapture));
+            move_list.push(Move::new(source, target, MoveFlag::QueenPromotionCapture));
         }
 
         for target in (attacks & !promotion_rank).iter() {
             // regular pawn capture
-            move_list.push(Move {
-                from: source,
-                to: target,
-                promotion: None,
-                piece: Piece::Pawn,
-                flags: MoveFlag::Capture,
-            });
+            move_list.push(Move::new(source, target, MoveFlag::Capture));
         }
     }
 }
@@ -67,8 +55,6 @@ mod test {
     use crate::move_generation::pawn_capture::generate_pawn_capture_moves;
     use crate::move_generation::MoveList;
     use crate::types::chess_move::{Move, MoveFlag};
-    use crate::types::piece::Piece;
-    use crate::types::promotion::ALL_PROMOTIONS;
     use crate::types::square::Square::*;
 
     #[test]
@@ -80,13 +66,7 @@ mod test {
 
         assert_eq!(move_list.len(), 1);
 
-        assert!(move_list.contains(&Move {
-            from: B2,
-            to: C3,
-            promotion: None,
-            piece: Piece::Pawn,
-            flags: MoveFlag::Capture,
-        }));
+        assert!(move_list.contains(&Move::new(B2, C3, MoveFlag::Capture)));
     }
 
     #[test]
@@ -98,15 +78,10 @@ mod test {
 
         assert_eq!(move_list.len(), 4);
 
-        for promotion in ALL_PROMOTIONS {
-            assert!(move_list.contains(&Move {
-                from: C7,
-                to: D8,
-                promotion: Some(promotion),
-                piece: Piece::Pawn,
-                flags: MoveFlag::Capture,
-            }));
-        }
+        assert!(move_list.contains(&Move::new(C7, D8, MoveFlag::BishopPromotionCapture)));
+        assert!(move_list.contains(&Move::new(C7, D8, MoveFlag::KnightPromotionCapture)));
+        assert!(move_list.contains(&Move::new(C7, D8, MoveFlag::RookPromotionCapture)));
+        assert!(move_list.contains(&Move::new(C7, D8, MoveFlag::QueenPromotionCapture)));
     }
 
     #[test]
@@ -128,13 +103,7 @@ mod test {
 
         assert_eq!(move_list.len(), 1);
 
-        assert!(move_list.contains(&Move {
-            from: D2,
-            to: E3,
-            promotion: None,
-            piece: Piece::Pawn,
-            flags: MoveFlag::Capture,
-        }));
+        assert!(move_list.contains(&Move::new(D2, E3, MoveFlag::Capture)));
     }
 
     #[test]
@@ -146,21 +115,8 @@ mod test {
 
         assert_eq!(move_list.len(), 2);
 
-        assert!(move_list.contains(&Move {
-            from: D2,
-            to: C3,
-            promotion: None,
-            piece: Piece::Pawn,
-            flags: MoveFlag::Capture,
-        }));
-
-        assert!(move_list.contains(&Move {
-            from: D2,
-            to: E3,
-            promotion: None,
-            piece: Piece::Pawn,
-            flags: MoveFlag::Capture,
-        }));
+        assert!(move_list.contains(&Move::new(D2, C3, MoveFlag::Capture)));
+        assert!(move_list.contains(&Move::new(D2, E3, MoveFlag::Capture)));
     }
 
     #[test]
@@ -179,12 +135,6 @@ mod test {
         generate_pawn_capture_moves::<true>(&board, &mut move_list);
         println!("{:#?}", move_list);
 
-        assert!(!move_list.contains(&Move {
-            from: F4,
-            to: G3,
-            promotion: None,
-            piece: Piece::Pawn,
-            flags: MoveFlag::Capture,
-        }));
+        assert!(!move_list.contains(&Move::new(F4, G3, MoveFlag::Capture)));
     }
 }

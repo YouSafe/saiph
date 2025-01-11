@@ -41,28 +41,14 @@ pub fn generate_slider_moves<const CHECK: bool>(board: &Board, move_list: &mut M
     for source in ((bishops | queens) & !pinned).iter() {
         let attacks = get_bishop_attacks(source, combined) & !board.occupancies(side_to_move);
 
-        let source_piece = board.piece_at(source).unwrap();
-
         // captures
         for target in (attacks & capture_mask).iter() {
-            move_list.push(Move {
-                from: source,
-                to: target,
-                promotion: None,
-                piece: source_piece,
-                flags: MoveFlag::Capture,
-            })
+            move_list.push(Move::new(source, target, MoveFlag::Capture));
         }
 
         // quiet
         for target in (attacks & push_mask).iter() {
-            move_list.push(Move {
-                from: source,
-                to: target,
-                promotion: None,
-                piece: source_piece,
-                flags: MoveFlag::Normal,
-            });
+            move_list.push(Move::new(source, target, MoveFlag::Normal));
         }
     }
 
@@ -71,28 +57,14 @@ pub fn generate_slider_moves<const CHECK: bool>(board: &Board, move_list: &mut M
             & line(king_square, source)
             & !board.occupancies(side_to_move);
 
-        let source_piece = board.piece_at(source).unwrap();
-
         // captures
         for target in (attacks & capture_mask).iter() {
-            move_list.push(Move {
-                from: source,
-                to: target,
-                promotion: None,
-                piece: source_piece,
-                flags: MoveFlag::Capture,
-            })
+            move_list.push(Move::new(source, target, MoveFlag::Capture));
         }
 
         // quiet
         for target in (attacks & push_mask).iter() {
-            move_list.push(Move {
-                from: source,
-                to: target,
-                promotion: None,
-                piece: source_piece,
-                flags: MoveFlag::Normal,
-            });
+            move_list.push(Move::new(source, target, MoveFlag::Normal));
         }
     }
 
@@ -100,28 +72,14 @@ pub fn generate_slider_moves<const CHECK: bool>(board: &Board, move_list: &mut M
     for source in ((rooks | queens) & !pinned).iter() {
         let attacks = get_rook_attacks(source, combined) & !board.occupancies(side_to_move);
 
-        let source_piece = board.piece_at(source).unwrap();
-
         // captures
         for target in (attacks & capture_mask).iter() {
-            move_list.push(Move {
-                from: source,
-                to: target,
-                promotion: None,
-                piece: source_piece,
-                flags: MoveFlag::Capture,
-            })
+            move_list.push(Move::new(source, target, MoveFlag::Capture))
         }
 
         // quiet
         for target in (attacks & push_mask).iter() {
-            move_list.push(Move {
-                from: source,
-                to: target,
-                promotion: None,
-                piece: source_piece,
-                flags: MoveFlag::Normal,
-            });
+            move_list.push(Move::new(source, target, MoveFlag::Normal));
         }
     }
 
@@ -130,28 +88,14 @@ pub fn generate_slider_moves<const CHECK: bool>(board: &Board, move_list: &mut M
             & line(king_square, source)
             & !board.occupancies(side_to_move);
 
-        let source_piece = board.piece_at(source).unwrap();
-
         // captures
         for target in (attacks & capture_mask).iter() {
-            move_list.push(Move {
-                from: source,
-                to: target,
-                promotion: None,
-                piece: source_piece,
-                flags: MoveFlag::Capture,
-            })
+            move_list.push(Move::new(source, target, MoveFlag::Capture))
         }
 
         // quiet
         for target in (attacks & push_mask).iter() {
-            move_list.push(Move {
-                from: source,
-                to: target,
-                promotion: None,
-                piece: source_piece,
-                flags: MoveFlag::Normal,
-            });
+            move_list.push(Move::new(source, target, MoveFlag::Normal));
         }
     }
 }
@@ -164,7 +108,6 @@ mod test {
     use crate::move_generation::slider::generate_slider_moves;
     use crate::move_generation::MoveList;
     use crate::types::chess_move::{Move, MoveFlag};
-    use crate::types::piece::Piece;
     use crate::types::square::Square;
 
     #[test]
@@ -175,37 +118,13 @@ mod test {
         println!("{:#?}", move_list);
         assert_eq!(move_list.len(), 4);
 
-        assert!(move_list.contains(&Move {
-            from: Square::D2,
-            to: Square::E3,
-            promotion: None,
-            piece: Piece::Bishop,
-            flags: MoveFlag::Normal,
-        }));
+        assert!(move_list.contains(&Move::new(Square::D2, Square::E3, MoveFlag::Normal)));
 
-        assert!(move_list.contains(&Move {
-            from: Square::D2,
-            to: Square::F4,
-            promotion: None,
-            piece: Piece::Bishop,
-            flags: MoveFlag::Normal,
-        }));
+        assert!(move_list.contains(&Move::new(Square::D2, Square::F4, MoveFlag::Normal)));
 
-        assert!(move_list.contains(&Move {
-            from: Square::D2,
-            to: Square::G5,
-            promotion: None,
-            piece: Piece::Bishop,
-            flags: MoveFlag::Normal,
-        }));
+        assert!(move_list.contains(&Move::new(Square::D2, Square::G5, MoveFlag::Normal)));
 
-        assert!(move_list.contains(&Move {
-            from: Square::D2,
-            to: Square::H6,
-            promotion: None,
-            piece: Piece::Bishop,
-            flags: MoveFlag::Capture,
-        }));
+        assert!(move_list.contains(&Move::new(Square::D2, Square::H6, MoveFlag::Capture)));
     }
 
     #[test]

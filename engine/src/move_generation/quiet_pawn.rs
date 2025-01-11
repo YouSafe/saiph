@@ -4,7 +4,6 @@ use crate::tables::between;
 use crate::types::bitboard::BitBoard;
 use crate::types::chess_move::{Move, MoveFlag};
 use crate::types::piece::Piece;
-use crate::types::promotion::ALL_PROMOTIONS;
 
 pub fn generate_quiet_pawn_moves<const CHECK: bool>(board: &Board, move_list: &mut MoveList) {
     let mut push_mask = !BitBoard::EMPTY;
@@ -51,15 +50,11 @@ pub fn generate_quiet_pawn_moves<const CHECK: bool>(board: &Board, move_list: &m
 
     for target in promotions.iter() {
         let source = target.forward(!side_to_move).unwrap();
-        for promotion in ALL_PROMOTIONS {
-            move_list.push(Move {
-                from: source,
-                to: target,
-                piece: Piece::Pawn,
-                promotion: Some(promotion),
-                flags: MoveFlag::Normal,
-            });
-        }
+
+        move_list.push(Move::new(source, target, MoveFlag::KnightPromotion));
+        move_list.push(Move::new(source, target, MoveFlag::BishopPromotion));
+        move_list.push(Move::new(source, target, MoveFlag::RookPromotion));
+        move_list.push(Move::new(source, target, MoveFlag::QueenPromotion));
     }
 
     for target in double_push_targets.iter() {
@@ -69,25 +64,13 @@ pub fn generate_quiet_pawn_moves<const CHECK: bool>(board: &Board, move_list: &m
             .forward(!side_to_move)
             .unwrap();
 
-        move_list.push(Move {
-            from: source,
-            to: target,
-            piece: Piece::Pawn,
-            promotion: None,
-            flags: MoveFlag::DoublePawnPush,
-        });
+        move_list.push(Move::new(source, target, MoveFlag::DoublePawnPush));
     }
 
     for target in non_promotions.iter() {
         let source = target.forward(!side_to_move).unwrap();
 
-        move_list.push(Move {
-            from: source,
-            to: target,
-            piece: Piece::Pawn,
-            promotion: None,
-            flags: MoveFlag::Normal,
-        });
+        move_list.push(Move::new(source, target, MoveFlag::Normal));
     }
 }
 
@@ -99,8 +82,6 @@ mod test {
     use crate::move_generation::quiet_pawn::generate_quiet_pawn_moves;
     use crate::move_generation::MoveList;
     use crate::types::chess_move::{Move, MoveFlag};
-    use crate::types::piece::Piece;
-    use crate::types::promotion::ALL_PROMOTIONS;
     use crate::types::square::Square::*;
 
     #[test]
@@ -112,21 +93,9 @@ mod test {
         println!("{:#?}", move_list);
 
         assert_eq!(move_list.len(), 2);
-        assert!(move_list.contains(&Move {
-            from: H2,
-            to: H3,
-            promotion: None,
-            piece: Piece::Pawn,
-            flags: MoveFlag::Normal,
-        }));
 
-        assert!(move_list.contains(&Move {
-            from: H2,
-            to: H4,
-            promotion: None,
-            piece: Piece::Pawn,
-            flags: MoveFlag::DoublePawnPush,
-        }));
+        assert!(move_list.contains(&Move::new(H2, H3, MoveFlag::Normal)));
+        assert!(move_list.contains(&Move::new(H2, H4, MoveFlag::DoublePawnPush)));
     }
 
     #[test]
@@ -137,15 +106,11 @@ mod test {
         println!("{:#?}", move_list);
 
         assert_eq!(move_list.len(), 4);
-        for promotion in ALL_PROMOTIONS {
-            assert!(move_list.contains(&Move {
-                from: H7,
-                to: H8,
-                promotion: Some(promotion),
-                piece: Piece::Pawn,
-                flags: MoveFlag::Normal,
-            }));
-        }
+
+        assert!(move_list.contains(&Move::new(H7, H8, MoveFlag::BishopPromotion)));
+        assert!(move_list.contains(&Move::new(H7, H8, MoveFlag::KnightPromotion)));
+        assert!(move_list.contains(&Move::new(H7, H8, MoveFlag::RookPromotion)));
+        assert!(move_list.contains(&Move::new(H7, H8, MoveFlag::QueenPromotion)));
     }
 
     #[test]
@@ -157,13 +122,7 @@ mod test {
 
         assert_eq!(move_list.len(), 1);
 
-        assert!(move_list.contains(&Move {
-            from: E2,
-            to: E4,
-            promotion: None,
-            piece: Piece::Pawn,
-            flags: MoveFlag::DoublePawnPush,
-        }));
+        assert!(move_list.contains(&Move::new(E2, E4, MoveFlag::DoublePawnPush)));
     }
 
     #[test]
@@ -174,13 +133,7 @@ mod test {
         println!("{:#?}", move_list);
 
         assert_eq!(move_list.len(), 1);
-        assert!(move_list.contains(&Move {
-            from: B5,
-            to: B6,
-            promotion: None,
-            piece: Piece::Pawn,
-            flags: MoveFlag::Normal,
-        }));
+        assert!(move_list.contains(&Move::new(B5, B6, MoveFlag::Normal)));
     }
 
     #[test]
@@ -191,20 +144,8 @@ mod test {
         println!("{:#?}", move_list);
 
         assert_eq!(move_list.len(), 2);
-        assert!(move_list.contains(&Move {
-            from: B2,
-            to: B3,
-            promotion: None,
-            piece: Piece::Pawn,
-            flags: MoveFlag::Normal,
-        }));
-        assert!(move_list.contains(&Move {
-            from: B2,
-            to: B4,
-            promotion: None,
-            piece: Piece::Pawn,
-            flags: MoveFlag::DoublePawnPush,
-        }));
+        assert!(move_list.contains(&Move::new(B2, B3, MoveFlag::Normal)));
+        assert!(move_list.contains(&Move::new(B2, B4, MoveFlag::DoublePawnPush)));
     }
 
     #[test]
@@ -225,13 +166,7 @@ mod test {
         println!("{:#?}", move_list);
 
         assert_eq!(move_list.len(), 1);
-        assert!(move_list.contains(&Move {
-            from: B3,
-            to: B4,
-            promotion: None,
-            piece: Piece::Pawn,
-            flags: MoveFlag::Normal,
-        }));
+        assert!(move_list.contains(&Move::new(B3, B4, MoveFlag::Normal)));
     }
 
     #[test]

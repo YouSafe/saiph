@@ -62,13 +62,11 @@ pub fn generate_castling_moves<const CHECK: bool>(board: &Board, move_list: &mut
             && !is_square_attacked(board, config.safe_squares[0], !side_to_move)
             && !is_square_attacked(board, config.safe_squares[1], !side_to_move)
         {
-            move_list.push(Move {
-                from: king_square,
-                to: config.king_target,
-                promotion: None,
-                piece: Piece::King,
-                flags: MoveFlag::Castling,
-            })
+            move_list.push(Move::new(
+                king_square,
+                config.king_target,
+                MoveFlag::Castling,
+            ));
         }
     }
 }
@@ -81,7 +79,6 @@ mod test {
     use crate::move_generation::castling::generate_castling_moves;
     use crate::move_generation::MoveList;
     use crate::types::chess_move::{Move, MoveFlag};
-    use crate::types::piece::Piece;
     use crate::types::square::Square::*;
 
     #[test]
@@ -93,21 +90,8 @@ mod test {
 
         assert_eq!(move_list.len(), 2);
 
-        assert!(move_list.contains(&Move {
-            from: E1,
-            to: G1,
-            promotion: None,
-            piece: Piece::King,
-            flags: MoveFlag::Castling,
-        }));
-
-        assert!(move_list.contains(&Move {
-            from: E1,
-            to: C1,
-            promotion: None,
-            piece: Piece::King,
-            flags: MoveFlag::Castling,
-        }));
+        assert!(move_list.contains(&Move::new(E1, G1, MoveFlag::Castling)));
+        assert!(move_list.contains(&Move::new(E1, C1, MoveFlag::Castling)));
     }
 
     #[test]
@@ -119,21 +103,8 @@ mod test {
 
         assert_eq!(move_list.len(), 2);
 
-        assert!(move_list.contains(&Move {
-            from: E8,
-            to: G8,
-            promotion: None,
-            piece: Piece::King,
-            flags: MoveFlag::Castling,
-        }));
-
-        assert!(move_list.contains(&Move {
-            from: E8,
-            to: C8,
-            promotion: None,
-            piece: Piece::King,
-            flags: MoveFlag::Castling,
-        }));
+        assert!(move_list.contains(&Move::new(E8, G8, MoveFlag::Castling)));
+        assert!(move_list.contains(&Move::new(E8, C8, MoveFlag::Castling)));
     }
 
     #[test]
@@ -146,13 +117,7 @@ mod test {
 
         assert_eq!(move_list.len(), 1);
 
-        assert!(move_list.contains(&Move {
-            from: E1,
-            to: G1,
-            promotion: None,
-            piece: Piece::King,
-            flags: MoveFlag::Castling,
-        }));
+        assert!(move_list.contains(&Move::new(E1, G1, MoveFlag::Castling)));
     }
 
     #[test]
@@ -165,13 +130,7 @@ mod test {
 
         assert_eq!(move_list.len(), 1);
 
-        assert!(move_list.contains(&Move {
-            from: E1,
-            to: C1,
-            promotion: None,
-            piece: Piece::King,
-            flags: MoveFlag::Castling,
-        }));
+        assert!(move_list.contains(&Move::new(E1, C1, MoveFlag::Castling)));
     }
 
     #[test]

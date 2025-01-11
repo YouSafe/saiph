@@ -108,8 +108,8 @@ impl<'a, P: Printer> Search<'a, P> {
                 }
             }
 
-            let src_piece = mov.piece;
-            let dst_piece = self.board.piece_at(mov.destination());
+            let src_piece = self.board.piece_at(mov.from()).unwrap();
+            let dst_piece = self.board.piece_at(mov.to());
             if let Some(dst_piece) = dst_piece {
                 return -mmv_lva(src_piece, dst_piece);
             }
@@ -182,8 +182,8 @@ impl<'a, P: Printer> Search<'a, P> {
         moves.retain(|m| m.is_capture());
 
         moves.sort_by_key(|mov| {
-            let src_piece = mov.piece;
-            let dst_piece = self.board.piece_at(mov.destination());
+            let src_piece = self.board.piece_at(mov.from()).unwrap();
+            let dst_piece = self.board.piece_at(mov.to());
             if let Some(dst_piece) = dst_piece {
                 return -mmv_lva(src_piece, dst_piece);
             }

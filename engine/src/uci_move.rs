@@ -13,7 +13,7 @@ pub struct UCIMove {
 
 impl PartialEq<&Move> for UCIMove {
     fn eq(&self, other: &&Move) -> bool {
-        self.from == other.from && self.to == other.to && self.promotion == other.promotion
+        self.from == other.from() && self.to == other.to() && self.promotion == other.promotion()
     }
 }
 
