@@ -14,13 +14,6 @@ use std::fmt;
 use std::fmt::Formatter;
 use std::str::FromStr;
 
-#[derive(Debug, Eq, PartialEq)]
-pub enum BoardStatus {
-    Ongoing,
-    Stalemate,
-    Checkmate,
-}
-
 #[derive(Debug, Clone)]
 pub struct BoardState {
     hash: u64,
@@ -336,20 +329,6 @@ impl Board {
 
     pub fn generate_moves(&self) -> MoveList {
         generate_moves(self)
-    }
-
-    pub fn status(&self) -> BoardStatus {
-        // inefficient but works for now
-        // should not be used in the search
-        let moves = generate_moves(self);
-        if moves.is_empty() {
-            return if self.state.checkers.is_empty() {
-                BoardStatus::Stalemate
-            } else {
-                BoardStatus::Checkmate
-            };
-        }
-        BoardStatus::Ongoing
     }
 
     pub fn is_repetition(&self) -> bool {
