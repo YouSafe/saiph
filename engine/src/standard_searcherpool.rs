@@ -1,14 +1,14 @@
-use crate::board::Board;
+use engine::board::Board;
 
-use crate::uci::StandardPrinter;
-use crate::search::Search;
-use crate::search_limits::SearchLimits;
-use crate::SearchWorkerPool;
+use crate::standard_printer::StandardPrinter;
+use engine::search::Search;
+use engine::search_limits::SearchLimits;
+use engine::SearcherPool;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
 use std::sync::{mpsc, Arc, Mutex};
 
-use crate::transposition_table::TranspositionTable;
+use engine::transposition_table::TranspositionTable;
 use std::thread::{self, JoinHandle};
 
 enum SearcherMessage {
@@ -58,7 +58,7 @@ impl StandardSearchWorkerPool {
     }
 }
 
-impl SearchWorkerPool for StandardSearchWorkerPool {
+impl SearcherPool for StandardSearchWorkerPool {
     fn clear_tables(&mut self) {
         self.table.lock().unwrap().clear();
     }

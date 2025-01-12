@@ -1,10 +1,12 @@
 use std::io;
 use std::io::BufRead;
 
-use engine::{
-    uci::{EngineUCI, StandardPrinter},
-    standard_searcher::StandardSearchWorkerPool,
-};
+use engine::uci::EngineUCI;
+use standard_printer::StandardPrinter;
+use standard_searcherpool::StandardSearchWorkerPool;
+
+pub mod standard_printer;
+pub mod standard_searcherpool;
 
 fn main() {
     let stdin = io::stdin();

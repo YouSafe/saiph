@@ -4,7 +4,7 @@ use std::sync::{
     Arc, Mutex,
 };
 
-use engine::{board::Board, Printer, SearchWorkerPool};
+use engine::{board::Board, Printer, SearcherPool};
 use engine::{
     uci::EngineUCI, search::Search, search_limits::SearchLimits,
     transposition_table::TranspositionTable,
@@ -151,7 +151,7 @@ impl WasmSearchWorkerPool {
     }
 }
 
-impl SearchWorkerPool for WasmSearchWorkerPool {
+impl SearcherPool for WasmSearchWorkerPool {
     fn clear_tables(&mut self) {
         self.table.lock().unwrap().clear();
     }

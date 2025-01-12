@@ -2,11 +2,11 @@ use crate::board::Board;
 use crate::search_limits::{SearchLimits, TimeLimit};
 use crate::types::color::Color;
 use crate::uci_move::UCIMove;
-use crate::{Printer, SearchWorkerPool};
+use crate::{Printer, SearcherPool};
 use std::str::{FromStr, Split};
 use std::time::Duration;
 
-pub struct EngineUCI<S: SearchWorkerPool, P: Printer> {
+pub struct EngineUCI<S: SearcherPool, P: Printer> {
     board: Board,
     workers: S,
     printer: P,
@@ -33,22 +33,13 @@ enum ParseCommandError {
     InvalidNumber,
 }
 
-pub struct StandardPrinter;
-
-impl Printer for StandardPrinter {
-    fn print(&self, s: &str) {
-        println!("{s}");
-    }
-}
-
 #[derive(Debug, PartialEq)]
 enum StartingPosition {
     Standard,
     Custom(Board),
 }
 
-
-impl<S: SearchWorkerPool, P: Printer> EngineUCI<S, P> {
+impl<S: SearcherPool, P: Printer> EngineUCI<S, P> {
     pub fn new(workers: S, printer: P) -> Self {
         EngineUCI {
             workers,
