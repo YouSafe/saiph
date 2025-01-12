@@ -8,7 +8,7 @@ use quiet_pawn::generate_quiet_pawn_moves;
 use slider::generate_slider_moves;
 
 use crate::board::Board;
-use crate::tables::{
+use crate::attacks::{
     get_bishop_attacks, get_king_attacks, get_knight_attacks, get_pawn_attacks, get_queen_attacks,
     get_rook_attacks,
 };

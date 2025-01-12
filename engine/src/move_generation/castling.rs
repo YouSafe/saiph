@@ -1,6 +1,6 @@
 use crate::board::Board;
 use crate::move_generation::{is_square_attacked, MoveList};
-use crate::tables::between;
+use crate::attacks::between;
 use crate::types::bitboard::BitBoard;
 use crate::types::castling_rights::CastlingRights;
 use crate::types::chess_move::{Move, MoveFlag};

@@ -66,9 +66,9 @@ pub const fn generate_squares_between() -> [[BitBoard; 64]; 64] {
 
 #[cfg(test)]
 mod test {
+    use crate::rays_between::generate_squares_between;
     use crate::BitBoard;
     use crate::Square;
-    use crate::rays_between::generate_squares_between;
 
     #[test]
     fn test_generate_rays_between_negative_diagonal() {

@@ -1,5 +1,5 @@
-use crate::Square;
 use crate::BitBoard;
+use crate::Square;
 
 pub const fn generate_king_attacks() -> [BitBoard; 64] {
     let mut result = [BitBoard(0); 64];

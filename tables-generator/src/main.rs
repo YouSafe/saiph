@@ -1,4 +1,10 @@
-use std::{fmt::{self, Formatter}, fs::File, io::Write, mem, ops::BitOrAssign};
+use std::{
+    fmt::{self, Formatter},
+    fs::File,
+    io::Write,
+    mem,
+    ops::BitOrAssign,
+};
 
 use king_move::generate_king_attacks;
 use knight_move::generate_knight_attacks;
@@ -136,5 +142,4 @@ fn main() {
         let bytes = std::slice::from_raw_parts(ptr, size);
         file.write_all(bytes).unwrap();
     }
-
 }

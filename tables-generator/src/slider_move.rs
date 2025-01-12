@@ -1,4 +1,7 @@
-use crate::{magics::{BISHOP_MAGICS, ROOK_MAGICS, SLIDER_ATTACK_TABLE_SIZE}, BitBoard};
+use crate::{
+    magics::{BISHOP_MAGICS, ROOK_MAGICS, SLIDER_ATTACK_TABLE_SIZE},
+    BitBoard,
+};
 
 pub const fn generate_slider_attacks() -> [BitBoard; SLIDER_ATTACK_TABLE_SIZE] {
     let mut attacks: [BitBoard; SLIDER_ATTACK_TABLE_SIZE] = [BitBoard(0); SLIDER_ATTACK_TABLE_SIZE];
@@ -98,7 +101,7 @@ mod test {
             blockers.0,
         ))
     }
-    
+
     pub fn mask_bishop_attacks_on_the_fly(square: Square, blockers: BitBoard) -> BitBoard {
         BitBoard(mask_bishop_attacks_on_the_fly_const(
             square.to_index() as i8,
@@ -108,16 +111,17 @@ mod test {
 
     pub fn get_bishop_attacks(square: Square, blockers: BitBoard) -> BitBoard {
         let magic = &BISHOP_MAGICS[square as usize];
-        let magic_index = ((blockers.0 & magic.mask).wrapping_mul(magic.magic) >> (64 - 9)) + magic.offset;
+        let magic_index =
+            ((blockers.0 & magic.mask).wrapping_mul(magic.magic) >> (64 - 9)) + magic.offset;
         SLIDER_ATTACKS[magic_index as usize]
     }
-    
+
     pub fn get_rook_attacks(square: Square, blockers: BitBoard) -> BitBoard {
         let magic = &ROOK_MAGICS[square as usize];
-        let magic_index = ((blockers.0 & magic.mask).wrapping_mul(magic.magic) >> (64 - 12)) + magic.offset;
+        let magic_index =
+            ((blockers.0 & magic.mask).wrapping_mul(magic.magic) >> (64 - 12)) + magic.offset;
         SLIDER_ATTACKS[magic_index as usize]
     }
-    
 
     #[test]
     fn test_bishop_attack_on_the_fly_e4() {

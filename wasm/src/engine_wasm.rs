@@ -12,7 +12,7 @@ use engine::{
 use wasm_bindgen::prelude::*;
 use web_sys::{js_sys, DedicatedWorkerGlobalScope, MessageChannel, MessagePort, WorkerOptions};
 
-/// Printer for the parent webworker 
+/// Printer for the parent webworker
 struct EnginePrinter {
     worker_scope: DedicatedWorkerGlobalScope,
 }

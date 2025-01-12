@@ -14,7 +14,7 @@ pub mod transposition_table;
 
 pub mod board;
 pub mod move_generation;
-pub mod tables;
+pub mod attacks;
 pub mod types;
 pub mod uci_move;
 mod zobrist;

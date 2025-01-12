@@ -1,6 +1,6 @@
 use crate::board::Board;
 use crate::move_generation::MoveList;
-use crate::tables::{between, get_bishop_attacks, get_rook_attacks, line};
+use crate::attacks::{between, get_bishop_attacks, get_rook_attacks, line};
 use crate::types::bitboard::BitBoard;
 use crate::types::chess_move::{Move, MoveFlag};
 use crate::types::piece::Piece;

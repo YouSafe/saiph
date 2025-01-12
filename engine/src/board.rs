@@ -1,5 +1,5 @@
 use crate::move_generation::{generate_moves, MoveList};
-use crate::tables::{
+use crate::attacks::{
     between, get_bishop_attacks, get_knight_attacks, get_pawn_attacks, get_rook_attacks,
 };
 use crate::types::bitboard::BitBoard;
