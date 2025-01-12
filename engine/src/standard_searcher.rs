@@ -1,6 +1,6 @@
 use crate::board::Board;
 
-use crate::engine_uci::StandardPrinter;
+use crate::uci::StandardPrinter;
 use crate::search::Search;
 use crate::search_limits::SearchLimits;
 use crate::SearchWorkerPool;

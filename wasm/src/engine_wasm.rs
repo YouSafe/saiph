@@ -6,7 +6,7 @@ use std::sync::{
 
 use engine::{board::Board, Printer, SearchWorkerPool};
 use engine::{
-    engine_uci::EngineUCI, search::Search, search_limits::SearchLimits,
+    uci::EngineUCI, search::Search, search_limits::SearchLimits,
     transposition_table::TranspositionTable,
 };
 use wasm_bindgen::prelude::*;

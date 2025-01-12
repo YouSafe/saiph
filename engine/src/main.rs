@@ -2,7 +2,7 @@ use std::io;
 use std::io::BufRead;
 
 use engine::{
-    engine_uci::{EngineUCI, StandardPrinter},
+    uci::{EngineUCI, StandardPrinter},
     standard_searcher::StandardSearchWorkerPool,
 };
 

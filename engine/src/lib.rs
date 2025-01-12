@@ -2,7 +2,7 @@ use board::Board;
 use search_limits::SearchLimits;
 
 pub mod clock;
-pub mod engine_uci;
+pub mod uci;
 pub mod evaluation;
 pub mod move_ordering;
 pub mod nnue;
