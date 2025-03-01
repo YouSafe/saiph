@@ -1,28 +1,56 @@
-use std::io;
-use std::io::BufRead;
+use std::{
+    io::{stdin, BufRead},
+    sync::mpsc::channel,
+    thread::{self, spawn},
+};
 
-use engine::uci::EngineUCI;
-use standard_printer::StandardPrinter;
-use standard_searcherpool::StandardSearchWorkerPool;
+use engine::{
+    uci::{EngineMessage, EngineUCI},
+    Printer, ThreadSpawner,
+};
 
-pub mod standard_printer;
-pub mod standard_searcherpool;
+struct DefaultSpawner;
+impl ThreadSpawner for DefaultSpawner {
+    fn spawn<F>(f: F)
+    where
+        F: FnOnce() + Send + 'static,
+    {
+        thread::spawn(f);
+    }
+}
+
+struct StdoutPrinter;
+impl Printer for StdoutPrinter {
+    fn println(s: &str) {
+        println!("{s}");
+    }
+}
 
 fn main() {
-    let stdin = io::stdin();
-    let mut message = String::new();
+    let (engine_tx, engine_rx) = channel();
 
-    let mut engine = EngineUCI::new(StandardSearchWorkerPool::new(), StandardPrinter);
+    spawn({
+        let engine_tx = engine_tx.clone();
 
-    while message.trim() != "quit" {
-        message.clear();
-        stdin
-            .lock()
-            .read_line(&mut message)
-            .expect("failed to read line");
+        move || {
+            let mut input = String::new();
 
-        if !message.is_empty() {
-            engine.receive_command(message.trim());
+            while input.trim() != "quit" {
+                input.clear();
+
+                stdin().lock().read_line(&mut input).unwrap();
+
+                while input.ends_with('\n') || input.ends_with('\r') {
+                    input.pop();
+                }
+
+                engine_tx
+                    .send(EngineMessage::Command(input.clone()))
+                    .unwrap();
+            }
         }
-    }
+    });
+
+    let engine: EngineUCI<DefaultSpawner, StdoutPrinter> = EngineUCI::new(engine_tx);
+    engine.run(engine_rx);
 }

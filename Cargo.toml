@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["tables-generator", "engine", "wasm", "datagen"]
+members = ["engine", "wasm", "datagen", "tablegen"]
 
 [profile.release]
 opt-level = 3

@@ -4,4 +4,6 @@ pub mod chess_move;
 pub mod color;
 pub mod piece;
 pub mod promotion;
+pub mod search_limits;
 pub mod square;
+pub mod uci_move;

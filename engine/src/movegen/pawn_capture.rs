@@ -1,6 +1,6 @@
 use crate::board::Board;
-use crate::move_generation::MoveList;
-use crate::attacks::{get_pawn_attacks, line};
+use crate::movegen::attacks::{get_pawn_attacks, line};
+use crate::movegen::MoveList;
 use crate::types::bitboard::BitBoard;
 use crate::types::chess_move::{Move, MoveFlag};
 use crate::types::piece::Piece;
@@ -71,8 +71,8 @@ mod test {
     use std::str::FromStr;
 
     use crate::board::Board;
-    use crate::move_generation::pawn_capture::generate_pawn_capture_moves;
-    use crate::move_generation::MoveList;
+    use crate::movegen::pawn_capture::generate_pawn_capture_moves;
+    use crate::movegen::MoveList;
     use crate::types::chess_move::{Move, MoveFlag};
     use crate::types::square::Square::*;
 

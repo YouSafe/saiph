@@ -1,18 +1,19 @@
-use crate::move_generation::{generate_moves, MoveList};
-use crate::attacks::{
+use crate::movegen::attacks::{
     between, get_bishop_attacks, get_knight_attacks, get_pawn_attacks, get_rook_attacks,
 };
+use crate::movegen::{MoveList, generate_moves};
 use crate::types::bitboard::BitBoard;
 use crate::types::castling_rights::{CastlingRights, UPDATE_CASTLING_RIGHT_TABLE};
 use crate::types::chess_move::MoveFlag::{Castling, DoublePawnPush, EnPassant};
 use crate::types::chess_move::{Move, MoveFlag};
 use crate::types::color::{Color, NUM_COLORS};
-use crate::types::piece::{Piece, NUM_PIECES};
-use crate::types::square::{File, Square, NUM_SQUARES};
+use crate::types::piece::{NUM_PIECES, Piece};
+use crate::types::square::{File, NUM_SQUARES, Square};
 use crate::zobrist::{CASTLE_KEYS, EN_PASSANT_KEYS, PIECE_KEYS, SIDE_KEY};
 use std::fmt;
 use std::fmt::Formatter;
 use std::str::FromStr;
+
 
 #[derive(Debug, Clone)]
 pub struct BoardState {

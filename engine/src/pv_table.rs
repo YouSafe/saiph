@@ -9,23 +9,23 @@ type Ply = usize;
 
 /// Triangular PV Table using a one-dimensional array for the backing data structure
 pub struct PrincipleVariationTable {
-    inner: [Option<Move>; TABLE_SIZE],
+    inner: [Move; TABLE_SIZE],
     lengths: [usize; MAX_PLY],
 }
 
 impl PrincipleVariationTable {
     pub fn new() -> Self {
         Self {
-            inner: [None; TABLE_SIZE],
+            inner: [Move::NULL; TABLE_SIZE],
             lengths: [0; MAX_PLY],
         }
     }
 
-    pub fn best_move(&self) -> Option<Move> {
+    pub fn best_move(&self) -> Move {
         self.inner[0]
     }
 
-    pub fn variation(&self) -> &[Option<Move>] {
+    pub fn variation(&self) -> &[Move] {
         &self.inner[0..self.lengths[0]]
     }
 
@@ -36,7 +36,7 @@ impl PrincipleVariationTable {
 
     pub fn update(&mut self, ply: Ply, mv: Move) {
         assert!(ply < MAX_PLY);
-        self.inner[index(ply)] = Some(mv);
+        self.inner[index(ply)] = mv;
         self.lengths[ply] = self.lengths[ply + 1] + 1;
 
         self.copy_variation_from_next_ply(ply);
@@ -62,7 +62,8 @@ impl fmt::Display for PrincipleVariationTable {
                 write!(f, "     ")?;
             }
             for pv_index in 0..(MAX_PLY - ply) {
-                if let Some(chess_move) = self.inner[index(ply) + pv_index] {
+                let chess_move = self.inner[index(ply) + pv_index];
+                if chess_move != Move::NULL {
                     write!(f, "{} ", chess_move)?;
                 } else {
                     write!(f, ".... ")?;

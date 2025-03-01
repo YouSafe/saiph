@@ -1,6 +1,6 @@
 use crate::board::Board;
-use crate::move_generation::{is_square_attacked, MoveList};
-use crate::attacks::between;
+use crate::movegen::attacks::between;
+use crate::movegen::{is_square_attacked, MoveList};
 use crate::types::bitboard::BitBoard;
 use crate::types::castling_rights::CastlingRights;
 use crate::types::chess_move::{Move, MoveFlag};
@@ -76,8 +76,8 @@ mod test {
     use std::str::FromStr;
 
     use crate::board::Board;
-    use crate::move_generation::castling::generate_castling_moves;
-    use crate::move_generation::MoveList;
+    use crate::movegen::castling::generate_castling_moves;
+    use crate::movegen::MoveList;
     use crate::types::chess_move::{Move, MoveFlag};
     use crate::types::square::Square::*;
 

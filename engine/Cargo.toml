@@ -9,10 +9,5 @@ edition = "2021"
 instant = { version = "0.1", features = ["wasm-bindgen"] }
 arrayvec = "0.7.4"
 
-[dev-dependencies]
-criterion = "0.5.1"
-
-[[bench]]
-name = "perft_benchmark"
-harness = false
-
+[build-dependencies]
+tablegen = { path = "../tablegen" }

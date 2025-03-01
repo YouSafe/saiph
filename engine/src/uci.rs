@@ -1,15 +1,37 @@
 use crate::board::Board;
-use crate::search_limits::{SearchLimits, TimeLimit};
+use crate::clock::Clock;
+use crate::movegen::perf_test;
+use crate::threadpool::ThreadPool;
+use crate::transposition::TranspositionTable;
 use crate::types::color::Color;
-use crate::uci_move::UCIMove;
-use crate::{Printer, SearcherPool};
-use std::str::{FromStr, Split};
+use crate::types::search_limits::{SearchLimits, TimeLimit};
+use crate::types::uci_move::UCIMove;
+use crate::{Printer, ThreadSpawner};
+use std::iter::Peekable;
+use std::marker::PhantomData;
+use std::str::{FromStr, SplitAsciiWhitespace};
+use std::sync::mpsc::{Receiver, Sender};
+use std::sync::Arc;
 use std::time::Duration;
 
-pub struct EngineUCI<S: SearcherPool, P: Printer> {
+/// Default transposition table size in MB
+const DEFAULT_HASH_SIZE: usize = 1;
+
+/// Default number of threads
+const DEFAULT_THREADS: u8 = 1;
+
+pub enum EngineMessage {
+    Command(String),
+    Response(String),
+    Terminate,
+}
+
+pub struct EngineUCI<S: ThreadSpawner, P: Printer> {
     board: Board,
-    workers: S,
-    printer: P,
+    engine_tx: Sender<EngineMessage>,
+    threadpool: ThreadPool<S>,
+    transposition_table: Arc<TranspositionTable>,
+    _marker: PhantomData<P>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -17,11 +39,13 @@ enum Command {
     Uci,
     IsReady,
     NewGame,
+    SetOption { name: String, value: Option<String> },
     Position(StartingPosition, Vec<UCIMove>),
     Go(SearchLimits),
+    Perft { depth: u8 },
     Debug,
-    Eval,
     Stop,
+    Quit,
 }
 
 #[derive(Debug)]
@@ -39,16 +63,33 @@ enum StartingPosition {
     Custom(Board),
 }
 
-impl<S: SearcherPool, P: Printer> EngineUCI<S, P> {
-    pub fn new(workers: S, printer: P) -> Self {
-        EngineUCI {
-            workers,
+impl<S: ThreadSpawner, P: Printer> EngineUCI<S, P> {
+    pub fn new(engine_tx: Sender<EngineMessage>) -> Self {
+        Self {
             board: Default::default(),
-            printer,
+            engine_tx,
+            threadpool: ThreadPool::<S>::new(DEFAULT_THREADS),
+            transposition_table: Arc::new(TranspositionTable::new(DEFAULT_HASH_SIZE)),
+            _marker: Default::default(),
         }
     }
 
-    pub fn receive_command(&mut self, message: &str) {
+    pub fn run(mut self, engine_rx: Receiver<EngineMessage>) {
+        loop {
+            let Ok(input) = engine_rx.recv() else {
+                break;
+            };
+
+            // TODO: ignore commands after quit!
+            match input {
+                EngineMessage::Command(message) => self.receive_command(&message),
+                EngineMessage::Response(message) => P::println(&message),
+                EngineMessage::Terminate => break,
+            }
+        }
+    }
+
+    fn receive_command(&mut self, message: &str) {
         let command = self.parse_command(message);
         match command {
             Ok(command) => self.process_command(command),
@@ -57,17 +98,19 @@ impl<S: SearcherPool, P: Printer> EngineUCI<S, P> {
     }
 
     fn parse_command(&self, message: &str) -> Result<Command, ParseCommandError> {
-        let mut parts = message.split(' ');
+        let mut parts = message.split_ascii_whitespace().peekable();
         let cmd = parts.next().ok_or(ParseCommandError::MissingParts)?;
 
         let command = match cmd {
             "uci" => Command::Uci,
+            "setoption" => parse_setoption(parts)?,
             "isready" => Command::IsReady,
             "ucinewgame" => Command::NewGame,
-            "position" => parse_position(&mut parts)?,
+            "position" => parse_position(parts)?,
             "go" => parse_go(parts)?,
+            "perft" => parse_perft(parts)?,
             "debug" => Command::Debug,
-            "eval" => Command::Eval,
+            "quit" => Command::Quit,
             "stop" => Command::Stop,
             _ => return Err(ParseCommandError::UnknownCommand),
         };
@@ -78,13 +121,40 @@ impl<S: SearcherPool, P: Printer> EngineUCI<S, P> {
     fn process_command(&mut self, command: Command) {
         match command {
             Command::Uci => {
-                self.printer.print("uciok");
+                P::println("id name Saiph");
+                P::println("id author Yousif");
+
+                P::println(&format!(
+                    "option name Hash type spin default {DEFAULT_HASH_SIZE} min 1 max 33554432"
+                ));
+
+                P::println(&format!(
+                    "option name Threads type spin default {DEFAULT_THREADS} min 1 max 255"
+                ));
+                P::println("uciok");
             }
             Command::IsReady => {
-                self.printer.print("readyok");
+                P::println("readyok");
             }
+            Command::SetOption { name, value } => match name.as_str() {
+                "Threads" => {
+                    if let Some(num_threads) = value.and_then(|v| v.parse::<u8>().ok()) {
+                        self.threadpool.resize(num_threads)
+                    } else {
+                        eprintln!("invalid value");
+                    }
+                }
+                "Hash" => {
+                    if let Some(size_mb) = value.and_then(|v| v.parse::<usize>().ok()) {
+                        self.transposition_table = Arc::new(TranspositionTable::new(size_mb));
+                    } else {
+                        eprintln!("invalid value");
+                    }
+                }
+                _ => eprintln!("invalid option"),
+            },
             Command::NewGame => {
-                self.workers.clear_tables();
+                self.threadpool.clear(self.transposition_table.clone());
             }
             Command::Position(start_pos, moves) => {
                 let mut board = match start_pos {
@@ -104,23 +174,67 @@ impl<S: SearcherPool, P: Printer> EngineUCI<S, P> {
                 self.board = board;
             }
             Command::Go(limits) => {
-                self.workers.initiate_search(self.board.clone(), limits);
-            }
-            Command::Eval => {
-                // self.printer
-                //     .print(format!("Eval: {}", self.board.evaluate()).as_str());
+                // The clock should be started as soon as possible even if the search has to wait in queue
+                let clock = Clock::new(&limits, self.board.game_ply(), self.board.side_to_move());
+
+                self.threadpool.search(
+                    self.board.clone(),
+                    limits,
+                    clock,
+                    self.engine_tx.clone(),
+                    self.transposition_table.clone(),
+                );
             }
             Command::Debug => {
-                self.printer.print(self.board.to_string().as_str());
+                P::println(self.board.to_string().as_str());
             }
             Command::Stop => {
-                self.workers.stop_search();
+                self.threadpool.stop_search();
+            }
+            Command::Quit => {
+                self.threadpool.quit(self.engine_tx.clone());
+            }
+            Command::Perft { depth } => {
+                perf_test::<P>(&mut self.board, depth);
             }
         }
     }
 }
 
-fn parse_go(mut parts: Split<'_, char>) -> Result<Command, ParseCommandError> {
+fn parse_perft(
+    mut parts: Peekable<SplitAsciiWhitespace<'_>>,
+) -> Result<Command, ParseCommandError> {
+    Ok(Command::Perft {
+        depth: parts
+            .next()
+            .ok_or(ParseCommandError::MissingParts)?
+            .parse()
+            .map_err(|_| ParseCommandError::InvalidNumber)?,
+    })
+}
+
+fn parse_setoption(
+    mut parts: Peekable<SplitAsciiWhitespace<'_>>,
+) -> Result<Command, ParseCommandError> {
+    let name = match [parts.next(), parts.next()] {
+        [Some("name"), Some(name)] => name,
+        _ => return Err(ParseCommandError::MissingParts),
+    };
+
+    let value = match [parts.next(), parts.next()] {
+        [Some("value"), Some(name)] => Some(name),
+        // FIXME: use correct error
+        [Some(_), Some(_)] => return Err(ParseCommandError::MissingParts),
+        _ => None,
+    };
+
+    Ok(Command::SetOption {
+        name: name.to_owned(),
+        value: value.map(|s| s.to_owned()),
+    })
+}
+
+fn parse_go(mut parts: Peekable<SplitAsciiWhitespace<'_>>) -> Result<Command, ParseCommandError> {
     let mut depth: Option<u8> = None;
     let mut mate: Option<u8> = None;
     let mut time_left: [Duration; 2] = Default::default();
@@ -129,6 +243,7 @@ fn parse_go(mut parts: Split<'_, char>) -> Result<Command, ParseCommandError> {
     let mut moves_to_go: Option<u8> = None;
     let mut nodes: Option<u64> = None;
     let mut infinite = false;
+    let mut search_moves = vec![];
     while let Some(token) = parts.next() {
         match token {
             "infinite" => {
@@ -175,6 +290,15 @@ fn parse_go(mut parts: Split<'_, char>) -> Result<Command, ParseCommandError> {
 
                 nodes = Some(param);
             }
+            "ponder" => {
+                todo!()
+            }
+            "searchmoves" => {
+                while let Some(mov) = parts.peek().and_then(|m| UCIMove::from_str(m).ok()) {
+                    search_moves.push(mov);
+                    parts.next();
+                }
+            }
             _ => {}
         }
     }
@@ -190,17 +314,21 @@ fn parse_go(mut parts: Split<'_, char>) -> Result<Command, ParseCommandError> {
     } else {
         TimeLimit::Infinite
     };
+
     let limits = SearchLimits {
         time,
         depth,
         mate,
         nodes,
         moves_to_go,
+        search_moves,
     };
     Ok(Command::Go(limits))
 }
 
-fn parse_position(parts: &mut Split<'_, char>) -> Result<Command, ParseCommandError> {
+fn parse_position(
+    mut parts: Peekable<SplitAsciiWhitespace<'_>>,
+) -> Result<Command, ParseCommandError> {
     let token = parts.next();
     let starting_pos;
     match token {

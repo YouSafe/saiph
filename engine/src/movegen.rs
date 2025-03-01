@@ -8,7 +8,7 @@ use quiet_pawn::generate_quiet_pawn_moves;
 use slider::generate_slider_moves;
 
 use crate::board::Board;
-use crate::attacks::{
+use crate::movegen::attacks::{
     get_bishop_attacks, get_king_attacks, get_knight_attacks, get_pawn_attacks, get_queen_attacks,
     get_rook_attacks,
 };
@@ -17,7 +17,9 @@ use crate::types::chess_move::Move;
 use crate::types::color::Color;
 use crate::types::piece::{Piece, ALL_PIECES};
 use crate::types::square::Square;
+use crate::Printer;
 
+pub(crate) mod attacks;
 mod castling;
 mod en_passant;
 mod king;
@@ -159,7 +161,7 @@ pub fn build_attacked_bitboard(board: &Board, attacking_side: Color) -> BitBoard
     bitboard
 }
 
-pub fn perf_test(board: &mut Board, depth: u8) {
+pub fn perf_test<P: Printer>(board: &mut Board, depth: u8) {
     let mut total_nodes = 0;
 
     let moves = board.generate_moves();
@@ -170,12 +172,12 @@ pub fn perf_test(board: &mut Board, depth: u8) {
         perf_driver(board, depth - 1, &mut nodes);
         board.undo_move();
 
-        println!("{} {}", mov, nodes);
+        P::println(&format!("{mov} {nodes}"));
         total_nodes += nodes;
     }
 
-    println!();
-    println!("{}", total_nodes);
+    P::println("");
+    P::println(&format!("{total_nodes}"));
 }
 
 pub fn perf_driver(board: &mut Board, depth: u8, nodes: &mut u64) {
@@ -201,7 +203,7 @@ mod test {
     use std::str::FromStr;
 
     use crate::board::Board;
-    use crate::move_generation::{
+    use crate::movegen::{
         build_attacked_bitboard, generate_attack_bitboard, generate_moves, is_square_attacked,
     };
     use crate::types::bitboard::BitBoard;

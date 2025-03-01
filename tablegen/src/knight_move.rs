@@ -61,9 +61,9 @@ const fn mask_knight_attack(square: Square) -> BitBoard {
 
 #[cfg(test)]
 mod test {
-    use crate::knight_move::mask_knight_attack;
     use crate::BitBoard;
     use crate::Square;
+    use crate::knight_move::mask_knight_attack;
 
     #[test]
     fn test_knight_attack_a1() {

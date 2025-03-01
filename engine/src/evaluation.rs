@@ -1,8 +1,7 @@
-use crate::board::Board;
-use crate::piece_square_table::piece_square_table;
+pub mod hce;
+pub mod nnue;
+
 use crate::types::color::Color;
-use crate::types::piece::{Piece, ALL_PIECES};
-use crate::types::square::Square;
 use std::fmt;
 use std::fmt::Formatter;
 use std::ops::Neg;
@@ -87,44 +86,6 @@ impl Neg for Evaluation {
     fn neg(self) -> Self::Output {
         Evaluation(self.0.neg())
     }
-}
-
-pub const fn raw_piece_value(piece: Piece) -> i16 {
-    match piece {
-        Piece::Pawn => 100,
-        Piece::Knight => 320,
-        Piece::Bishop => 330,
-        Piece::Rook => 500,
-        Piece::Queen => 900,
-        // The value of king is defined to be 0 to avoid arithmetic overflow. This is valid because
-        // both sides always have exactly one king. In classic chess the king can not be captured
-        // but other chess variants might allow capturing the king. However, other variants are not
-        // supported yet by this chess engine.
-        Piece::King => 0,
-    }
-}
-
-fn piece_value(piece: Piece, square: Square, piece_color: Color) -> i16 {
-    let sign = match piece_color {
-        Color::White => 1,
-        Color::Black => -1,
-    };
-
-    let piece_value = raw_piece_value(piece);
-
-    let bonus = piece_square_table(piece, square, piece_color);
-
-    sign * (piece_value + bonus)
-}
-
-pub fn board_value(board: &Board) -> Evaluation {
-    let mut result: i16 = 0;
-    for piece in ALL_PIECES {
-        for square in board.pieces(piece).iter() {
-            result += piece_value(piece, square, board.color_at(square).unwrap());
-        }
-    }
-    Evaluation(result)
 }
 
 #[cfg(test)]

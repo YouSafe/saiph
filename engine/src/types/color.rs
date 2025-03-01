@@ -29,7 +29,7 @@ impl Color {
         unsafe { self.unchecked_relative_rank(3) }
     }
 
-    /// # Safety:
+    /// # Safety
     ///
     /// `index` must be between 0 to 7
     pub const unsafe fn unchecked_relative_rank(&self, index: u8) -> Rank {

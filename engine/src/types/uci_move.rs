@@ -4,7 +4,7 @@ use crate::types::promotion::Promotion::{Bishop, Knight, Queen, Rook};
 use crate::types::square::Square;
 use std::str::FromStr;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Eq)]
 pub struct UCIMove {
     pub from: Square,
     pub to: Square,

@@ -1,6 +1,8 @@
 use crate::types::color::NUM_COLORS;
 use std::time::Duration;
 
+use super::uci_move::UCIMove;
+
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct SearchLimits {
     pub time: TimeLimit,
@@ -8,6 +10,7 @@ pub struct SearchLimits {
     pub mate: Option<u8>,
     pub nodes: Option<u64>,
     pub moves_to_go: Option<u8>,
+    pub search_moves: Vec<UCIMove>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]

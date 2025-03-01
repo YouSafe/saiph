@@ -1,8 +1,49 @@
-// See: https://www.chessprogramming.org/Simplified_Evaluation_Function
-
+use crate::board::Board;
 use crate::types::color::Color;
-use crate::types::piece::Piece;
+use crate::types::piece::{Piece, ALL_PIECES};
 use crate::types::square::Square;
+
+use super::Evaluation;
+
+pub const fn raw_piece_value(piece: Piece) -> i16 {
+    match piece {
+        Piece::Pawn => 100,
+        Piece::Knight => 320,
+        Piece::Bishop => 330,
+        Piece::Rook => 500,
+        Piece::Queen => 900,
+        // The value of king is defined to be 0 to avoid arithmetic overflow. This is valid because
+        // both sides always have exactly one king. In classic chess the king can not be captured
+        // but other chess variants might allow capturing the king. However, other variants are not
+        // supported yet by this chess engine.
+        Piece::King => 0,
+    }
+}
+
+fn piece_value(piece: Piece, square: Square, piece_color: Color) -> i16 {
+    let sign = match piece_color {
+        Color::White => 1,
+        Color::Black => -1,
+    };
+
+    let piece_value = raw_piece_value(piece);
+
+    let bonus = piece_square_table(piece, square, piece_color);
+
+    sign * (piece_value + bonus)
+}
+
+pub fn board_value(board: &Board) -> Evaluation {
+    let mut result: i16 = 0;
+    for piece in ALL_PIECES {
+        for square in board.pieces(piece).iter() {
+            result += piece_value(piece, square, board.color_at(square).unwrap());
+        }
+    }
+    Evaluation(result)
+}
+
+// See: https://www.chessprogramming.org/Simplified_Evaluation_Function
 
 pub fn piece_square_table(piece: Piece, square: Square, piece_color: Color) -> i16 {
     let square_index = square as usize;
@@ -84,52 +125,3 @@ const QUEEN_TABLE: [i8; 64] = [
     -10,  0,  5,  0,  0,  0,  0,-10,
     -20,-10,-10, -5, -5,-10,-10,-20
 ];
-
-#[rustfmt::skip]
-const KING_MIDDLE_GAME: [i8; 64] = [
-    -30,-40,-40,-50,-50,-40,-40,-30,
-    -30,-40,-40,-50,-50,-40,-40,-30,
-    -30,-40,-40,-50,-50,-40,-40,-30,
-    -30,-40,-40,-50,-50,-40,-40,-30,
-    -20,-30,-30,-40,-40,-30,-30,-20,
-    -10,-20,-20,-20,-20,-20,-20,-10,
-    20, 20,  0,  0,  0,  0, 20, 20,
-    20, 30, 10,  0,  0, 10, 30, 20
-];
-
-#[rustfmt::skip]
-const KING_END_GAME: [i8; 64] = [
-    -50,-40,-30,-20,-20,-30,-40,-50,
-    -30,-20,-10,  0,  0,-10,-20,-30,
-    -30,-10, 20, 30, 30, 20,-10,-30,
-    -30,-10, 30, 40, 40, 30,-10,-30,
-    -30,-10, 30, 40, 40, 30,-10,-30,
-    -30,-10, 20, 30, 30, 20,-10,-30,
-    -30,-30,  0,  0,  0,  0,-30,-30,
-    -50,-30,-30,-30,-30,-30,-30,-50
-];
-
-#[cfg(test)]
-mod test {
-    use crate::piece_square_table::piece_square_table;
-    use crate::types::color::Color::{Black, White};
-    use crate::types::piece::Piece::Pawn;
-    use crate::types::square::Square;
-    use std::str::FromStr;
-
-    #[test]
-    fn pawn_piece_square_value() {
-        assert_eq!(
-            piece_square_table(Pawn, Square::from_str("d4").unwrap(), White),
-            20
-        );
-        assert_eq!(
-            piece_square_table(Pawn, Square::from_str("c4").unwrap(), White),
-            0
-        );
-        assert_eq!(
-            piece_square_table(Pawn, Square::from_str("d5").unwrap(), Black),
-            20
-        );
-    }
-}

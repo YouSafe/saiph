@@ -39,10 +39,10 @@ const fn mask_pawn_attacks(square: Square, side: Color) -> BitBoard {
 
 #[cfg(test)]
 mod test {
-    use crate::pawn_move::mask_pawn_attacks;
     use crate::BitBoard;
     use crate::Color;
     use crate::Square;
+    use crate::pawn_move::mask_pawn_attacks;
 
     #[test]
     fn test_pawn_attack_white_e4() {

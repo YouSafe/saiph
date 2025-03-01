@@ -16,7 +16,7 @@ pub(crate) fn mmv_lva(src_piece: Piece, dst_piece: Piece) -> i32 {
 
 #[cfg(test)]
 mod test {
-    use crate::move_ordering::mmv_lva;
+    use crate::moveord::mmv_lva;
     use crate::types::piece::{Piece, ALL_PIECES};
 
     #[test]

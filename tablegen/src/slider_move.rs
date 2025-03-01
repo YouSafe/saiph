@@ -1,6 +1,6 @@
 use crate::{
-    magics::{BISHOP_MAGICS, ROOK_MAGICS, SLIDER_ATTACK_TABLE_SIZE},
     BitBoard,
+    magics::{BISHOP_MAGICS, ROOK_MAGICS, SLIDER_ATTACK_TABLE_SIZE},
 };
 
 pub const fn generate_slider_attacks() -> [BitBoard; SLIDER_ATTACK_TABLE_SIZE] {
@@ -83,11 +83,11 @@ const fn mask_bishop_attacks_on_the_fly_const(square: i8, blockers: u64) -> u64 
 
 #[cfg(test)]
 mod test {
+    use crate::BitBoard;
+    use crate::Square;
     use crate::magics::BISHOP_MAGICS;
     use crate::magics::ROOK_MAGICS;
     use crate::magics::SLIDER_ATTACK_TABLE_SIZE;
-    use crate::BitBoard;
-    use crate::Square;
 
     use super::generate_slider_attacks;
     use super::mask_bishop_attacks_on_the_fly_const;

@@ -25,7 +25,7 @@ pub enum MoveFlag {
     QueenPromotionCapture = 0b1111,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Move(u16);
 
 impl Move {
