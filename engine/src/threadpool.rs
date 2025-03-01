@@ -180,7 +180,7 @@ impl Worker {
             let mut num_threads = num_threads;
 
             loop {
-                println!("[{thread_id}] waiting for job!");
+                eprintln!("[{thread_id}] waiting for job!");
                 match worker_rx.recv() {
                     Ok(job) => match job {
                         Job::Search(search) => {
@@ -234,10 +234,10 @@ impl Worker {
                     }
                 }
 
-                println!("[{thread_id}] finished job!");
+                eprintln!("[{thread_id}] finished job!");
             }
 
-            println!("[{thread_id}] terminating worker!");
+            eprintln!("[{thread_id}] terminating worker!");
         });
 
         Self {
