@@ -2,6 +2,7 @@ use crate::board::Board;
 use crate::clock::Clock;
 use crate::evaluation::hce::board_value;
 use crate::evaluation::Evaluation;
+use crate::movegen::MoveList;
 use crate::moveord::mmv_lva;
 use crate::pv_table::PrincipleVariationTable;
 use crate::threadpool::StopSync;
@@ -44,6 +45,7 @@ pub struct Search {
     pv_table: PrincipleVariationTable,
     local_stop: bool,
     clock: Clock,
+    root_moves: MoveList,
 
     engine_tx: Sender<EngineMessage>,
     tt: Arc<TranspositionTable>,
@@ -59,6 +61,7 @@ impl Search {
         board: Board,
         limits: SearchLimits,
         clock: Clock,
+        root_moves: MoveList,
         engine_tx: Sender<EngineMessage>,
         tt: Arc<TranspositionTable>,
         stop_sync: Arc<StopSync>,
@@ -71,6 +74,7 @@ impl Search {
             pv_table: PrincipleVariationTable::new(),
             local_stop: false,
             clock,
+            root_moves,
 
             engine_tx,
             tt,
@@ -82,6 +86,25 @@ impl Search {
     }
 
     pub fn search(mut self, is_main: bool) -> Move {
+        self.iterative_deepening(is_main);
+
+        let _guard = self.stop_sync.cond_var.wait_while(
+            self.stop_sync.wait_for_stop.lock().unwrap(),
+            |wait_for_stop| *wait_for_stop,
+        );
+
+        let best_move = self.pv_table.best_move();
+
+        if is_main {
+            self.engine_tx
+                .send(EngineMessage::Response(format!("bestmove {best_move}")))
+                .unwrap();
+        }
+
+        best_move
+    }
+
+    fn iterative_deepening(&mut self, is_main: bool) {
         let mut evaluation;
 
         for depth in 1..u8::MAX {
@@ -126,21 +149,6 @@ impl Search {
                 }
             }
         }
-
-        let _guard = self.stop_sync.cond_var.wait_while(
-            self.stop_sync.wait_for_stop.lock().unwrap(),
-            |wait_for_stop| *wait_for_stop,
-        );
-
-        let best_move = self.pv_table.best_move();
-
-        if is_main {
-            self.engine_tx
-                .send(EngineMessage::Response(format!("bestmove {best_move}")))
-                .unwrap();
-        }
-
-        best_move
     }
 
     /// Fail soft variant of negamax search
@@ -214,6 +222,10 @@ impl Search {
         });
 
         for chess_move in moves {
+            if ROOT && !self.root_moves.contains(&chess_move) {
+                continue;
+            }
+
             self.board.apply_move(chess_move);
             let score = -self.negamax_search::<PV, false>(-beta, -alpha, depth - 1, ply + 1);
             self.board.undo_move();

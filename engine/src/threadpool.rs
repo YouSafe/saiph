@@ -61,10 +61,39 @@ impl<S: ThreadSpawner> ThreadPool<S> {
         engine_tx: Sender<EngineMessage>,
         tt: Arc<TranspositionTable>,
     ) {
-        // age tt
-        // generate rootmoves
+        fn send_response(engine_tx: &Sender<EngineMessage>, message: &str) {
+            engine_tx
+                .send(EngineMessage::Response(message.to_owned()))
+                .unwrap();
+        }
 
-        // if #rootmoves = 0 skip search
+        let legal_moves = board.generate_moves();
+        if legal_moves.len() == 0 {
+            if !board.checkers().is_empty() {
+                send_response(&engine_tx, "info depth 0 score mate 0");
+            } else {
+                send_response(&engine_tx, "info depth 0 score cp 0");
+            }
+            send_response(&engine_tx, "bestmove (none)");
+            return;
+        }
+
+        let root_moves = if !limits.search_moves.is_empty() {
+            limits
+                .search_moves
+                .iter()
+                .filter_map(|sm| legal_moves.iter().find(|m| sm == m))
+                .cloned()
+                .collect()
+        } else {
+            legal_moves
+        };
+
+        if root_moves.len() == 0 {
+            send_response(&engine_tx, "info depth 0");
+            send_response(&engine_tx, "bestmove (none)");
+            return;
+        }
 
         let nodes_buffer = Arc::new(NodeCountBuffer::new(self.workers.len() as u8));
 
@@ -76,6 +105,7 @@ impl<S: ThreadSpawner> ThreadPool<S> {
                     board.clone(),
                     limits.clone(),
                     clock,
+                    root_moves.clone(),
                     engine_tx.clone(),
                     tt.clone(),
                     self.stop_sync.clone(),
