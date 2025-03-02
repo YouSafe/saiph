@@ -31,6 +31,7 @@ pub struct EngineUCI<S: ThreadSpawner, P: Printer> {
     engine_tx: Sender<EngineMessage>,
     threadpool: ThreadPool<S>,
     transposition_table: Arc<TranspositionTable>,
+    ignore_commands: bool,
     _marker: PhantomData<P>,
 }
 
@@ -70,6 +71,7 @@ impl<S: ThreadSpawner, P: Printer> EngineUCI<S, P> {
             engine_tx,
             threadpool: ThreadPool::<S>::new(DEFAULT_THREADS),
             transposition_table: Arc::new(TranspositionTable::new(DEFAULT_HASH_SIZE)),
+            ignore_commands: false,
             _marker: Default::default(),
         }
     }
@@ -80,9 +82,12 @@ impl<S: ThreadSpawner, P: Printer> EngineUCI<S, P> {
                 break;
             };
 
-            // TODO: ignore commands after quit!
             match input {
-                EngineMessage::Command(message) => self.receive_command(&message),
+                EngineMessage::Command(message) => {
+                    if !self.ignore_commands {
+                        self.receive_command(&message)
+                    }
+                }
                 EngineMessage::Response(message) => P::println(&message),
                 EngineMessage::Terminate => break,
             }
@@ -192,6 +197,7 @@ impl<S: ThreadSpawner, P: Printer> EngineUCI<S, P> {
                 self.threadpool.stop_search();
             }
             Command::Quit => {
+                self.ignore_commands = true;
                 self.threadpool.quit(self.engine_tx.clone());
             }
             Command::Perft { depth } => {
