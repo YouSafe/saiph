@@ -38,7 +38,10 @@ fn main() {
             while input.trim() != "quit" {
                 input.clear();
 
-                stdin().lock().read_line(&mut input).unwrap();
+                let bytes = stdin().lock().read_line(&mut input).unwrap();
+                if bytes == 0 {
+                    break;
+                }
 
                 while input.ends_with('\n') || input.ends_with('\r') {
                     input.pop();
