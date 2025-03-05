@@ -318,7 +318,7 @@ fn parse_go(mut parts: Peekable<SplitAsciiWhitespace<'_>>) -> Result<Command, Pa
             increment,
         }
     } else {
-        TimeLimit::Infinite
+        TimeLimit::External
     };
 
     let limits = SearchLimits {

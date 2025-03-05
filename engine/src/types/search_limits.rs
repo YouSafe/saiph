@@ -24,4 +24,5 @@ pub enum TimeLimit {
         time_left: [Duration; NUM_COLORS],
         increment: [Duration; NUM_COLORS],
     },
+    External,
 }

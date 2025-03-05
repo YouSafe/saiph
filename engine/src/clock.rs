@@ -14,7 +14,7 @@ impl Clock {
         let start = Instant::now();
 
         match limits.time {
-            TimeLimit::Infinite => Self {
+            TimeLimit::Infinite | TimeLimit::External => Self {
                 start,
                 maximum: None,
                 optimum: None,

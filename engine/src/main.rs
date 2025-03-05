@@ -40,6 +40,9 @@ fn main() {
 
                 let bytes = stdin().lock().read_line(&mut input).unwrap();
                 if bytes == 0 {
+                    engine_tx
+                        .send(EngineMessage::Command("quit".to_owned()))
+                        .unwrap();
                     break;
                 }
 
