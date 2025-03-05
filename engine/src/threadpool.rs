@@ -1,7 +1,7 @@
 use std::{
     marker::PhantomData,
     sync::{
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicU8, Ordering},
         mpsc::{channel, Sender},
         Arc, Barrier, Condvar, Mutex,
     },
@@ -160,24 +160,19 @@ impl<S: ThreadSpawner> ThreadPool<S> {
     }
 
     pub fn quit(&self, engine_tx: Sender<EngineMessage>) {
-        let signal_count = Arc::new((Mutex::new(0u8), Condvar::new()));
+        let active_threads = Arc::new(AtomicU8::new(self.workers.len() as u8));
 
         for worker in &self.workers {
             worker
                 .worker_tx
-                .send(Job::Quit(signal_count.clone()))
+                .send(Job::Quit {
+                    active_threads: active_threads.clone(),
+                    engine_tx: engine_tx.clone(),
+                })
                 .unwrap();
         }
 
         self.stop_search();
-
-        let _guard = signal_count
-            .1
-            .wait_while(signal_count.0.lock().unwrap(), |signal_count| {
-                *signal_count != self.workers.len() as u8
-            });
-
-        engine_tx.send(EngineMessage::Terminate).unwrap();
     }
 }
 
@@ -188,7 +183,10 @@ enum Job {
         new_barrier: Arc<Barrier>,
     },
     Clear(Arc<TranspositionTable>),
-    Quit(Arc<(Mutex<u8>, Condvar)>),
+    Quit {
+        active_threads: Arc<AtomicU8>,
+        engine_tx: Sender<EngineMessage>,
+    },
 }
 
 struct Worker {
@@ -250,12 +248,14 @@ impl Worker {
 
                             barrier.wait();
                         }
-                        Job::Quit(signal_count_pair) => {
-                            let mut signal_count = signal_count_pair.0.lock().unwrap();
-                            *signal_count += 1;
-                            drop(signal_count);
-
-                            signal_count_pair.1.notify_one();
+                        Job::Quit {
+                            active_threads,
+                            engine_tx,
+                        } => {
+                            let previous_value = active_threads.fetch_sub(1, Ordering::SeqCst);
+                            if previous_value == 1 {
+                                engine_tx.send(EngineMessage::Terminate).unwrap();
+                            }
                             break;
                         }
                     },
