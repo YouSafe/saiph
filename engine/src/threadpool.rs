@@ -218,8 +218,6 @@ impl Worker {
 
                                 let mut wait_for_stop = stop_sync.wait_for_stop.lock().unwrap();
                                 // set to false if not infinite search or ponder
-                                // FIXME: time limit is also infinite if max depth, etc. is specified
-                                // we don't want to wait for stop in this case
                                 *wait_for_stop = search.limits().time == TimeLimit::Infinite;
                                 drop(wait_for_stop);
                             }

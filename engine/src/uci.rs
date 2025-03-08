@@ -318,9 +318,6 @@ fn parse_go(mut parts: Peekable<SplitAsciiWhitespace<'_>>) -> Result<Command, Pa
 
                 nodes = Some(param);
             }
-            "ponder" => {
-                todo!()
-            }
             "searchmoves" => {
                 while let Some(mov) = parts.peek().and_then(|m| UCIMove::from_str(m).ok()) {
                     search_moves.push(mov);

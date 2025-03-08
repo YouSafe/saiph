@@ -9,16 +9,6 @@ use std::ops::Neg;
 #[derive(PartialEq, Clone, Copy, Debug, PartialOrd, Ord, Eq)]
 pub struct Evaluation(i16);
 
-impl fmt::Display for Evaluation {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        if self.is_mate() {
-            write!(f, "#{}", self.mate_num_ply())
-        } else {
-            write!(f, "{}", self.0)
-        }
-    }
-}
-
 impl Evaluation {
     pub const INVALID: Evaluation = Evaluation(0);
 
@@ -85,6 +75,16 @@ impl Neg for Evaluation {
 
     fn neg(self) -> Self::Output {
         Evaluation(self.0.neg())
+    }
+}
+
+impl fmt::Display for Evaluation {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        if self.is_mate() {
+            write!(f, "#{}", self.mate_num_ply())
+        } else {
+            write!(f, "{}", self.0)
+        }
     }
 }
 
