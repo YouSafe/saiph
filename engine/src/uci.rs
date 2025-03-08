@@ -180,7 +180,7 @@ impl<S: ThreadSpawner, P: Printer> EngineUCI<S, P> {
             }
             Command::Go(limits) => {
                 // The clock should be started as soon as possible even if the search has to wait in queue
-                let clock = Clock::new(&limits, self.board.game_ply(), self.board.side_to_move());
+                let clock = Clock::new(&limits.time, self.board.game_ply(), self.board.side_to_move());
 
                 self.threadpool.search(
                     self.board.clone(),
@@ -316,6 +316,7 @@ fn parse_go(mut parts: Peekable<SplitAsciiWhitespace<'_>>) -> Result<Command, Pa
         TimeLimit::Dynamic {
             time_left,
             increment,
+            moves_to_go
         }
     } else {
         TimeLimit::External
@@ -326,7 +327,6 @@ fn parse_go(mut parts: Peekable<SplitAsciiWhitespace<'_>>) -> Result<Command, Pa
         depth,
         mate,
         nodes,
-        moves_to_go,
         search_moves,
     };
     Ok(Command::Go(limits))

@@ -9,7 +9,6 @@ pub struct SearchLimits {
     pub depth: Option<u8>,
     pub mate: Option<u8>,
     pub nodes: Option<u64>,
-    pub moves_to_go: Option<u8>,
     pub search_moves: Vec<UCIMove>,
 }
 
@@ -23,6 +22,7 @@ pub enum TimeLimit {
     Dynamic {
         time_left: [Duration; NUM_COLORS],
         increment: [Duration; NUM_COLORS],
+        moves_to_go: Option<u8>,
     },
     External,
 }

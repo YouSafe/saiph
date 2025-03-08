@@ -1,5 +1,5 @@
 use crate::types::color::Color;
-use crate::types::search_limits::{SearchLimits, TimeLimit};
+use crate::types::search_limits::TimeLimit;
 use instant::{Duration, Instant};
 
 #[derive(Debug, Clone, Copy)]
@@ -10,10 +10,10 @@ pub struct Clock {
 }
 
 impl Clock {
-    pub fn new(limits: &SearchLimits, game_ply: u16, color: Color) -> Self {
+    pub fn new(limits: &TimeLimit, game_ply: u16, color: Color) -> Self {
         let start = Instant::now();
 
-        match limits.time {
+        match limits {
             TimeLimit::Infinite | TimeLimit::External => Self {
                 start,
                 maximum: None,
@@ -21,18 +21,19 @@ impl Clock {
             },
             TimeLimit::Fixed { move_time } => Self {
                 start,
-                maximum: Some(start + move_time),
-                optimum: Some(start + move_time),
+                maximum: Some(start + *move_time),
+                optimum: Some(start + *move_time),
             },
             TimeLimit::Dynamic {
                 time_left,
                 increment,
+                moves_to_go
             } => {
                 // Inspired by: https://github.com/official-stockfish/Stockfish/blob/65ece7d985291cc787d6c804a33f1dd82b75736d/src/timeman.cpp#L37
 
                 let move_overhead: u64 = 300;
                 let moves_to_go_horizon: u64 =
-                    limits.moves_to_go.map_or(50, |v| (v as u64).min(50));
+                    moves_to_go.map_or(50, |v| (v as u64).min(50));
 
                 let time_left_mills = time_left[color as usize].as_millis() as u64;
                 let increment_mills = increment[color as usize].as_millis() as u64;
@@ -73,22 +74,16 @@ impl Clock {
 mod test {
     use crate::clock::Clock;
     use crate::types::color::Color;
-    use crate::types::search_limits::{SearchLimits, TimeLimit};
+    use crate::types::search_limits::TimeLimit;
     use std::time::Duration;
 
     #[test]
     fn test_first_move() {
         let clock = Clock::new(
-            &SearchLimits {
-                time: TimeLimit::Dynamic {
-                    time_left: [Duration::from_secs(120); 2],
-                    increment: [Duration::from_secs(1); 2],
-                },
-                depth: Some(0),
-                mate: Some(0),
-                nodes: None,
+            &TimeLimit::Dynamic {
+                time_left: [Duration::from_secs(120); 2],
+                increment: [Duration::from_secs(1); 2],
                 moves_to_go: None,
-                search_moves: vec![],
             },
             0,
             Color::White,
