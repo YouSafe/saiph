@@ -24,7 +24,7 @@ fn write_slice_to_file<T>(file: impl AsRef<Path>, table: T) {
 }
 
 fn main() {
-    println!("cargo:rerun-if-changed=tablegen/");
+    println!("cargo:rerun-if-changed=../tablegen/");
 
     let pawn_attacks: [[BitBoard; 64]; 2] = generate_pawn_attacks();
     let king_attacks: [BitBoard; 64] = generate_king_attacks();
