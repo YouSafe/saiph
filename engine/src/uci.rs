@@ -180,7 +180,11 @@ impl<S: ThreadSpawner, P: Printer> EngineUCI<S, P> {
             }
             Command::Go(limits) => {
                 // The clock should be started as soon as possible even if the search has to wait in queue
-                let clock = Clock::new(&limits.time, self.board.game_ply(), self.board.side_to_move());
+                let clock = Clock::new(
+                    &limits.time,
+                    self.board.game_ply(),
+                    self.board.side_to_move(),
+                );
 
                 self.threadpool.search(
                     self.board.clone(),
@@ -222,22 +226,40 @@ fn parse_perft(
 fn parse_setoption(
     mut parts: Peekable<SplitAsciiWhitespace<'_>>,
 ) -> Result<Command, ParseCommandError> {
-    let name = match [parts.next(), parts.next()] {
-        [Some("name"), Some(name)] => name,
-        _ => return Err(ParseCommandError::MissingParts),
+    // name and value can include spaces
+
+    if parts.next() != Some("name") {
+        return Err(ParseCommandError::MissingParts);
+    }
+
+    let mut found_value = false;
+
+    let name = parts
+        .by_ref()
+        .take_while(|s| {
+            let pred = *s != "value";
+            found_value |= !pred;
+            pred
+        })
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    if name.is_empty() {
+        return Err(ParseCommandError::MissingParts);
+    }
+
+    let value = if found_value {
+        let value = parts.collect::<Vec<_>>().join(" ");
+        if value.is_empty() {
+            return Err(ParseCommandError::MissingParts);
+        }
+
+        Some(value)
+    } else {
+        None
     };
 
-    let value = match [parts.next(), parts.next()] {
-        [Some("value"), Some(name)] => Some(name),
-        // FIXME: use correct error
-        [Some(_), Some(_)] => return Err(ParseCommandError::MissingParts),
-        _ => None,
-    };
-
-    Ok(Command::SetOption {
-        name: name.to_owned(),
-        value: value.map(|s| s.to_owned()),
-    })
+    Ok(Command::SetOption { name, value })
 }
 
 fn parse_go(mut parts: Peekable<SplitAsciiWhitespace<'_>>) -> Result<Command, ParseCommandError> {
@@ -316,7 +338,7 @@ fn parse_go(mut parts: Peekable<SplitAsciiWhitespace<'_>>) -> Result<Command, Pa
         TimeLimit::Dynamic {
             time_left,
             increment,
-            moves_to_go
+            moves_to_go,
         }
     } else {
         TimeLimit::External
