@@ -2,7 +2,7 @@ use crate::board::Board;
 use crate::movegen::attacks::get_king_attacks;
 use crate::movegen::{generate_attack_bitboard, MoveList};
 use crate::types::chess_move::{Move, MoveFlag};
-use crate::types::piece::Piece;
+use crate::types::piece::PieceType;
 
 pub fn generate_king_moves<const CHECK: bool, const CAPTURE_ONLY: bool>(
     board: &Board,
@@ -14,7 +14,7 @@ pub fn generate_king_moves<const CHECK: bool, const CAPTURE_ONLY: bool>(
     let mut push_mask = !attacked;
 
     let king_square =
-        (board.pieces(Piece::King) & board.occupancies(board.side_to_move())).bit_scan();
+        (board.pieces(PieceType::King) & board.occupancies(board.side_to_move())).bit_scan();
 
     let side_to_move = board.side_to_move();
 

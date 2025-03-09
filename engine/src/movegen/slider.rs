@@ -3,7 +3,7 @@ use crate::movegen::attacks::{between, get_bishop_attacks, get_rook_attacks, lin
 use crate::movegen::MoveList;
 use crate::types::bitboard::BitBoard;
 use crate::types::chess_move::{Move, MoveFlag};
-use crate::types::piece::Piece;
+use crate::types::piece::PieceType;
 
 pub fn generate_slider_moves<const CHECK: bool, const CAPTURE_ONLY: bool>(
     board: &Board,
@@ -13,7 +13,7 @@ pub fn generate_slider_moves<const CHECK: bool, const CAPTURE_ONLY: bool>(
     let mut push_mask = !BitBoard::EMPTY;
 
     let king_square =
-        (board.pieces(Piece::King) & board.occupancies(board.side_to_move())).bit_scan();
+        (board.pieces(PieceType::King) & board.occupancies(board.side_to_move())).bit_scan();
 
     if CHECK {
         let checkers = board.checkers();
@@ -32,9 +32,9 @@ pub fn generate_slider_moves<const CHECK: bool, const CAPTURE_ONLY: bool>(
     // avoid opponent pieces on quiet moves
     push_mask &= !board.occupancies(!side_to_move);
 
-    let bishops = board.pieces(Piece::Bishop) & board.occupancies(side_to_move);
-    let rooks = board.pieces(Piece::Rook) & board.occupancies(side_to_move);
-    let queens = board.pieces(Piece::Queen) & board.occupancies(side_to_move);
+    let bishops = board.pieces(PieceType::Bishop) & board.occupancies(side_to_move);
+    let rooks = board.pieces(PieceType::Rook) & board.occupancies(side_to_move);
+    let queens = board.pieces(PieceType::Queen) & board.occupancies(side_to_move);
 
     let combined = board.combined();
 

@@ -5,7 +5,7 @@ use crate::types::bitboard::BitBoard;
 use crate::types::castling_rights::CastlingRights;
 use crate::types::chess_move::{Move, MoveFlag};
 use crate::types::color::NUM_COLORS;
-use crate::types::piece::Piece;
+use crate::types::piece::PieceType;
 use crate::types::square::Square;
 
 struct CastlingConfig {
@@ -54,7 +54,7 @@ pub fn generate_castling_moves<const CHECK: bool>(board: &Board, move_list: &mut
     let castling_rights = board.castling_rights();
 
     let side_to_move = board.side_to_move();
-    let king_square = (board.pieces(Piece::King) & board.occupancies(side_to_move)).bit_scan();
+    let king_square = (board.pieces(PieceType::King) & board.occupancies(side_to_move)).bit_scan();
 
     for config in &CASTLING_CONFIGS[side_to_move as usize] {
         if castling_rights.contains(config.required_rights)

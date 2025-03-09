@@ -1,17 +1,23 @@
 use std::fmt;
 use std::fmt::Formatter;
-use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
+use std::ops::{
+    BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Index, IndexMut, Sub, SubAssign,
+};
 use std::str::FromStr;
 
+use crate::declare_per_type;
 use crate::types::square::Square;
 
+use super::square::PerSquare;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(C)]
 pub struct CastlingRights(u8);
 
-pub static UPDATE_CASTLING_RIGHT_TABLE: [CastlingRights; 64] =
+pub static UPDATE_CASTLING_RIGHT_TABLE: PerSquare<CastlingRights> =
     generate_update_castling_right_table();
 
-const fn generate_update_castling_right_table() -> [CastlingRights; 64] {
+const fn generate_update_castling_right_table() -> PerSquare<CastlingRights> {
     // start out with every square keeping all the rights
     // those castling rights represent upperbounds for the rights
 
@@ -30,7 +36,7 @@ const fn generate_update_castling_right_table() -> [CastlingRights; 64] {
     result[Square::A8 as usize] = CastlingRights::all().subtract(CastlingRights::BLACK_QUEEN_SIDE);
     result[Square::H8 as usize] = CastlingRights::all().subtract(CastlingRights::BLACK_KING_SIDE);
 
-    result
+    PerSquare::new(result)
 }
 
 impl CastlingRights {
@@ -56,10 +62,6 @@ impl CastlingRights {
 
     pub const fn subtract(&self, other: Self) -> CastlingRights {
         Self(self.0 & !other.0)
-    }
-
-    pub const fn to_usize(&self) -> usize {
-        self.0 as usize
     }
 }
 
@@ -109,6 +111,20 @@ impl FromStr for CastlingRights {
         Ok(castling_rights)
     }
 }
+
+impl From<CastlingRights> for usize {
+    fn from(value: CastlingRights) -> Self {
+        value.0 as usize
+    }
+}
+
+pub const NUM_CASTLING_RIGHTS_CONFIGURATIONS: usize = 16;
+
+declare_per_type!(
+    PerCastlingRightsConfig,
+    CastlingRights,
+    NUM_CASTLING_RIGHTS_CONFIGURATIONS
+);
 
 impl BitAnd for CastlingRights {
     type Output = Self;

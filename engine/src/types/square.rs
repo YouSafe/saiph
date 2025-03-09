@@ -1,7 +1,9 @@
 use std::fmt;
 use std::fmt::Formatter;
+use std::ops::{Index, IndexMut};
 use std::str::FromStr;
 
+use crate::declare_per_type;
 use crate::types::color::Color;
 
 #[rustfmt::skip]
@@ -29,19 +31,13 @@ impl Square {
     }
 }
 
-#[rustfmt::skip]
-#[repr(u8)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Rank {
-    R1, R2, R3, R4, R5, R6, R7, R8
+impl From<Square> for usize {
+    fn from(value: Square) -> Self {
+        value as usize
+    }
 }
 
-#[rustfmt::skip]
-#[repr(u8)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum File {
-    A, B, C, D, E, F, G, H
-}
+declare_per_type!(PerSquare, Square, NUM_SQUARES);
 
 impl Square {
     pub fn from(rank: Rank, file: File) -> Square {
@@ -121,6 +117,41 @@ impl FromStr for Square {
         Ok(Square::from_index(rank as u8 * 8 + file as u8))
     }
 }
+
+#[rustfmt::skip]
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Rank {
+    R1, R2, R3, R4, R5, R6, R7, R8
+}
+
+impl From<Rank> for usize {
+    fn from(value: Rank) -> Self {
+        value as usize
+    }
+}
+
+pub const NUM_RANKS: usize = 8;
+
+declare_per_type!(PerRank, Rank, NUM_RANKS);
+
+#[rustfmt::skip]
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum File {
+    A, B, C, D, E, F, G, H
+}
+
+impl From<File> for usize {
+    fn from(value: File) -> Self {
+        value as usize
+    }
+}
+
+pub const NUM_FILES: usize = 8;
+
+declare_per_type!(PerFile, File, NUM_FILES);
+
 
 #[cfg(test)]
 mod test {

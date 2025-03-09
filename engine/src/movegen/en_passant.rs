@@ -3,7 +3,7 @@ use crate::movegen::attacks::{get_bishop_attacks, get_pawn_attacks, get_rook_att
 use crate::movegen::MoveList;
 use crate::types::bitboard::BitBoard;
 use crate::types::chess_move::{Move, MoveFlag};
-use crate::types::piece::Piece;
+use crate::types::piece::PieceType;
 use crate::types::square::Square;
 
 fn is_valid_ep(board: &Board, capture: Square, source: Square, destination: Square) -> bool {
@@ -14,18 +14,18 @@ fn is_valid_ep(board: &Board, capture: Square, source: Square, destination: Squa
             | BitBoard::from_square(destination);
 
     let king_square =
-        (board.pieces(Piece::King) & board.occupancies(board.side_to_move())).bit_scan();
+        (board.pieces(PieceType::King) & board.occupancies(board.side_to_move())).bit_scan();
 
     let mut attack = BitBoard(0);
 
     // pretend like the king is a rook
     attack |= get_rook_attacks(king_square, combined)
-        & (board.pieces(Piece::Rook) | board.pieces(Piece::Queen))
+        & (board.pieces(PieceType::Rook) | board.pieces(PieceType::Queen))
         & board.occupancies(!board.side_to_move());
 
     // pretend like the king is a bishop
     attack |= get_bishop_attacks(king_square, combined)
-        & (board.pieces(Piece::Bishop) | board.pieces(Piece::Queen))
+        & (board.pieces(PieceType::Bishop) | board.pieces(PieceType::Queen))
         & board.occupancies(!board.side_to_move());
 
     attack == BitBoard::EMPTY
@@ -34,7 +34,7 @@ fn is_valid_ep(board: &Board, capture: Square, source: Square, destination: Squa
 pub fn generate_en_passant_move<const CHECK: bool>(board: &Board, move_list: &mut MoveList) {
     if let Some(ep_square) = board.en_passant_target() {
         let side_to_move = board.side_to_move();
-        let current_sides_pawns = board.pieces(Piece::Pawn) & board.occupancies(side_to_move);
+        let current_sides_pawns = board.pieces(PieceType::Pawn) & board.occupancies(side_to_move);
 
         for source in current_sides_pawns.iter() {
             let attack = get_pawn_attacks(source, side_to_move) & BitBoard::from_square(ep_square);

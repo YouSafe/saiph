@@ -1,66 +1,178 @@
+use std::fmt::Debug;
+use std::ops::{Index, IndexMut};
+
+use crate::declare_per_type;
 use crate::types::color::Color;
-use crate::types::piece::Piece::{Bishop, King, Knight, Pawn, Queen, Rook};
+use crate::types::piece::PieceType::{Bishop, King, Knight, Pawn, Queen, Rook};
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum Piece {
-    Pawn,
-    Knight,
-    Bishop,
-    Rook,
-    Queen,
-    King,
+pub enum PieceType {
+    Pawn = 0,
+    Knight = 1,
+    Bishop = 2,
+    Rook = 3,
+    Queen = 4,
+    King = 5,
 }
 
 pub const NUM_PIECES: usize = 6;
-pub const ALL_PIECES: [Piece; 6] = [Pawn, Knight, Bishop, Rook, Queen, King];
+pub const ALL_PIECES: [PieceType; 6] = [Pawn, Knight, Bishop, Rook, Queen, King];
+
+impl PieceType {
+    pub fn to_piece(self, color: Color) -> Piece {
+        Piece::new(self, color)
+    }
+}
+
+impl From<PieceType> for usize {
+    fn from(value: PieceType) -> Self {
+        value as usize
+    }
+}
+
+declare_per_type!(PerPieceType, PieceType, NUM_PIECES);
+
+#[repr(u8)]
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[rustfmt::skip]
+pub enum Piece {
+    WhitePawn   = pack(Pawn, Color::White),
+    WhiteKnight = pack(Knight, Color::White),
+    WhiteBishop = pack(Bishop, Color::White),
+    WhiteRook   = pack(Rook, Color::White),
+    WhiteQueen  = pack(Queen, Color::White),
+    WhiteKing   = pack(King, Color::White),
+    BlackPawn   = pack(Pawn, Color::Black),
+    BlackKnight = pack(Knight, Color::Black),
+    BlackBishop = pack(Bishop, Color::Black),
+    BlackRook   = pack(Rook, Color::Black),
+    BlackQueen  = pack(Queen, Color::Black),
+    BlackKing   = pack(King, Color::Black),
+}
+
+const fn pack(ty: PieceType, color: Color) -> u8 {
+    ((color as u8) << 3) | ty as u8
+}
 
 impl Piece {
+    pub const fn new(ty: PieceType, color: Color) -> Self {
+        unsafe { std::mem::transmute(pack(ty, color)) }
+    }
+
+    pub const fn color(&self) -> Color {
+        unsafe { std::mem::transmute(*self as u8 >> 3 & 1) }
+    }
+
+    pub const fn ty(&self) -> PieceType {
+        unsafe { std::mem::transmute(*self as u8 & 7) }
+    }
+
     pub fn from_algebraic(letter: char) -> Option<Piece> {
         match letter {
-            'p' | 'P' => Some(Pawn),
-            'b' | 'B' => Some(Bishop),
-            'n' | 'N' => Some(Knight),
-            'r' | 'R' => Some(Rook),
-            'q' | 'Q' => Some(Queen),
-            'k' | 'K' => Some(King),
+            'p' => Some(Piece::new(Pawn, Color::Black)),
+            'P' => Some(Piece::new(Pawn, Color::White)),
+            'b' => Some(Piece::new(Bishop, Color::Black)),
+            'B' => Some(Piece::new(Bishop, Color::White)),
+            'n' => Some(Piece::new(Knight, Color::Black)),
+            'N' => Some(Piece::new(Knight, Color::White)),
+            'r' => Some(Piece::new(Rook, Color::Black)),
+            'R' => Some(Piece::new(Rook, Color::White)),
+            'q' => Some(Piece::new(Queen, Color::Black)),
+            'Q' => Some(Piece::new(Queen, Color::White)),
+            'k' => Some(Piece::new(King, Color::Black)),
+            'K' => Some(Piece::new(King, Color::White)),
             _ => None,
         }
     }
 
-    pub fn to_unicode(&self, color: Color) -> char {
-        match (color, *self) {
-            (Color::White, Pawn) => '♙',
-            (Color::White, Knight) => '♘',
-            (Color::White, Bishop) => '♗',
-            (Color::White, Rook) => '♖',
-            (Color::White, Queen) => '♕',
-            (Color::White, King) => '♔',
+    pub fn to_unicode(&self) -> char {
+        use crate::types::color::Color::{Black, White};
 
-            (Color::Black, Pawn) => '♟',
-            (Color::Black, Knight) => '♞',
-            (Color::Black, Bishop) => '♝',
-            (Color::Black, Rook) => '♜',
-            (Color::Black, Queen) => '♛',
-            (Color::Black, King) => '♚',
+        match (self.color(), self.ty()) {
+            (White, Pawn) => '♙',
+            (White, Knight) => '♘',
+            (White, Bishop) => '♗',
+            (White, Rook) => '♖',
+            (White, Queen) => '♕',
+            (White, King) => '♔',
+
+            (Black, Pawn) => '♟',
+            (Black, Knight) => '♞',
+            (Black, Bishop) => '♝',
+            (Black, Rook) => '♜',
+            (Black, Queen) => '♛',
+            (Black, King) => '♚',
         }
     }
 
-    pub fn to_ascii(&self, color: Color) -> char {
-        match (color, *self) {
-            (Color::White, Pawn) => 'P',
-            (Color::White, Knight) => 'N',
-            (Color::White, Bishop) => 'B',
-            (Color::White, Rook) => 'R',
-            (Color::White, Queen) => 'Q',
-            (Color::White, King) => 'K',
+    pub fn to_ascii(&self) -> char {
+        use crate::types::color::Color::{Black, White};
+        match (self.color(), self.ty()) {
+            (White, Pawn) => 'P',
+            (White, Knight) => 'N',
+            (White, Bishop) => 'B',
+            (White, Rook) => 'R',
+            (White, Queen) => 'Q',
+            (White, King) => 'K',
 
-            (Color::Black, Pawn) => 'p',
-            (Color::Black, Knight) => 'n',
-            (Color::Black, Bishop) => 'b',
-            (Color::Black, Rook) => 'r',
-            (Color::Black, Queen) => 'q',
-            (Color::Black, King) => 'k',
+            (Black, Pawn) => 'p',
+            (Black, Knight) => 'n',
+            (Black, Bishop) => 'b',
+            (Black, Rook) => 'r',
+            (Black, Queen) => 'q',
+            (Black, King) => 'k',
+        }
+    }
+}
+
+impl Debug for Piece {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Piece")
+            .field("ty", &self.ty())
+            .field("color", &self.color())
+            .finish()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::types::{color::ALL_COLORS, piece::ALL_PIECES};
+
+    use super::Piece;
+
+    #[test]
+    fn constuction() {
+        use crate::types::color::Color::*;
+        use crate::types::piece::Piece::*;
+        use crate::types::piece::PieceType::*;
+
+        let lookup = [
+            (WhitePawn, (Pawn, White)),
+            (WhiteKnight, (Knight, White)),
+            (WhiteBishop, (Bishop, White)),
+            (WhiteRook, (Rook, White)),
+            (WhiteQueen, (Queen, White)),
+            (WhiteKing, (King, White)),
+            (BlackPawn, (Pawn, Black)),
+            (BlackKnight, (Knight, Black)),
+            (BlackBishop, (Bishop, Black)),
+            (BlackRook, (Rook, Black)),
+            (BlackQueen, (Queen, Black)),
+            (BlackKing, (King, Black)),
+        ];
+
+        for ty in ALL_PIECES {
+            for color in ALL_COLORS {
+                let piece = Piece::new(ty, color);
+                assert_eq!(piece.color(), color);
+                assert_eq!(piece.ty(), ty);
+            }
+        }
+
+        for (piece, (ty, color)) in lookup {
+            assert_eq!(piece.color(), color);
+            assert_eq!(piece.ty(), ty);
         }
     }
 }

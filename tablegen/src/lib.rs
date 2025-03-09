@@ -10,6 +10,7 @@ pub mod pawn_move;
 pub mod rays_between;
 pub mod slider_move;
 pub mod xray_line;
+pub mod zobrist;
 
 // STUB TYPES
 
@@ -57,6 +58,10 @@ impl Square {
 }
 
 pub const NUM_SQUARES: usize = 64;
+pub const NUM_FILES: usize = 8;
+pub const NUM_CASTLING_CONFIGS: usize = 16;
+pub const NUM_COLORS: usize = 2;
+pub const NUM_PIECES: usize = 6;
 
 impl BitBoard {
     pub const fn from_square(square: Square) -> BitBoard {

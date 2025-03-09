@@ -3,18 +3,18 @@ use crate::movegen::attacks::{get_pawn_attacks, line};
 use crate::movegen::MoveList;
 use crate::types::bitboard::BitBoard;
 use crate::types::chess_move::{Move, MoveFlag};
-use crate::types::piece::Piece;
+use crate::types::piece::PieceType;
 
 pub fn generate_pawn_capture_moves<const CHECK: bool>(board: &Board, move_list: &mut MoveList) {
     let mut capture_mask = !BitBoard::EMPTY;
 
     let side_to_move = board.side_to_move();
-    let current_sides_pawns = board.pieces(Piece::Pawn) & board.occupancies(side_to_move);
+    let current_sides_pawns = board.pieces(PieceType::Pawn) & board.occupancies(side_to_move);
 
     let pinned = board.pinned();
 
     let king_square =
-        (board.pieces(Piece::King) & board.occupancies(board.side_to_move())).bit_scan();
+        (board.pieces(PieceType::King) & board.occupancies(board.side_to_move())).bit_scan();
 
     if CHECK {
         capture_mask = board.checkers();

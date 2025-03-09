@@ -70,7 +70,7 @@ impl fmt::Display for Move {
                 "{}{}{}",
                 self.from(),
                 self.to(),
-                promotion.as_piece().to_ascii(Color::Black)
+                promotion.as_piece_type().to_piece(Color::Black).to_ascii()
             )
         } else {
             write!(f, "{}{}", self.from(), self.to())

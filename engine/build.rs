@@ -1,7 +1,6 @@
 use std::{env, fs::File, io::Write, mem, path::Path};
 
 use tablegen::{
-    BitBoard,
     king_move::generate_king_attacks,
     knight_move::generate_knight_attacks,
     magics::{BISHOP_MAGICS, ROOK_MAGICS, SLIDER_ATTACK_TABLE_SIZE},
@@ -9,6 +8,8 @@ use tablegen::{
     rays_between::generate_squares_between,
     slider_move::generate_slider_attacks,
     xray_line::generate_squares_line,
+    zobrist::{generate_keys, GeneratedKeys},
+    BitBoard,
 };
 
 fn write_slice_to_file<T>(file: impl AsRef<Path>, table: T) {
@@ -32,6 +33,7 @@ fn main() {
     let squares_line: [[BitBoard; 64]; 64] = generate_squares_line();
     let knight_attacks: [BitBoard; 64] = generate_knight_attacks();
     let slider_attacks: [BitBoard; SLIDER_ATTACK_TABLE_SIZE] = generate_slider_attacks();
+    let zobrist: GeneratedKeys = generate_keys();
 
     write_slice_to_file("pawn_attacks", pawn_attacks);
     write_slice_to_file("king_attacks", king_attacks);
@@ -41,4 +43,5 @@ fn main() {
     write_slice_to_file("bishop_magics", BISHOP_MAGICS);
     write_slice_to_file("squares_between", squares_between);
     write_slice_to_file("squares_line", squares_line);
+    write_slice_to_file("zobrist", zobrist);
 }

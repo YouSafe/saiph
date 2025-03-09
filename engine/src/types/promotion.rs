@@ -1,4 +1,4 @@
-use crate::types::piece::Piece;
+use crate::types::piece::PieceType;
 use crate::types::promotion::Promotion::{Bishop, Knight, Queen, Rook};
 
 #[repr(u8)]
@@ -11,12 +11,12 @@ pub enum Promotion {
 }
 
 impl Promotion {
-    pub const fn as_piece(&self) -> Piece {
+    pub const fn as_piece_type(&self) -> PieceType {
         match self {
-            Queen => Piece::Queen,
-            Rook => Piece::Rook,
-            Knight => Piece::Knight,
-            Bishop => Piece::Bishop,
+            Queen => PieceType::Queen,
+            Rook => PieceType::Rook,
+            Knight => PieceType::Knight,
+            Bishop => PieceType::Bishop,
         }
     }
 }

@@ -1,5 +1,5 @@
 use crate::types::color::Color;
-use crate::types::piece::{Piece, NUM_PIECES};
+use crate::types::piece::{PieceType, NUM_PIECES};
 use crate::types::square::{Square, NUM_SQUARES};
 
 pub type Matrix<T, const ROWS: usize, const COLS: usize> = [[T; ROWS]; COLS];
@@ -9,7 +9,7 @@ pub type Vector<T, const ROWS: usize> = [T; ROWS];
 pub struct FeatureIndex(usize);
 
 impl FeatureIndex {
-    pub fn new(color: Color, piece: Piece, square: Square) -> Self {
+    pub fn new(color: Color, piece: PieceType, square: Square) -> Self {
         Self(
             color as usize * (NUM_PIECES * NUM_SQUARES)
                 + piece as usize * NUM_SQUARES

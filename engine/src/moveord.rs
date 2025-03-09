@@ -1,4 +1,4 @@
-use crate::types::piece::{Piece, NUM_PIECES};
+use crate::types::piece::{PieceType, NUM_PIECES};
 
 #[rustfmt::skip]
 const MVV_LVA: [[u8; NUM_PIECES]; NUM_PIECES] = [
@@ -10,18 +10,18 @@ const MVV_LVA: [[u8; NUM_PIECES]; NUM_PIECES] = [
     [ 0,  0,  0,  0,  0,  0], // victim King
 ];
 
-pub(crate) fn mmv_lva(src_piece: Piece, dst_piece: Piece) -> i32 {
+pub(crate) fn mmv_lva(src_piece: PieceType, dst_piece: PieceType) -> i32 {
     MVV_LVA[dst_piece as usize][src_piece as usize] as i32
 }
 
 #[cfg(test)]
 mod test {
     use crate::moveord::mmv_lva;
-    use crate::types::piece::{Piece, ALL_PIECES};
+    use crate::types::piece::{PieceType, ALL_PIECES};
 
     #[test]
     fn test() {
-        let mut scores: Vec<(Piece, Piece, i32)> =
+        let mut scores: Vec<(PieceType, PieceType, i32)> =
             Vec::with_capacity(ALL_PIECES.len() * ALL_PIECES.len());
 
         for src_piece in ALL_PIECES {

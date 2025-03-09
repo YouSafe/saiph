@@ -15,7 +15,7 @@ use crate::movegen::attacks::{
 use crate::types::bitboard::BitBoard;
 use crate::types::chess_move::Move;
 use crate::types::color::Color;
-use crate::types::piece::{Piece, ALL_PIECES};
+use crate::types::piece::{PieceType, ALL_PIECES};
 use crate::types::square::Square;
 use crate::Printer;
 
@@ -35,7 +35,7 @@ pub type OrderingList = ArrayVec<i32, 256>;
 pub fn generate_attack_bitboard(board: &Board, attacking_color: Color) -> BitBoard {
     let mut attacked = BitBoard(0);
 
-    let king = board.pieces(Piece::King) & board.occupancies(!attacking_color);
+    let king = board.pieces(PieceType::King) & board.occupancies(!attacking_color);
 
     // remove opponent king from blockers to simulate xray attack
     let blockers = board.combined() & !king;
@@ -44,12 +44,12 @@ pub fn generate_attack_bitboard(board: &Board, attacking_color: Color) -> BitBoa
         let piece_bitboard = board.pieces(piece) & board.occupancies(attacking_color);
         for square in piece_bitboard.iter() {
             attacked |= match piece {
-                Piece::Pawn => get_pawn_attacks(square, attacking_color),
-                Piece::Knight => get_knight_attacks(square),
-                Piece::Bishop => get_bishop_attacks(square, blockers),
-                Piece::Rook => get_rook_attacks(square, blockers),
-                Piece::Queen => get_queen_attacks(square, blockers),
-                Piece::King => get_king_attacks(square),
+                PieceType::Pawn => get_pawn_attacks(square, attacking_color),
+                PieceType::Knight => get_knight_attacks(square),
+                PieceType::Bishop => get_bishop_attacks(square, blockers),
+                PieceType::Rook => get_rook_attacks(square, blockers),
+                PieceType::Queen => get_queen_attacks(square, blockers),
+                PieceType::King => get_king_attacks(square),
             };
         }
     }
@@ -103,7 +103,7 @@ pub fn generate_moves<const CAPTURE_ONLY: bool>(board: &Board) -> MoveList {
 pub fn is_square_attacked(board: &Board, attacked_square: Square, attacking_side: Color) -> bool {
     // attacked by pawns?
     if (get_pawn_attacks(attacked_square, !attacking_side)
-        & board.pieces(Piece::Pawn)
+        & board.pieces(PieceType::Pawn)
         & board.occupancies(attacking_side))
         != BitBoard(0)
     {
@@ -112,7 +112,7 @@ pub fn is_square_attacked(board: &Board, attacked_square: Square, attacking_side
 
     // attacked by knight?
     if (get_knight_attacks(attacked_square)
-        & board.pieces(Piece::Knight)
+        & board.pieces(PieceType::Knight)
         & board.occupancies(attacking_side))
         != BitBoard(0)
     {
@@ -121,7 +121,7 @@ pub fn is_square_attacked(board: &Board, attacked_square: Square, attacking_side
 
     // attacked by king?
     if (get_king_attacks(attacked_square)
-        & board.pieces(Piece::King)
+        & board.pieces(PieceType::King)
         & board.occupancies(attacking_side))
         != BitBoard(0)
     {
@@ -130,7 +130,7 @@ pub fn is_square_attacked(board: &Board, attacked_square: Square, attacking_side
 
     // attacked by bishop or queen?
     if (get_bishop_attacks(attacked_square, board.combined())
-        & (board.pieces(Piece::Bishop) | board.pieces(Piece::Queen))
+        & (board.pieces(PieceType::Bishop) | board.pieces(PieceType::Queen))
         & board.occupancies(attacking_side))
         != BitBoard(0)
     {
@@ -139,7 +139,7 @@ pub fn is_square_attacked(board: &Board, attacked_square: Square, attacking_side
 
     // attacked by rook or queen?
     if (get_rook_attacks(attacked_square, board.combined())
-        & (board.pieces(Piece::Rook) | board.pieces(Piece::Queen))
+        & (board.pieces(PieceType::Rook) | board.pieces(PieceType::Queen))
         & board.occupancies(attacking_side))
         != BitBoard(0)
     {

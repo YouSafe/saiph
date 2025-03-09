@@ -3,7 +3,7 @@ use crate::movegen::attacks::{between, get_knight_attacks};
 use crate::movegen::MoveList;
 use crate::types::bitboard::BitBoard;
 use crate::types::chess_move::{Move, MoveFlag};
-use crate::types::piece::Piece;
+use crate::types::piece::PieceType;
 
 pub fn generate_knight_moves<const CHECK: bool, const CAPTURE_ONLY: bool>(
     board: &Board,
@@ -13,7 +13,7 @@ pub fn generate_knight_moves<const CHECK: bool, const CAPTURE_ONLY: bool>(
     let mut push_mask = !BitBoard::EMPTY;
 
     let king_square =
-        (board.pieces(Piece::King) & board.occupancies(board.side_to_move())).bit_scan();
+        (board.pieces(PieceType::King) & board.occupancies(board.side_to_move())).bit_scan();
 
     if CHECK {
         let checkers = board.checkers();
@@ -24,7 +24,7 @@ pub fn generate_knight_moves<const CHECK: bool, const CAPTURE_ONLY: bool>(
     }
 
     let side_to_move = board.side_to_move();
-    let current_sides_knights = board.pieces(Piece::Knight) & board.occupancies(side_to_move);
+    let current_sides_knights = board.pieces(PieceType::Knight) & board.occupancies(side_to_move);
 
     let pinned = board.pinned();
 

@@ -1,5 +1,5 @@
-use crate::types::square::Rank;
-use std::ops::Not;
+use crate::{declare_per_type, types::square::Rank};
+use std::ops::{Index, IndexMut, Not};
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -40,6 +40,14 @@ impl Color {
 
 pub const NUM_COLORS: usize = 2;
 pub const ALL_COLORS: [Color; 2] = [Color::White, Color::Black];
+
+impl From<Color> for usize {
+    fn from(value: Color) -> Self {
+        value as usize
+    }
+}
+
+declare_per_type!(PerColor, Color, NUM_COLORS);
 
 #[cfg(test)]
 mod test {

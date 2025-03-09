@@ -216,7 +216,7 @@ impl Search {
             let src_piece = self.board.piece_at(mov.from()).unwrap();
             let dst_piece = self.board.piece_at(mov.to());
             if let Some(dst_piece) = dst_piece {
-                return -mmv_lva(src_piece, dst_piece);
+                return -mmv_lva(src_piece.ty(), dst_piece.ty());
             }
             0
         });
@@ -289,7 +289,7 @@ impl Search {
             let src_piece = self.board.piece_at(mov.from()).unwrap();
             let dst_piece = self.board.piece_at(mov.to());
             if let Some(dst_piece) = dst_piece {
-                return -mmv_lva(src_piece, dst_piece);
+                return -mmv_lva(src_piece.ty(), dst_piece.ty());
             }
             0
         });

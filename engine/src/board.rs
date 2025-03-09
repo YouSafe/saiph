@@ -1,19 +1,18 @@
 use crate::movegen::attacks::{
     between, get_bishop_attacks, get_knight_attacks, get_pawn_attacks, get_rook_attacks,
 };
-use crate::movegen::{MoveList, generate_moves};
+use crate::movegen::{generate_moves, MoveList};
 use crate::types::bitboard::BitBoard;
 use crate::types::castling_rights::{CastlingRights, UPDATE_CASTLING_RIGHT_TABLE};
 use crate::types::chess_move::MoveFlag::{Castling, DoublePawnPush, EnPassant};
 use crate::types::chess_move::{Move, MoveFlag};
-use crate::types::color::{Color, NUM_COLORS};
-use crate::types::piece::{NUM_PIECES, Piece};
-use crate::types::square::{File, NUM_SQUARES, Square};
+use crate::types::color::{Color, PerColor};
+use crate::types::piece::{PerPieceType, Piece, PieceType};
+use crate::types::square::{File, PerSquare, Square};
 use crate::zobrist::{CASTLE_KEYS, EN_PASSANT_KEYS, PIECE_KEYS, SIDE_KEY};
 use std::fmt;
 use std::fmt::Formatter;
 use std::str::FromStr;
-
 
 #[derive(Debug, Clone)]
 pub struct BoardState {
@@ -29,10 +28,10 @@ pub struct BoardState {
 
 #[derive(Debug, Clone)]
 pub struct Board {
-    pieces: [BitBoard; NUM_PIECES],
-    occupancies: [BitBoard; NUM_COLORS],
+    pieces: PerPieceType<BitBoard>,
+    occupancies: PerColor<BitBoard>,
     combined: BitBoard,
-    mailbox: [Option<(Piece, Color)>; NUM_SQUARES],
+    mailbox: PerSquare<Option<Piece>>,
     side_to_move: Color,
     history: Vec<BoardState>,
     state: BoardState,
@@ -60,7 +59,7 @@ impl Board {
         // en passant is cleared after doing any move
         new_state.en_passant_target = None;
         if let Some(en_passant_target) = self.en_passant_target() {
-            new_state.hash ^= EN_PASSANT_KEYS[en_passant_target.to_file() as usize];
+            new_state.hash ^= EN_PASSANT_KEYS[en_passant_target.to_file()];
         }
 
         new_state.captured_piece = None;
@@ -71,22 +70,20 @@ impl Board {
         let target_piece = self.piece_at(mov.to());
 
         // remove piece from from
-        self.pieces[source_piece as usize] ^= mov.from();
-        self.occupancies[self.side_to_move as usize] ^= mov.from();
+        self.pieces[source_piece.ty()] ^= mov.from();
+        self.occupancies[self.side_to_move] ^= mov.from();
         self.combined ^= mov.from();
-        new_state.hash ^=
-            PIECE_KEYS[self.side_to_move as usize][source_piece as usize][mov.from() as usize];
+        new_state.hash ^= PIECE_KEYS[self.side_to_move][source_piece.ty()][mov.from()];
 
-        self.mailbox[mov.from() as usize] = None;
+        self.mailbox[mov.from()] = None;
 
         // set piece in to
-        self.pieces[source_piece as usize] |= mov.to();
-        self.occupancies[self.side_to_move as usize] |= mov.to();
+        self.pieces[source_piece.ty()] |= mov.to();
+        self.occupancies[self.side_to_move] |= mov.to();
         self.combined |= mov.to();
-        new_state.hash ^=
-            PIECE_KEYS[self.side_to_move as usize][source_piece as usize][mov.to() as usize];
+        new_state.hash ^= PIECE_KEYS[self.side_to_move][source_piece.ty()][mov.to()];
 
-        self.mailbox[mov.to() as usize] = Some((source_piece, self.side_to_move));
+        self.mailbox[mov.to()] = Some(source_piece);
 
         if mov.is_capture() && mov.flag() != MoveFlag::EnPassant {
             // replace opponents piece with your own
@@ -96,25 +93,24 @@ impl Board {
             new_state.captured_piece = Some(target_piece);
 
             // toggle target piece bitboard if it's not the same piece
-            if target_piece != source_piece {
-                self.pieces[target_piece as usize] ^= mov.to();
+            if target_piece.ty() != source_piece.ty() {
+                self.pieces[target_piece.ty()] ^= mov.to();
             }
-            self.occupancies[!self.side_to_move as usize] ^= mov.to();
-            new_state.hash ^=
-                PIECE_KEYS[!self.side_to_move as usize][target_piece as usize][mov.to() as usize];
+            self.occupancies[!self.side_to_move] ^= mov.to();
+            new_state.hash ^= PIECE_KEYS[!self.side_to_move][target_piece.ty()][mov.to()];
 
             // combined is unchanged here
 
             // remove castling right for that side
-            if target_piece == Piece::Rook {
+            if target_piece.ty() == PieceType::Rook {
                 // remove castling rights from hash
-                new_state.hash ^= CASTLE_KEYS[new_state.castling_rights.to_usize()];
+                new_state.hash ^= CASTLE_KEYS[new_state.castling_rights];
 
-                new_state.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[mov.from() as usize];
-                new_state.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[mov.to() as usize];
+                new_state.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[mov.from()];
+                new_state.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[mov.to()];
 
                 // add castling rights to hash
-                new_state.hash ^= CASTLE_KEYS[new_state.castling_rights.to_usize()];
+                new_state.hash ^= CASTLE_KEYS[new_state.castling_rights];
             }
 
             new_state.rule50 = 0;
@@ -122,35 +118,32 @@ impl Board {
 
         if let Some(promotion) = mov.promotion() {
             // remove old piece type
-            self.pieces[source_piece as usize] ^= mov.to();
+            self.pieces[source_piece.ty()] ^= mov.to();
             // add to new piece type
-            self.pieces[promotion.as_piece() as usize] |= mov.to();
+            self.pieces[promotion.as_piece_type()] |= mov.to();
 
-            self.mailbox[mov.to() as usize] = Some((promotion.as_piece(), self.side_to_move));
+            self.mailbox[mov.to()] = Some(promotion.as_piece_type().to_piece(self.side_to_move));
 
-            new_state.hash ^=
-                PIECE_KEYS[self.side_to_move as usize][source_piece as usize][mov.to() as usize];
-            new_state.hash ^= PIECE_KEYS[self.side_to_move as usize][promotion.as_piece() as usize]
-                [mov.to() as usize];
+            new_state.hash ^= PIECE_KEYS[self.side_to_move][source_piece.ty()][mov.to()];
+            new_state.hash ^= PIECE_KEYS[self.side_to_move][promotion.as_piece_type()][mov.to()];
         }
 
         if mov.flag() == DoublePawnPush {
             // update en_passant_target when double pushing
             new_state.en_passant_target = Some(mov.to().forward(!self.side_to_move).unwrap());
 
-            new_state.hash ^= EN_PASSANT_KEYS[mov.to().to_file() as usize];
+            new_state.hash ^= EN_PASSANT_KEYS[mov.to().to_file()];
         }
 
         if mov.flag() == EnPassant {
             let capture_piece = mov.to().forward(!self.side_to_move).unwrap();
-            self.pieces[Piece::Pawn as usize] ^= capture_piece;
-            self.occupancies[!self.side_to_move as usize] ^= capture_piece;
+            self.pieces[PieceType::Pawn] ^= capture_piece;
+            self.occupancies[!self.side_to_move] ^= capture_piece;
             self.combined ^= capture_piece;
 
-            self.mailbox[capture_piece as usize] = None;
+            self.mailbox[capture_piece] = None;
 
-            new_state.hash ^= PIECE_KEYS[!self.side_to_move as usize][Piece::Pawn as usize]
-                [capture_piece as usize];
+            new_state.hash ^= PIECE_KEYS[!self.side_to_move][PieceType::Pawn][capture_piece];
         }
 
         const CASTLE_CONFIG: [(File, File); 2] = [(File::A, File::D), (File::H, File::F)];
@@ -165,43 +158,41 @@ impl Board {
             );
 
             // remove piece from from
-            self.pieces[Piece::Rook as usize] ^= rook_start_square;
-            self.occupancies[self.side_to_move as usize] ^= rook_start_square;
+            self.pieces[PieceType::Rook] ^= rook_start_square;
+            self.occupancies[self.side_to_move] ^= rook_start_square;
             self.combined ^= rook_start_square;
-            new_state.hash ^= PIECE_KEYS[self.side_to_move as usize][Piece::Rook as usize]
-                [rook_start_square as usize];
+            new_state.hash ^= PIECE_KEYS[self.side_to_move][PieceType::Rook][rook_start_square];
 
-            self.mailbox[rook_start_square as usize] = None;
+            self.mailbox[rook_start_square] = None;
 
             // set piece in to
-            self.pieces[Piece::Rook as usize] |= rook_end_square;
-            self.occupancies[self.side_to_move as usize] |= rook_end_square;
+            self.pieces[PieceType::Rook] |= rook_end_square;
+            self.occupancies[self.side_to_move] |= rook_end_square;
             self.combined |= rook_end_square;
-            new_state.hash ^= PIECE_KEYS[self.side_to_move as usize][Piece::Rook as usize]
-                [rook_end_square as usize];
+            new_state.hash ^= PIECE_KEYS[self.side_to_move][PieceType::Rook][rook_end_square];
 
-            self.mailbox[rook_end_square as usize] = Some((Piece::Rook, self.side_to_move));
+            self.mailbox[rook_end_square] = Some(PieceType::Rook.to_piece(self.side_to_move));
         }
 
-        if source_piece == Piece::Pawn {
+        if source_piece.ty() == PieceType::Pawn {
             new_state.rule50 = 0;
         }
 
         // update castling rights
-        if source_piece == Piece::Rook {
+        if source_piece.ty() == PieceType::Rook {
             // rook moved
-            new_state.hash ^= CASTLE_KEYS[new_state.castling_rights.to_usize()];
-            new_state.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[mov.from() as usize];
-            new_state.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[mov.to() as usize];
-            new_state.hash ^= CASTLE_KEYS[new_state.castling_rights.to_usize()];
-        } else if source_piece == Piece::King {
+            new_state.hash ^= CASTLE_KEYS[new_state.castling_rights];
+            new_state.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[mov.from()];
+            new_state.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[mov.to()];
+            new_state.hash ^= CASTLE_KEYS[new_state.castling_rights];
+        } else if source_piece.ty() == PieceType::King {
             // remove castling rights for side if king moved (includes castling)
-            new_state.hash ^= CASTLE_KEYS[new_state.castling_rights.to_usize()];
+            new_state.hash ^= CASTLE_KEYS[new_state.castling_rights];
             new_state.castling_rights -= match self.side_to_move {
                 Color::White => CastlingRights::WHITE_BOTH_SIDES,
                 Color::Black => CastlingRights::BLACK_BOTH_SIDES,
             };
-            new_state.hash ^= CASTLE_KEYS[new_state.castling_rights.to_usize()];
+            new_state.hash ^= CASTLE_KEYS[new_state.castling_rights];
         }
 
         // update side
@@ -209,7 +200,7 @@ impl Board {
         new_state.hash ^= SIDE_KEY;
 
         let king_square =
-            (self.pieces(Piece::King) & self.occupancies(self.side_to_move())).bit_scan();
+            (self.pieces(PieceType::King) & self.occupancies(self.side_to_move())).bit_scan();
 
         let mut potential_pinners = BitBoard(0);
         let mut pinned = BitBoard(0);
@@ -218,11 +209,11 @@ impl Board {
 
         // pretend king is a bishop and see if any other bishop OR queen is attacked by that
         potential_pinners |= get_bishop_attacks(king_square, BitBoard(0))
-            & (self.pieces(Piece::Bishop) | self.pieces(Piece::Queen));
+            & (self.pieces(PieceType::Bishop) | self.pieces(PieceType::Queen));
 
         // now pretend the king is a rook and so the same procedure
         potential_pinners |= get_rook_attacks(king_square, BitBoard(0))
-            & (self.pieces(Piece::Rook) | self.pieces(Piece::Queen));
+            & (self.pieces(PieceType::Rook) | self.pieces(PieceType::Queen));
 
         // limit to opponent's pieces
         potential_pinners &= self.occupancies(!self.side_to_move());
@@ -238,12 +229,12 @@ impl Board {
 
         // now pretend the king is a knight and check if it attacks an enemy knight
         checkers |= get_knight_attacks(king_square)
-            & self.pieces(Piece::Knight)
+            & self.pieces(PieceType::Knight)
             & self.occupancies(!self.side_to_move());
 
         // do the same thing for pawns
         checkers |= get_pawn_attacks(king_square, self.side_to_move())
-            & self.pieces(Piece::Pawn)
+            & self.pieces(PieceType::Pawn)
             & self.occupancies(!self.side_to_move());
 
         // update pinned, checkers
@@ -269,58 +260,59 @@ impl Board {
                     Square::from(backrank, rook_end_file),
                 );
 
-                self.pieces[Piece::Rook as usize] |= rook_start_square;
-                self.occupancies[self.side_to_move as usize] |= rook_start_square;
+                self.pieces[PieceType::Rook] |= rook_start_square;
+                self.occupancies[self.side_to_move] |= rook_start_square;
                 self.combined |= rook_start_square;
 
-                self.mailbox[rook_start_square as usize] = Some((Piece::Rook, self.side_to_move));
+                self.mailbox[rook_start_square] =
+                    Some(Piece::new(PieceType::Rook, self.side_to_move));
 
-                self.pieces[Piece::Rook as usize] ^= rook_end_square;
-                self.occupancies[self.side_to_move as usize] ^= rook_end_square;
+                self.pieces[PieceType::Rook] ^= rook_end_square;
+                self.occupancies[self.side_to_move] ^= rook_end_square;
                 self.combined ^= rook_end_square;
 
-                self.mailbox[rook_end_square as usize] = None;
+                self.mailbox[rook_end_square] = None;
             }
 
             if last_move.flag() == EnPassant {
                 let capture_piece = last_move.to().forward(!self.side_to_move).unwrap();
-                self.pieces[Piece::Pawn as usize] |= capture_piece;
-                self.occupancies[!self.side_to_move as usize] |= capture_piece;
+                self.pieces[PieceType::Pawn] |= capture_piece;
+                self.occupancies[!self.side_to_move] |= capture_piece;
                 self.combined |= capture_piece;
 
-                self.mailbox[capture_piece as usize] = Some((Piece::Pawn, !self.side_to_move));
+                self.mailbox[capture_piece] = Some(Piece::new(PieceType::Pawn, !self.side_to_move));
             }
 
             // undo promotion
             if let Some(promotion) = last_move.promotion() {
                 // remove new piece type
-                self.pieces[promotion.as_piece() as usize] ^= last_move.to();
+                self.pieces[promotion.as_piece_type()] ^= last_move.to();
                 // add old piece type
-                self.pieces[Piece::Pawn as usize] |= last_move.to();
-                self.mailbox[last_move.to() as usize] = Some((Piece::Pawn, self.side_to_move));
+                self.pieces[PieceType::Pawn] |= last_move.to();
+                self.mailbox[last_move.to()] = Some(Piece::new(PieceType::Pawn, self.side_to_move));
             }
 
             let source_piece = self.piece_at(last_move.to()).unwrap();
 
-            self.pieces[source_piece as usize] |= last_move.from();
-            self.occupancies[self.side_to_move as usize] |= last_move.from();
+            self.pieces[source_piece.ty()] |= last_move.from();
+            self.occupancies[self.side_to_move] |= last_move.from();
             self.combined |= last_move.from();
 
-            self.mailbox[last_move.from() as usize] = Some((source_piece, self.side_to_move));
+            self.mailbox[last_move.from()] = Some(source_piece);
 
-            self.pieces[source_piece as usize] ^= last_move.to();
-            self.occupancies[self.side_to_move as usize] ^= last_move.to();
+            self.pieces[source_piece.ty()] ^= last_move.to();
+            self.occupancies[self.side_to_move] ^= last_move.to();
             self.combined ^= last_move.to();
 
-            self.mailbox[last_move.to() as usize] = None;
+            self.mailbox[last_move.to()] = None;
 
             // undo capture
             if let Some(captured_piece) = self.state.captured_piece {
-                self.pieces[captured_piece as usize] |= last_move.to();
-                self.occupancies[!self.side_to_move as usize] |= last_move.to();
+                self.pieces[captured_piece.ty()] |= last_move.to();
+                self.occupancies[!self.side_to_move] |= last_move.to();
                 self.combined |= last_move.to();
 
-                self.mailbox[last_move.to() as usize] = Some((captured_piece, !self.side_to_move));
+                self.mailbox[last_move.to()] = Some(captured_piece);
             }
         }
 
@@ -354,19 +346,15 @@ impl Board {
     }
 
     pub fn piece_at(&self, square: Square) -> Option<Piece> {
-        self.mailbox[square as usize].map(|(piece, _)| piece)
+        self.mailbox[square]
     }
 
-    pub fn color_at(&self, square: Square) -> Option<Color> {
-        self.mailbox[square as usize].map(|(_, color)| color)
-    }
-
-    pub fn pieces(&self, piece: Piece) -> BitBoard {
-        self.pieces[piece as usize]
+    pub fn pieces(&self, piece: PieceType) -> BitBoard {
+        self.pieces[piece]
     }
 
     pub fn occupancies(&self, color: Color) -> BitBoard {
-        self.occupancies[color as usize]
+        self.occupancies[color]
     }
 
     pub fn combined(&self) -> BitBoard {
@@ -410,8 +398,8 @@ impl fmt::Display for Board {
             write!(f, "{}   ", rank + 1)?;
             for file in 0..8 {
                 let square = Square::from_index(rank * 8 + file);
-                let symbol = if let Some((piece, color)) = self.mailbox[square as usize] {
-                    piece.to_ascii(color)
+                let symbol = if let Some(piece) = self.mailbox[square] {
+                    piece.to_ascii()
                 } else {
                     '.'
                 };
@@ -455,11 +443,11 @@ impl FromStr for Board {
     fn from_str(fen: &str) -> Result<Self, Self::Err> {
         let mut parts = fen.split(" ");
 
-        let mut pieces = [BitBoard(0); NUM_PIECES];
-        let mut occupancies = [BitBoard(0); NUM_COLORS];
+        let mut pieces = PerPieceType::<BitBoard>::default();
+        let mut occupancies = PerColor::<BitBoard>::default();
         let mut combined = BitBoard(0);
 
-        let mut mailbox: [Option<(Piece, Color)>; NUM_SQUARES] = [None; NUM_SQUARES];
+        let mut mailbox = PerSquare::<Option<Piece>>::default();
 
         let mut hash = 0;
 
@@ -477,18 +465,16 @@ impl FromStr for Board {
                     let piece =
                         Piece::from_algebraic(char).ok_or(ParseFenError::InvalidPiece(char))?;
 
-                    let color = match char.is_uppercase() {
-                        true => Color::White,
-                        false => Color::Black,
-                    };
+                    let piece_type = piece.ty();
+                    let color = piece.color();
 
-                    pieces[piece as usize] |= square;
-                    occupancies[color as usize] |= square;
+                    pieces[piece_type] |= square;
+                    occupancies[color] |= square;
                     combined |= square;
 
-                    mailbox[square as usize] = Some((piece, color));
+                    mailbox[square] = Some(piece);
 
-                    hash ^= PIECE_KEYS[color as usize][piece as usize][square as usize];
+                    hash ^= PIECE_KEYS[color][piece_type][square];
 
                     file += 1;
                     if file > 8 {
@@ -556,18 +542,17 @@ impl FromStr for Board {
             .map_err(|_| ParseFenError::BadFullMoveNumber)?;
 
         if let Some(en_passant_target) = en_passant_target {
-            hash ^= EN_PASSANT_KEYS[en_passant_target.to_file() as usize];
+            hash ^= EN_PASSANT_KEYS[en_passant_target.to_file()];
         }
 
-        hash ^= CASTLE_KEYS[castling_rights.to_usize()];
+        hash ^= CASTLE_KEYS[castling_rights];
 
         if side_to_move == Color::Black {
             hash ^= SIDE_KEY;
         }
 
         // ========== CALCULATE PINNED & CHECKERS ==========
-        let king_square =
-            (pieces[Piece::King as usize] & occupancies[side_to_move as usize]).bit_scan();
+        let king_square = (pieces[PieceType::King] & occupancies[side_to_move]).bit_scan();
 
         let mut potential_pinners = BitBoard(0);
         let mut pinned = BitBoard(0);
@@ -576,14 +561,14 @@ impl FromStr for Board {
 
         // pretend king is a bishop and see if any other bishop OR queen is attacked by that
         potential_pinners |= get_bishop_attacks(king_square, BitBoard(0))
-            & (pieces[Piece::Bishop as usize] | pieces[Piece::Queen as usize]);
+            & (pieces[PieceType::Bishop] | pieces[PieceType::Queen]);
 
         // now pretend the king is a rook and so the same procedure
         potential_pinners |= get_rook_attacks(king_square, BitBoard(0))
-            & (pieces[Piece::Rook as usize] | pieces[Piece::Queen as usize]);
+            & (pieces[PieceType::Rook] | pieces[PieceType::Queen]);
 
         // limit to opponent's pieces
-        potential_pinners &= occupancies[!side_to_move as usize];
+        potential_pinners &= occupancies[!side_to_move];
 
         for square in potential_pinners.iter() {
             let potentially_pinned = between(square, king_square) & combined;
@@ -596,13 +581,13 @@ impl FromStr for Board {
 
         // now pretend the king is a knight and check if it attacks an enemy knight
         checkers |= get_knight_attacks(king_square)
-            & pieces[Piece::Knight as usize]
-            & occupancies[!side_to_move as usize];
+            & pieces[PieceType::Knight]
+            & occupancies[!side_to_move];
 
         // do the same thing for pawns
         checkers |= get_pawn_attacks(king_square, side_to_move)
-            & pieces[Piece::Pawn as usize]
-            & occupancies[!side_to_move as usize];
+            & pieces[PieceType::Pawn]
+            & occupancies[!side_to_move];
 
         // ======================================================
 
@@ -654,9 +639,6 @@ mod test {
     use std::str::FromStr;
 
     use crate::board::Board;
-    use crate::types::color::Color;
-    use crate::types::piece::Piece;
-    use crate::types::square::Square;
 
     #[test]
     fn test_display() {
@@ -688,17 +670,30 @@ Hash: 	0x4a887e3c9bc2624a
     fn test_fen_parsing() {
         let board = Board::from_str("2r5/8/8/3R4/2P1k3/2K5/8/8 b - - 0 1").unwrap();
 
-        assert_eq!(board.piece_at(Square::C3), Some(Piece::King));
-        assert_eq!(board.piece_at(Square::E4), Some(Piece::King));
-        assert_eq!(board.piece_at(Square::C4), Some(Piece::Pawn));
-        assert_eq!(board.piece_at(Square::D5), Some(Piece::Rook));
-        assert_eq!(board.piece_at(Square::C8), Some(Piece::Rook));
+        use crate::types::color::Color::*;
+        use crate::types::piece::PieceType::*;
+        use crate::types::square::Square::*;
 
-        assert_eq!(board.color_at(Square::C3), Some(Color::White));
-        assert_eq!(board.color_at(Square::E4), Some(Color::Black));
-        assert_eq!(board.color_at(Square::C4), Some(Color::White));
-        assert_eq!(board.color_at(Square::D5), Some(Color::White));
-        assert_eq!(board.color_at(Square::C8), Some(Color::Black));
+        assert_eq!(
+            board.piece_at(C3).map(|p| (p.ty(), p.color())),
+            Some((King, White))
+        );
+        assert_eq!(
+            board.piece_at(E4).map(|p| (p.ty(), p.color())),
+            Some((King, Black))
+        );
+        assert_eq!(
+            board.piece_at(C4).map(|p| (p.ty(), p.color())),
+            Some((Pawn, White))
+        );
+        assert_eq!(
+            board.piece_at(D5).map(|p| (p.ty(), p.color())),
+            Some((Rook, White))
+        );
+        assert_eq!(
+            board.piece_at(C8).map(|p| (p.ty(), p.color())),
+            Some((Rook, Black))
+        );
 
         println!("{board}");
     }
