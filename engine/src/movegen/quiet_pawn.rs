@@ -1,9 +1,9 @@
 use crate::board::Board;
 use crate::movegen::attacks::between;
 use crate::movegen::MoveList;
-use crate::types::bitboard::BitBoard;
 use crate::types::chess_move::{Move, MoveFlag};
-use crate::types::piece::PieceType;
+use types::bitboard::BitBoard;
+use types::piece::PieceType;
 
 pub fn generate_quiet_pawn_moves<const CHECK: bool>(board: &Board, move_list: &mut MoveList) {
     let mut push_mask = !BitBoard::EMPTY;
@@ -82,7 +82,7 @@ mod test {
     use crate::movegen::quiet_pawn::generate_quiet_pawn_moves;
     use crate::movegen::MoveList;
     use crate::types::chess_move::{Move, MoveFlag};
-    use crate::types::square::Square::*;
+    use types::square::Square::*;
 
     #[test]
     fn test_single_and_double_push() {

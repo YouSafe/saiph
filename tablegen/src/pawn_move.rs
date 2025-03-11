@@ -1,8 +1,10 @@
-use crate::BitBoard;
-use crate::Color;
-use crate::Square;
+use types::bitboard::BitBoard;
+use types::color::Color;
+use types::color::PerColor;
+use types::square::PerSquare;
+use types::square::Square;
 
-pub const fn generate_pawn_attacks() -> [[BitBoard; 64]; 2] {
+pub fn generate_pawn_attacks() -> PerColor<PerSquare<BitBoard>> {
     let mut result = [[BitBoard(0); 64]; 2];
 
     let mut square = 0;
@@ -13,10 +15,10 @@ pub const fn generate_pawn_attacks() -> [[BitBoard; 64]; 2] {
         square += 1;
     }
 
-    result
+    PerColor::new(result.map(PerSquare::new))
 }
 
-const fn mask_pawn_attacks(square: Square, side: Color) -> BitBoard {
+fn mask_pawn_attacks(square: Square, side: Color) -> BitBoard {
     let BitBoard(mut attacks) = BitBoard(0);
 
     let BitBoard(bitboard) = BitBoard::from_square(square);
@@ -39,10 +41,7 @@ const fn mask_pawn_attacks(square: Square, side: Color) -> BitBoard {
 
 #[cfg(test)]
 mod test {
-    use crate::BitBoard;
-    use crate::Color;
-    use crate::Square;
-    use crate::pawn_move::mask_pawn_attacks;
+    use super::*;
 
     #[test]
     fn test_pawn_attack_white_e4() {

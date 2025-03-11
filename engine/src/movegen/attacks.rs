@@ -1,34 +1,12 @@
-use crate::types::bitboard::BitBoard;
-use crate::types::color::Color;
-use crate::types::square::Square;
+use types::bitboard::BitBoard;
+use types::color::Color;
+use types::color::PerColor;
+use types::square::PerSquare;
+use types::square::Square;
 
-static PAWN_ATTACKS: [[BitBoard; 64]; 2] =
-    unsafe { std::mem::transmute(*include_bytes!(concat!(env!("OUT_DIR"), "/pawn_attacks"))) };
-
-static KNIGHT_ATTACKS: [BitBoard; 64] =
-    unsafe { std::mem::transmute(*include_bytes!(concat!(env!("OUT_DIR"), "/knight_attacks"))) };
-
-static KING_ATTACKS: [BitBoard; 64] =
-    unsafe { std::mem::transmute(*include_bytes!(concat!(env!("OUT_DIR"), "/king_attacks"))) };
-
-static SLIDER_ATTACKS: [BitBoard; 88772] =
-    unsafe { std::mem::transmute(*include_bytes!(concat!(env!("OUT_DIR"), "/slider_attacks"))) };
-
-static SQUARES_BETWEEN: [[BitBoard; 64]; 64] = unsafe {
-    std::mem::transmute(*include_bytes!(concat!(
-        env!("OUT_DIR"),
-        "/squares_between"
-    )))
-};
-
-static SQUARES_LINE: [[BitBoard; 64]; 64] =
-    unsafe { std::mem::transmute(*include_bytes!(concat!(env!("OUT_DIR"), "/squares_line"))) };
-
-static ROOK_MAGICS: [Magic; 64] =
-    unsafe { std::mem::transmute(*include_bytes!(concat!(env!("OUT_DIR"), "/rook_magics"))) };
-
-static BISHOP_MAGICS: [Magic; 64] =
-    unsafe { std::mem::transmute(*include_bytes!(concat!(env!("OUT_DIR"), "/bishop_magics"))) };
+include!(concat!(env!("OUT_DIR"), "/tables.rs"));
+            
+include!(concat!(env!("OUT_DIR"), "/magics.rs"));
 
 #[repr(C)]
 pub struct Magic {
@@ -52,15 +30,15 @@ pub fn get_rook_attacks(square: Square, blockers: BitBoard) -> BitBoard {
 }
 
 pub fn get_pawn_attacks(square: Square, color: Color) -> BitBoard {
-    PAWN_ATTACKS[color as usize][square as usize]
+    PAWN_ATTACKS[color][square]
 }
 
 pub fn get_knight_attacks(square: Square) -> BitBoard {
-    KNIGHT_ATTACKS[square as usize]
+    KNIGHT_ATTACKS[square]
 }
 
 pub fn get_king_attacks(square: Square) -> BitBoard {
-    KING_ATTACKS[square as usize]
+    KING_ATTACKS[square]
 }
 
 pub fn get_queen_attacks(square: Square, blockers: BitBoard) -> BitBoard {
@@ -68,9 +46,9 @@ pub fn get_queen_attacks(square: Square, blockers: BitBoard) -> BitBoard {
 }
 
 pub fn between(from: Square, to: Square) -> BitBoard {
-    SQUARES_BETWEEN[from as usize][to as usize]
+    SQUARES_BETWEEN[from][to]
 }
 
 pub fn line(from: Square, target: Square) -> BitBoard {
-    SQUARES_LINE[from as usize][target as usize]
+    SQUARES_LINE[from][target]
 }

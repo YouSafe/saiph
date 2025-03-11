@@ -1,9 +1,9 @@
 use crate::board::Board;
 use crate::movegen::attacks::{between, get_bishop_attacks, get_rook_attacks, line};
 use crate::movegen::MoveList;
-use crate::types::bitboard::BitBoard;
 use crate::types::chess_move::{Move, MoveFlag};
-use crate::types::piece::PieceType;
+use types::bitboard::BitBoard;
+use types::piece::PieceType;
 
 pub fn generate_slider_moves<const CHECK: bool, const CAPTURE_ONLY: bool>(
     board: &Board,
@@ -119,7 +119,7 @@ mod test {
     use crate::movegen::slider::generate_slider_moves;
     use crate::movegen::MoveList;
     use crate::types::chess_move::{Move, MoveFlag};
-    use crate::types::square::Square;
+    use types::square::Square;
 
     #[test]
     fn test_move_along_pin_ray() {

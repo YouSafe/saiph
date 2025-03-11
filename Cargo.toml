@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["engine", "wasm", "datagen", "tablegen"]
+members = ["engine", "wasm", "datagen", "tablegen", "types"]
 default-members = ["engine"]
 
 [profile.release]

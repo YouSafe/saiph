@@ -1,9 +1,9 @@
 use crate::board::Board;
 use crate::movegen::attacks::{between, get_knight_attacks};
 use crate::movegen::MoveList;
-use crate::types::bitboard::BitBoard;
 use crate::types::chess_move::{Move, MoveFlag};
-use crate::types::piece::PieceType;
+use types::bitboard::BitBoard;
+use types::piece::PieceType;
 
 pub fn generate_knight_moves<const CHECK: bool, const CAPTURE_ONLY: bool>(
     board: &Board,
@@ -59,7 +59,7 @@ mod test {
     use crate::movegen::knight::generate_knight_moves;
     use crate::movegen::MoveList;
     use crate::types::chess_move::{Move, MoveFlag};
-    use crate::types::square::Square::*;
+    use types::square::Square::*;
 
     #[test]
     fn test_check_evasion() {

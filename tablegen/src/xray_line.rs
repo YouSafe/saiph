@@ -1,6 +1,6 @@
-use crate::BitBoard;
+use types::{bitboard::BitBoard, square::PerSquare};
 
-pub const fn generate_squares_line() -> [[BitBoard; 64]; 64] {
+pub fn generate_squares_line() -> PerSquare<PerSquare<BitBoard>> {
     let mut result = [[BitBoard(0); 64]; 64];
 
     const fn to_square_bitboard(rank: i8, file: i8) -> u64 {
@@ -64,11 +64,13 @@ pub const fn generate_squares_line() -> [[BitBoard; 64]; 64] {
         from += 1;
     }
 
-    result
+    PerSquare::new(result.map(PerSquare::new))
 }
 
 #[cfg(test)]
 mod test {
+    use types::square::Square;
+
     use super::generate_squares_line;
 
     #[test]
@@ -77,6 +79,9 @@ mod test {
 
         for from in 0..64 {
             for target in 0..64 {
+                let from = Square::from_index(from);
+                let target = Square::from_index(target);
+
                 let line = ray[from][target];
                 println!("from: {from} to: {target} {line}");
             }

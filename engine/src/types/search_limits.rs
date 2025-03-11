@@ -1,5 +1,5 @@
-use crate::types::color::NUM_COLORS;
 use std::time::Duration;
+use types::color::NUM_COLORS;
 
 use super::uci_move::UCIMove;
 

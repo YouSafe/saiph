@@ -1,12 +1,10 @@
 use std::fmt;
 use std::fmt::Formatter;
-use std::ops::{
-    BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Index, IndexMut, Sub, SubAssign,
-};
+use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
 use std::str::FromStr;
 
 use crate::declare_per_type;
-use crate::types::square::Square;
+use crate::square::Square;
 
 use super::square::PerSquare;
 

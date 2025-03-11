@@ -1,6 +1,6 @@
-use crate::types::color::Color;
-use crate::types::piece::{PieceType, NUM_PIECES};
-use crate::types::square::{Square, NUM_SQUARES};
+use types::color::Color;
+use types::piece::{PieceType, NUM_PIECES};
+use types::square::{Square, NUM_SQUARES};
 
 pub type Matrix<T, const ROWS: usize, const COLS: usize> = [[T; ROWS]; COLS];
 

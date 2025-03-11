@@ -3,7 +3,6 @@ use crate::clock::Clock;
 use crate::movegen::perf_test;
 use crate::threadpool::ThreadPool;
 use crate::transposition::TranspositionTable;
-use crate::types::color::Color;
 use crate::types::search_limits::{SearchLimits, TimeLimit};
 use crate::types::uci_move::UCIMove;
 use crate::{Printer, ThreadSpawner};
@@ -13,6 +12,7 @@ use std::str::{FromStr, SplitAsciiWhitespace};
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::Arc;
 use std::time::Duration;
+use types::color::Color;
 
 /// Default transposition table size in MB
 const DEFAULT_HASH_SIZE: usize = 1;

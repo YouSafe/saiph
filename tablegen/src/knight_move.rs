@@ -1,7 +1,7 @@
-use crate::BitBoard;
-use crate::Square;
+use types::bitboard::BitBoard;
+use types::square::{PerSquare, Square};
 
-pub const fn generate_knight_attacks() -> [BitBoard; 64] {
+pub fn generate_knight_attacks() -> PerSquare<BitBoard> {
     let mut result = [BitBoard(0); 64];
 
     let mut square = 0;
@@ -11,10 +11,10 @@ pub const fn generate_knight_attacks() -> [BitBoard; 64] {
         square += 1;
     }
 
-    result
+    PerSquare::new(result)
 }
 
-const fn mask_knight_attack(square: Square) -> BitBoard {
+fn mask_knight_attack(square: Square) -> BitBoard {
     let BitBoard(mut attacks) = BitBoard(0);
 
     let BitBoard(bitboard) = BitBoard::from_square(square);
@@ -61,9 +61,7 @@ const fn mask_knight_attack(square: Square) -> BitBoard {
 
 #[cfg(test)]
 mod test {
-    use crate::BitBoard;
-    use crate::Square;
-    use crate::knight_move::mask_knight_attack;
+    use super::*;
 
     #[test]
     fn test_knight_attack_a1() {

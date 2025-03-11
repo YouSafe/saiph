@@ -1,12 +1,12 @@
 use crate::board::Board;
 use crate::movegen::attacks::between;
 use crate::movegen::{is_square_attacked, MoveList};
-use crate::types::bitboard::BitBoard;
-use crate::types::castling_rights::CastlingRights;
 use crate::types::chess_move::{Move, MoveFlag};
-use crate::types::color::NUM_COLORS;
-use crate::types::piece::PieceType;
-use crate::types::square::Square;
+use types::bitboard::BitBoard;
+use types::castling_rights::CastlingRights;
+use types::color::NUM_COLORS;
+use types::piece::PieceType;
+use types::square::Square;
 
 struct CastlingConfig {
     required_rights: CastlingRights,
@@ -79,7 +79,7 @@ mod test {
     use crate::movegen::castling::generate_castling_moves;
     use crate::movegen::MoveList;
     use crate::types::chess_move::{Move, MoveFlag};
-    use crate::types::square::Square::*;
+    use types::square::Square::*;
 
     #[test]
     fn test_white_castling() {

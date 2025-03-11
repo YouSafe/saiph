@@ -1,9 +1,9 @@
 use std::fmt::Debug;
-use std::ops::{Index, IndexMut};
+
+use self::PieceType::*;
+use crate::color::Color;
 
 use crate::declare_per_type;
-use crate::types::color::Color;
-use crate::types::piece::PieceType::{Bishop, King, Knight, Pawn, Queen, Rook};
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -87,7 +87,7 @@ impl Piece {
     }
 
     pub fn to_unicode(&self) -> char {
-        use crate::types::color::Color::{Black, White};
+        use crate::color::Color::{Black, White};
 
         match (self.color(), self.ty()) {
             (White, Pawn) => '♙',
@@ -107,7 +107,7 @@ impl Piece {
     }
 
     pub fn to_ascii(&self) -> char {
-        use crate::types::color::Color::{Black, White};
+        use crate::color::Color::{Black, White};
         match (self.color(), self.ty()) {
             (White, Pawn) => 'P',
             (White, Knight) => 'N',
@@ -137,15 +137,15 @@ impl Debug for Piece {
 
 #[cfg(test)]
 mod test {
-    use crate::types::{color::ALL_COLORS, piece::ALL_PIECES};
+    use crate::{color::ALL_COLORS, piece::ALL_PIECES};
 
     use super::Piece;
 
     #[test]
     fn constuction() {
-        use crate::types::color::Color::*;
-        use crate::types::piece::Piece::*;
-        use crate::types::piece::PieceType::*;
+        use crate::color::Color::*;
+        use crate::piece::Piece::*;
+        use crate::piece::PieceType::*;
 
         let lookup = [
             (WhitePawn, (Pawn, White)),

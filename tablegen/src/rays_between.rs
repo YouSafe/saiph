@@ -1,6 +1,6 @@
-use crate::BitBoard;
+use types::{bitboard::BitBoard, square::PerSquare};
 
-pub const fn generate_squares_between() -> [[BitBoard; 64]; 64] {
+pub fn generate_squares_between() -> PerSquare<PerSquare<BitBoard>> {
     let mut result = [[BitBoard(0); 64]; 64];
 
     const fn to_square_bitboard(rank: i8, file: i8) -> u64 {
@@ -61,19 +61,19 @@ pub const fn generate_squares_between() -> [[BitBoard; 64]; 64] {
         from += 1;
     }
 
-    result
+    PerSquare::new(result.map(PerSquare::new))
 }
 
 #[cfg(test)]
 mod test {
-    use crate::rays_between::generate_squares_between;
-    use crate::BitBoard;
-    use crate::Square;
+    use types::square::Square;
+
+    use super::*;
 
     #[test]
     fn test_generate_rays_between_negative_diagonal() {
         let between = generate_squares_between();
-        let ray = between[Square::A8 as usize][Square::H1 as usize];
+        let ray = between[Square::A8][Square::H1];
 
         println!("{ray}");
         assert_eq!(ray, BitBoard(567382630219776));
@@ -82,7 +82,7 @@ mod test {
     #[test]
     fn test_generate_rays_between_negative_diagonal_backwards() {
         let between = generate_squares_between();
-        let ray = between[Square::H1 as usize][Square::A8 as usize];
+        let ray = between[Square::H1][Square::A8];
 
         println!("{ray}");
         assert_eq!(ray, BitBoard(567382630219776));
@@ -91,7 +91,7 @@ mod test {
     #[test]
     fn test_generate_rays_between_horizontal() {
         let between = generate_squares_between();
-        let ray = between[Square::A8 as usize][Square::H8 as usize];
+        let ray = between[Square::A8][Square::H8];
 
         println!("{ray}");
         assert_eq!(ray, BitBoard(9079256848778919936));
@@ -100,7 +100,7 @@ mod test {
     #[test]
     fn test_generate_rays_between_vertical() {
         let between = generate_squares_between();
-        let ray = between[Square::H1 as usize][Square::H8 as usize];
+        let ray = between[Square::H1][Square::H8];
 
         println!("{ray}");
         assert_eq!(ray, BitBoard(36170086419038208));
@@ -109,7 +109,7 @@ mod test {
     #[test]
     fn test_generate_rays_between_positive_diagonal() {
         let between = generate_squares_between();
-        let ray = between[Square::A1 as usize][Square::H8 as usize];
+        let ray = between[Square::A1][Square::H8];
 
         println!("{ray}");
         assert_eq!(ray, BitBoard(18049651735527936));
@@ -117,7 +117,7 @@ mod test {
     #[test]
     fn test_generate_rays_between_neighbours() {
         let between = generate_squares_between();
-        let ray = between[Square::D5 as usize][Square::E5 as usize];
+        let ray = between[Square::D5][Square::E5];
 
         println!("{ray}");
         assert_eq!(ray, BitBoard(0));

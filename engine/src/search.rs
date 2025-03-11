@@ -8,13 +8,13 @@ use crate::pv_table::PrincipleVariationTable;
 use crate::threadpool::StopSync;
 use crate::transposition::{Entry, TranspositionTable, ValueType};
 use crate::types::chess_move::Move;
-use crate::types::color::Color;
 use crate::types::search_limits::SearchLimits;
 use crate::uci::EngineMessage;
 use instant::Instant;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
+use types::color::Color;
 
 pub struct NodeCountBuffer {
     inner: Vec<AtomicU64>,

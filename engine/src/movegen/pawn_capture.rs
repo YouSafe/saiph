@@ -1,9 +1,9 @@
 use crate::board::Board;
 use crate::movegen::attacks::{get_pawn_attacks, line};
 use crate::movegen::MoveList;
-use crate::types::bitboard::BitBoard;
 use crate::types::chess_move::{Move, MoveFlag};
-use crate::types::piece::PieceType;
+use types::bitboard::BitBoard;
+use types::piece::PieceType;
 
 pub fn generate_pawn_capture_moves<const CHECK: bool>(board: &Board, move_list: &mut MoveList) {
     let mut capture_mask = !BitBoard::EMPTY;
@@ -74,7 +74,7 @@ mod test {
     use crate::movegen::pawn_capture::generate_pawn_capture_moves;
     use crate::movegen::MoveList;
     use crate::types::chess_move::{Move, MoveFlag};
-    use crate::types::square::Square::*;
+    use types::square::Square::*;
 
     #[test]
     fn capture_pinner() {

@@ -1,5 +1,6 @@
-use crate::{declare_per_type, types::square::Rank};
-use std::ops::{Index, IndexMut, Not};
+use std::ops::Not;
+
+use crate::{declare_per_type, square::Rank};
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -51,8 +52,7 @@ declare_per_type!(PerColor, Color, NUM_COLORS);
 
 #[cfg(test)]
 mod test {
-    use crate::types::color::Color;
-    use crate::types::square::Rank;
+    use super::*;
 
     #[test]
     fn test_not() {

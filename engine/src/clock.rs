@@ -1,6 +1,6 @@
-use crate::types::color::Color;
 use crate::types::search_limits::TimeLimit;
 use instant::{Duration, Instant};
+use types::color::Color;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Clock {
@@ -27,13 +27,12 @@ impl Clock {
             TimeLimit::Dynamic {
                 time_left,
                 increment,
-                moves_to_go
+                moves_to_go,
             } => {
                 // Inspired by: https://github.com/official-stockfish/Stockfish/blob/65ece7d985291cc787d6c804a33f1dd82b75736d/src/timeman.cpp#L37
 
                 let move_overhead: u64 = 300;
-                let moves_to_go_horizon: u64 =
-                    moves_to_go.map_or(50, |v| (v as u64).min(50));
+                let moves_to_go_horizon: u64 = moves_to_go.map_or(50, |v| (v as u64).min(50));
 
                 let time_left_mills = time_left[color as usize].as_millis() as u64;
                 let increment_mills = increment[color as usize].as_millis() as u64;
@@ -73,9 +72,9 @@ impl Clock {
 #[cfg(test)]
 mod test {
     use crate::clock::Clock;
-    use crate::types::color::Color;
     use crate::types::search_limits::TimeLimit;
     use std::time::Duration;
+    use types::color::Color;
 
     #[test]
     fn test_first_move() {

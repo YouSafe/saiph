@@ -2,17 +2,17 @@ use crate::movegen::attacks::{
     between, get_bishop_attacks, get_knight_attacks, get_pawn_attacks, get_rook_attacks,
 };
 use crate::movegen::{generate_moves, MoveList};
-use crate::types::bitboard::BitBoard;
-use crate::types::castling_rights::{CastlingRights, UPDATE_CASTLING_RIGHT_TABLE};
 use crate::types::chess_move::MoveFlag::{Castling, DoublePawnPush, EnPassant};
 use crate::types::chess_move::{Move, MoveFlag};
-use crate::types::color::{Color, PerColor};
-use crate::types::piece::{PerPieceType, Piece, PieceType};
-use crate::types::square::{File, PerSquare, Square};
 use crate::zobrist::{CASTLE_KEYS, EN_PASSANT_KEYS, PIECE_KEYS, SIDE_KEY};
 use std::fmt;
 use std::fmt::Formatter;
 use std::str::FromStr;
+use types::bitboard::BitBoard;
+use types::castling_rights::{CastlingRights, UPDATE_CASTLING_RIGHT_TABLE};
+use types::color::{Color, PerColor};
+use types::piece::{PerPieceType, Piece, PieceType};
+use types::square::{File, PerSquare, Square};
 
 #[derive(Debug, Clone)]
 pub struct BoardState {
@@ -670,9 +670,9 @@ Hash: 	0x4a887e3c9bc2624a
     fn test_fen_parsing() {
         let board = Board::from_str("2r5/8/8/3R4/2P1k3/2K5/8/8 b - - 0 1").unwrap();
 
-        use crate::types::color::Color::*;
-        use crate::types::piece::PieceType::*;
-        use crate::types::square::Square::*;
+        use types::color::Color::*;
+        use types::piece::PieceType::*;
+        use types::square::Square::*;
 
         assert_eq!(
             board.piece_at(C3).map(|p| (p.ty(), p.color())),

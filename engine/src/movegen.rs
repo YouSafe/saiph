@@ -12,12 +12,12 @@ use crate::movegen::attacks::{
     get_bishop_attacks, get_king_attacks, get_knight_attacks, get_pawn_attacks, get_queen_attacks,
     get_rook_attacks,
 };
-use crate::types::bitboard::BitBoard;
 use crate::types::chess_move::Move;
-use crate::types::color::Color;
-use crate::types::piece::{PieceType, ALL_PIECES};
-use crate::types::square::Square;
 use crate::Printer;
+use types::bitboard::BitBoard;
+use types::color::Color;
+use types::piece::{PieceType, ALL_PIECES};
+use types::square::Square;
 
 pub(crate) mod attacks;
 mod castling;
@@ -206,9 +206,9 @@ mod test {
     use crate::movegen::{
         build_attacked_bitboard, generate_attack_bitboard, generate_moves, is_square_attacked,
     };
-    use crate::types::bitboard::BitBoard;
-    use crate::types::color::Color;
-    use crate::types::square::Square;
+    use types::bitboard::BitBoard;
+    use types::color::Color;
+    use types::square::Square;
 
     #[test]
     fn test_is_square_attacked_pawn_attack() {

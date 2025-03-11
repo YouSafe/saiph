@@ -1,10 +1,9 @@
 use std::fmt;
 use std::fmt::Formatter;
-use std::ops::{Index, IndexMut};
 use std::str::FromStr;
 
+use crate::color::Color;
 use crate::declare_per_type;
-use crate::types::color::Color;
 
 #[rustfmt::skip]
 #[repr(u8)]
@@ -152,10 +151,9 @@ pub const NUM_FILES: usize = 8;
 
 declare_per_type!(PerFile, File, NUM_FILES);
 
-
 #[cfg(test)]
 mod test {
-    use crate::types::square::Square;
+    use super::*;
 
     #[test]
     fn test_square_parsing() {

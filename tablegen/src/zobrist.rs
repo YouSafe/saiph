@@ -1,42 +1,50 @@
-use crate::{NUM_CASTLING_CONFIGS, NUM_COLORS, NUM_FILES, NUM_PIECES, NUM_SQUARES};
+use types::{
+    castling_rights::{NUM_CASTLING_RIGHTS_CONFIGURATIONS, PerCastlingRightsConfig},
+    color::{NUM_COLORS, PerColor},
+    piece::{NUM_PIECES, PerPieceType},
+    square::{NUM_FILES, NUM_SQUARES, PerFile, PerSquare},
+};
 
 #[repr(C)]
 pub struct GeneratedKeys {
-    piece_keys: [[[u64; 64]; 6]; 2],
-    en_passant_keys: [u64; 8],
-    castle_keys: [u64; 16],
-    side_key: u64,
+    pub piece_keys: PerColor<PerPieceType<PerSquare<u64>>>,
+    pub en_passant_keys: PerFile<u64>,
+    pub castle_keys: PerCastlingRightsConfig<u64>,
+    pub side_key: u64,
 }
 
 pub fn generate_keys() -> GeneratedKeys {
-    let mut generated = GeneratedKeys {
-        piece_keys: [[[0u64; 64]; 6]; 2],
-        en_passant_keys: [0u64; 8],
-        castle_keys: [0u64; 16],
-        side_key: 0,
-    };
-
     let mut random_gen = RandomNumberGenerator::new(465864546584658);
 
-    for piece_type in 0..NUM_PIECES {
-        for color in 0..NUM_COLORS {
-            for square in 0..NUM_SQUARES {
-                generated.piece_keys[color][piece_type][square] = random_gen.next();
+    let mut piece_keys = [[[0u64; NUM_SQUARES]; NUM_PIECES]; NUM_COLORS];
+    for piece_type in piece_keys.iter_mut() {
+        for color in piece_type.iter_mut() {
+            for square in color.iter_mut() {
+                *square = random_gen.next();
             }
         }
     }
 
-    for file in 0..NUM_FILES {
-        generated.en_passant_keys[file] = random_gen.next();
+    let mut en_passant_keys = [0u64; NUM_FILES];
+    for item in en_passant_keys.iter_mut() {
+        *item = random_gen.next();
     }
 
-    for castle in 0..NUM_CASTLING_CONFIGS {
-        generated.castle_keys[castle] = random_gen.next();
+    let mut castle_keys = [0u64; NUM_CASTLING_RIGHTS_CONFIGURATIONS];
+    for item in castle_keys.iter_mut() {
+        *item = random_gen.next();
     }
 
-    generated.side_key = random_gen.next();
+    let side_key = random_gen.next();
 
-    generated
+    GeneratedKeys {
+        piece_keys: PerColor::new(
+            piece_keys.map(|per_piece| PerPieceType::new(per_piece.map(PerSquare::new))),
+        ),
+        en_passant_keys: PerFile::new(en_passant_keys),
+        castle_keys: PerCastlingRightsConfig::new(castle_keys),
+        side_key,
+    }
 }
 
 pub struct RandomNumberGenerator {

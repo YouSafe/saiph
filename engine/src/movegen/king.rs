@@ -2,7 +2,7 @@ use crate::board::Board;
 use crate::movegen::attacks::get_king_attacks;
 use crate::movegen::{generate_attack_bitboard, MoveList};
 use crate::types::chess_move::{Move, MoveFlag};
-use crate::types::piece::PieceType;
+use types::piece::PieceType;
 
 pub fn generate_king_moves<const CHECK: bool, const CAPTURE_ONLY: bool>(
     board: &Board,
@@ -46,7 +46,7 @@ mod test {
     use crate::movegen::king::generate_king_moves;
     use crate::movegen::MoveList;
     use crate::types::chess_move::{Move, MoveFlag};
-    use crate::types::square::Square;
+    use types::square::Square;
 
     #[test]
     fn test_xray_attack() {

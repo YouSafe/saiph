@@ -1,7 +1,12 @@
 // Fixed shift magics found by Volker Annuss.
 // See: http://www.talkchess.com/forum/viewtopic.php?p=727500&t=64790
 
-use super::Magic;
+#[repr(C)]
+pub struct Magic {
+    pub magic: u64,
+    pub mask: u64,
+    pub offset: u64,
+}
 
 pub const SLIDER_ATTACK_TABLE_SIZE: usize = 88772;
 

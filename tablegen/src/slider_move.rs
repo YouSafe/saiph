@@ -1,7 +1,5 @@
-use crate::{
-    BitBoard,
-    magics::{BISHOP_MAGICS, ROOK_MAGICS, SLIDER_ATTACK_TABLE_SIZE},
-};
+use crate::magics::{BISHOP_MAGICS, ROOK_MAGICS, SLIDER_ATTACK_TABLE_SIZE};
+use types::bitboard::BitBoard;
 
 pub const fn generate_slider_attacks() -> [BitBoard; SLIDER_ATTACK_TABLE_SIZE] {
     let mut attacks: [BitBoard; SLIDER_ATTACK_TABLE_SIZE] = [BitBoard(0); SLIDER_ATTACK_TABLE_SIZE];
@@ -83,15 +81,9 @@ const fn mask_bishop_attacks_on_the_fly_const(square: i8, blockers: u64) -> u64 
 
 #[cfg(test)]
 mod test {
-    use crate::BitBoard;
-    use crate::Square;
-    use crate::magics::BISHOP_MAGICS;
-    use crate::magics::ROOK_MAGICS;
-    use crate::magics::SLIDER_ATTACK_TABLE_SIZE;
+    use types::square::Square;
 
-    use super::generate_slider_attacks;
-    use super::mask_bishop_attacks_on_the_fly_const;
-    use super::mask_rook_attacks_on_the_fly_const;
+    use super::*;
 
     static SLIDER_ATTACKS: [BitBoard; SLIDER_ATTACK_TABLE_SIZE] = generate_slider_attacks();
 
@@ -126,7 +118,7 @@ mod test {
     #[test]
     fn test_bishop_attack_on_the_fly_e4() {
         let mut expected = BitBoard(0);
-        use Square::*;
+        use types::square::Square::*;
         const SQUARES: [Square; 9] = [F5, D5, C6, B7, D3, C2, F3, G2, H1];
         for square in SQUARES {
             expected |= square;
@@ -144,7 +136,7 @@ mod test {
     #[test]
     fn test_bishop_attack_on_the_fly_a1() {
         let mut expected = BitBoard(0);
-        use Square::*;
+        use types::square::Square::*;
         const SQUARES: [Square; 1] = [B2];
         for square in SQUARES {
             expected |= square;
@@ -159,7 +151,7 @@ mod test {
     #[test]
     fn test_rook_attacks_on_the_fly_e4() {
         let mut expected = BitBoard(0);
-        use Square::*;
+        use types::square::Square::*;
         const SQUARES: [Square; 9] = [D4, E3, E2, F4, G4, H4, E5, E6, E7];
         for square in SQUARES {
             expected |= square;
@@ -177,7 +169,7 @@ mod test {
     #[test]
     fn test_rook_attacks_on_the_fly_a1() {
         let mut expected = BitBoard(0);
-        use Square::*;
+        use types::square::Square::*;
         const SQUARES: [Square; 2] = [A2, B1];
         for square in SQUARES {
             expected |= square;
@@ -193,7 +185,7 @@ mod test {
     #[test]
     pub fn test_rook_attack_table() {
         let mut expected = BitBoard(0);
-        use Square::*;
+        use types::square::Square::*;
         const SQUARES: [Square; 9] = [D4, E3, E2, F4, G4, H4, E5, E6, E7];
         for square in SQUARES {
             expected |= square;
@@ -216,7 +208,7 @@ mod test {
     #[test]
     pub fn test_bishop_attack_table() {
         let mut expected = BitBoard(0);
-        use Square::*;
+        use types::square::Square::*;
         const SQUARES: [Square; 9] = [F5, D5, C6, B7, D3, C2, F3, G2, H1];
         for square in SQUARES {
             expected |= square;
