@@ -52,6 +52,24 @@ impl BitBoard {
 
     pub const EMPTY: BitBoard = BitBoard(0);
 
+    pub const DIAGS: [BitBoard; 15] = [
+        BitBoard(0x0100_0000_0000_0000),
+        BitBoard(0x0201_0000_0000_0000),
+        BitBoard(0x0402_0100_0000_0000),
+        BitBoard(0x0804_0201_0000_0000),
+        BitBoard(0x1008_0402_0100_0000),
+        BitBoard(0x2010_0804_0201_0000),
+        BitBoard(0x4020_1008_0402_0100),
+        BitBoard(0x8040_2010_0804_0201),
+        BitBoard(0x0080_4020_1008_0402),
+        BitBoard(0x0000_8040_2010_0804),
+        BitBoard(0x0000_0080_4020_1008),
+        BitBoard(0x0000_0000_8040_2010),
+        BitBoard(0x0000_0000_0080_4020),
+        BitBoard(0x0000_0000_0000_8040),
+        BitBoard(0x0000_0000_0000_0080),
+    ];
+
     pub const ALL_RANKS: [BitBoard; 8] = generate_all_ranks();
     pub const ALL_FILES: [BitBoard; 8] = generate_all_files();
 
@@ -323,6 +341,13 @@ Bitboard: 9223372036854780032";
             }
             println!("file {file}:\n{}", BitBoard::ALL_FILES[file as usize]);
             assert_eq!(expected, BitBoard::ALL_FILES[file as usize]);
+        }
+    }
+
+    #[test]
+    fn aa() {
+        for dia in BitBoard::DIAGS {
+            println!("{dia}");
         }
     }
 }

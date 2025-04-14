@@ -42,7 +42,7 @@ pub const fn generate_slider_attacks() -> [BitBoard; SLIDER_ATTACK_TABLE_SIZE] {
     attacks
 }
 
-const fn mask_slider_one_direction<const SQUARE_CHANGE: i8>(square: i8, blockers: u64) -> u64 {
+pub const fn mask_slider_one_direction<const SQUARE_CHANGE: i8>(square: i8, blockers: u64) -> u64 {
     let mut attacks = 0;
     let mut previous_square = square;
     loop {
@@ -65,18 +65,121 @@ const fn mask_slider_one_direction<const SQUARE_CHANGE: i8>(square: i8, blockers
     attacks
 }
 
+// only consider the middle 6 files since blockers on the edge do not affect the attacks
+pub static FIRST_RANK_ATTACKS: [[u8; 64]; 8] = {
+    let mut file: [[u8; 64]; 8] = [[0; 64]; 8];
+
+    let mut square = 0;
+    while square < 8 {
+        let mut blockers = 0;
+        while blockers < 64 {
+            file[square as usize][blockers as usize] =
+                (mask_slider_one_direction::<1>(square, blockers << 1)
+                    | mask_slider_one_direction::<-1>(square, blockers << 1)) as u8;
+            blockers += 1;
+        }
+        square += 1;
+    }
+
+    file
+};
+
+#[derive(Debug, Clone, Copy)]
+pub struct BishopMask {
+    bit: u64,
+    swap: u64,
+    main_diag: u64,
+    anti_diag: u64,
+}
+
+pub static BISHOP_MASK: [BishopMask; 64] = {
+    let mut masks = [BishopMask {
+        bit: 0,
+        swap: 0,
+        main_diag: 0,
+        anti_diag: 0,
+    }; 64];
+
+    let mut square = 0;
+    while square < 64 {
+        let bit = 1u64 << square;
+        let file = square & 7;
+        let rank = square >> 3;
+
+        masks[square] = BishopMask {
+            bit,
+            swap: bit.swap_bytes(),
+            main_diag: bit ^ BitBoard::DIAGS[7 + file - rank].0,
+            anti_diag: bit ^ BitBoard::DIAGS[file + rank].0.swap_bytes(),
+        };
+
+        square += 1;
+    }
+
+    masks
+};
+
+pub const fn mask_slider_diagonals(square: i8, blockers: u64) -> u64 {
+    let mask = BISHOP_MASK[square as usize];
+
+    let mut diag = blockers & mask.main_diag;
+    let mut rev1 = diag.swap_bytes();
+    diag = diag.wrapping_sub(mask.bit);
+    rev1 = rev1.wrapping_sub(mask.swap);
+    diag ^= rev1.swap_bytes();
+    diag &= mask.main_diag;
+
+    let mut anti = blockers & mask.anti_diag;
+    let mut rev2 = anti.swap_bytes();
+    anti = anti.wrapping_sub(mask.bit);
+    rev2 = rev2.wrapping_sub(mask.swap);
+    anti ^= rev2.swap_bytes();
+    anti &= mask.anti_diag;
+
+    diag | anti
+}
+
+pub const fn mask_slider_vertical(square: i8, blockers: u64) -> u64 {
+    let file_index = square & 7;
+    let BitBoard(mask) = BitBoard::ALL_FILES[file_index as usize];
+    let bit = 1u64 << square;
+
+    let mut forward = blockers & mask;
+    let mut reverse = forward.swap_bytes();
+    forward = forward.wrapping_sub(bit);
+    reverse = reverse.wrapping_sub(bit.swap_bytes());
+    forward ^= reverse.swap_bytes();
+    forward &= mask;
+
+    forward
+}
+
+pub const fn mask_slider_horizontal(square: i8, blockers: u64) -> u64 {
+    let rank_index = square >> 3;
+    let o = blockers;
+    let BitBoard(m) = BitBoard::ALL_RANKS[rank_index as usize];
+    assert!(square < 64);
+    let s = 1u64 << square;
+
+    let o = o & m;
+    let s = s & m;
+
+    let o = o >> (rank_index * 8) as i32;
+    let s = s >> (rank_index * 8) as i32;
+
+    let a = FIRST_RANK_ATTACKS[s.trailing_zeros() as usize][((o >> 1) & 0x3F) as usize] as u64;
+
+    let a = a << (rank_index * 8);
+
+    a
+}
+
 const fn mask_rook_attacks_on_the_fly_const(square: i8, blockers: u64) -> u64 {
-    mask_slider_one_direction::<1>(square, blockers) // right
-        | mask_slider_one_direction::<8>(square, blockers) // up
-        | mask_slider_one_direction::<-1>(square, blockers) // left
-        | mask_slider_one_direction::<-8>(square, blockers) // down
+    mask_slider_horizontal(square, blockers) | mask_slider_vertical(square, blockers)
 }
 
 const fn mask_bishop_attacks_on_the_fly_const(square: i8, blockers: u64) -> u64 {
-    mask_slider_one_direction::<9>(square, blockers) // top right
-        | mask_slider_one_direction::<7>(square, blockers) // top left
-        | mask_slider_one_direction::<-9>(square, blockers) // bottom left
-        | mask_slider_one_direction::<-7>(square, blockers) // bottom right
+    mask_slider_diagonals(square, blockers)
 }
 
 #[cfg(test)]

@@ -19,7 +19,7 @@ use types::{bitboard::BitBoard, color::PerColor, square::PerSquare};
 
 #[derive(Clone, Copy)]
 pub struct State {
-    identation: usize,
+    indentation: usize,
 }
 
 trait FormattedWriter {
@@ -100,8 +100,8 @@ impl<const N: usize, T: FormattedWriter> FormattedWriter for [T; N] {
 
         let len = self.len();
 
-        fn identation(file: &mut BufWriter<File>, identation: usize) -> std::io::Result<()> {
-            for _ in 0..identation {
+        fn indentation(file: &mut BufWriter<File>, indentation: usize) -> std::io::Result<()> {
+            for _ in 0..indentation {
                 write!(file, "\t")?;
             }
             Ok(())
@@ -112,14 +112,14 @@ impl<const N: usize, T: FormattedWriter> FormattedWriter for [T; N] {
         let mut new_line = true;
         for (index, val) in self.into_iter().enumerate() {
             if new_line {
-                identation(file, state.identation + 1)?;
+                indentation(file, state.indentation + 1)?;
                 new_line = false;
             }
 
             val.write(
                 file,
                 State {
-                    identation: state.identation + 1,
+                    indentation: state.indentation + 1,
                 },
             )?;
             if index < len - 1 {
@@ -131,7 +131,7 @@ impl<const N: usize, T: FormattedWriter> FormattedWriter for [T; N] {
                 new_line = true;
             }
         }
-        identation(file, state.identation)?;
+        indentation(file, state.indentation)?;
 
         write!(file, "]")
     }
@@ -185,7 +185,7 @@ fn write_variable<T: FormattedWriter>(
     variable: T,
 ) -> std::io::Result<()> {
     write!(file, "pub static {name}: {} = ", T::typename())?;
-    variable.write(file, State { identation: 0 })?;
+    variable.write(file, State { indentation: 0 })?;
     writeln!(file, ";")
 }
 
