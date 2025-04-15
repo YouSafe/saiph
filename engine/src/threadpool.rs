@@ -68,7 +68,7 @@ impl<S: ThreadSpawner> ThreadPool<S> {
         }
 
         let legal_moves = board.generate_moves();
-        if legal_moves.len() == 0 {
+        if legal_moves.is_empty() {
             if !board.checkers().is_empty() {
                 send_response(&engine_tx, "info depth 0 score mate 0");
             } else {
@@ -89,7 +89,7 @@ impl<S: ThreadSpawner> ThreadPool<S> {
             legal_moves
         };
 
-        if root_moves.len() == 0 {
+        if root_moves.is_empty() {
             send_response(&engine_tx, "info depth 0");
             send_response(&engine_tx, "bestmove (none)");
             return;

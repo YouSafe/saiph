@@ -156,22 +156,20 @@ pub const fn mask_slider_vertical(square: i8, blockers: u64) -> u64 {
 
 pub const fn mask_slider_horizontal(square: i8, blockers: u64) -> u64 {
     let rank_index = square >> 3;
+    let BitBoard(mask) = BitBoard::ALL_RANKS[rank_index as usize];
+    
     let o = blockers;
-    let BitBoard(m) = BitBoard::ALL_RANKS[rank_index as usize];
-    assert!(square < 64);
     let s = 1u64 << square;
+    assert!(square < 64);
 
-    let o = o & m;
-    let s = s & m;
-
-    let o = o >> (rank_index * 8) as i32;
-    let s = s >> (rank_index * 8) as i32;
-
+    // mask and map to first rank
+    let o = (o & mask) >> (rank_index * 8);
+    let s = (s & mask) >> (rank_index * 8);
+    
     let a = FIRST_RANK_ATTACKS[s.trailing_zeros() as usize][((o >> 1) & 0x3F) as usize] as u64;
 
-    let a = a << (rank_index * 8);
-
-    a
+    // unmap from first rank
+    a << (rank_index * 8)
 }
 
 const fn mask_rook_attacks_on_the_fly_const(square: i8, blockers: u64) -> u64 {

@@ -61,7 +61,7 @@ impl Piece {
     }
 
     pub const fn color(&self) -> Color {
-        unsafe { std::mem::transmute(*self as u8 >> 3 & 1) }
+        unsafe { std::mem::transmute((*self as u8 >> 3) & 1) }
     }
 
     pub const fn ty(&self) -> PieceType {
