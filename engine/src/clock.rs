@@ -10,9 +10,7 @@ pub struct Clock {
 }
 
 impl Clock {
-    pub fn new(limits: &TimeLimit, game_ply: u16, color: Color) -> Self {
-        let start = Instant::now();
-
+    pub fn new(start: Instant, limits: &TimeLimit, game_ply: u16, color: Color) -> Self {
         match limits {
             TimeLimit::Infinite | TimeLimit::External => Self {
                 start,
@@ -73,12 +71,13 @@ impl Clock {
 mod test {
     use crate::clock::Clock;
     use crate::types::search_limits::TimeLimit;
-    use std::time::Duration;
+    use std::time::{Duration, Instant};
     use types::color::Color;
 
     #[test]
     fn test_first_move() {
         let clock = Clock::new(
+            Instant::now(),
             &TimeLimit::Dynamic {
                 time_left: [Duration::from_secs(120); 2],
                 increment: [Duration::from_secs(1); 2],

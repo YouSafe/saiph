@@ -6,6 +6,7 @@ use crate::transposition::TranspositionTable;
 use crate::types::search_limits::{SearchLimits, TimeLimit};
 use crate::types::uci_move::UCIMove;
 use crate::{Printer, ThreadSpawner};
+use instant::Instant;
 use std::iter::Peekable;
 use std::marker::PhantomData;
 use std::str::{FromStr, SplitAsciiWhitespace};
@@ -20,6 +21,7 @@ const DEFAULT_HASH_SIZE: usize = 1;
 /// Default number of threads
 const DEFAULT_THREADS: u8 = 1;
 
+#[derive(Debug)]
 pub enum EngineMessage {
     Command(String),
     Response(String),
@@ -40,13 +42,22 @@ enum Command {
     Uci,
     IsReady,
     NewGame,
-    SetOption { name: String, value: Option<String> },
+    SetOption {
+        name: String,
+        value: Option<String>,
+    },
     Position(StartingPosition, Vec<UCIMove>),
-    Go(SearchLimits),
-    Perft { depth: u8 },
+    Go {
+        start_time: Instant,
+        limits: SearchLimits,
+    },
+    Perft {
+        depth: u8,
+    },
     Debug,
     Stop,
     Quit,
+    SoftQuit,
 }
 
 #[derive(Debug)]
@@ -116,6 +127,7 @@ impl<S: ThreadSpawner, P: Printer> EngineUCI<S, P> {
             "perft" => parse_perft(parts)?,
             "debug" => Command::Debug,
             "quit" => Command::Quit,
+            "softquit" => Command::SoftQuit,
             "stop" => Command::Stop,
             _ => return Err(ParseCommandError::UnknownCommand),
         };
@@ -178,9 +190,10 @@ impl<S: ThreadSpawner, P: Printer> EngineUCI<S, P> {
 
                 self.board = board;
             }
-            Command::Go(limits) => {
+            Command::Go { start_time, limits } => {
                 // The clock should be started as soon as possible even if the search has to wait in queue
                 let clock = Clock::new(
+                    start_time,
                     &limits.time,
                     self.board.game_ply(),
                     self.board.side_to_move(),
@@ -202,7 +215,11 @@ impl<S: ThreadSpawner, P: Printer> EngineUCI<S, P> {
             }
             Command::Quit => {
                 self.ignore_commands = true;
-                self.threadpool.quit(self.engine_tx.clone());
+                self.threadpool.quit(self.engine_tx.clone(), true);
+            }
+            Command::SoftQuit => {
+                self.ignore_commands = true;
+                self.threadpool.quit(self.engine_tx.clone(), false);
             }
             Command::Perft { depth } => {
                 perf_test::<P>(&mut self.board, depth);
@@ -263,6 +280,9 @@ fn parse_setoption(
 }
 
 fn parse_go(mut parts: Peekable<SplitAsciiWhitespace<'_>>) -> Result<Command, ParseCommandError> {
+    // start timer as soon as possible to avoid losing on time
+    let start_time = Instant::now();
+
     let mut depth: Option<u8> = None;
     let mut mate: Option<u8> = None;
     let mut time_left: [Duration; 2] = Default::default();
@@ -348,7 +368,7 @@ fn parse_go(mut parts: Peekable<SplitAsciiWhitespace<'_>>) -> Result<Command, Pa
         nodes,
         search_moves,
     };
-    Ok(Command::Go(limits))
+    Ok(Command::Go { start_time, limits })
 }
 
 fn parse_position(

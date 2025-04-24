@@ -19,6 +19,10 @@ use crate::{
 
 #[derive(Debug, Default)]
 pub struct StopSync {
+    /// A flag indicating whether the **current** search should be stopped.
+    ///
+    /// This flag is reset before each search, meaning setting it before a
+    /// search does not affect the subsequent search.
     pub stop: AtomicBool,
     pub wait_for_stop: Mutex<bool>,
     pub cond_var: Condvar,
@@ -159,7 +163,7 @@ impl<S: ThreadSpawner> ThreadPool<S> {
         }
     }
 
-    pub fn quit(&self, engine_tx: Sender<EngineMessage>) {
+    pub fn quit(&self, engine_tx: Sender<EngineMessage>, stop_search: bool) {
         let active_threads = Arc::new(AtomicU8::new(self.workers.len() as u8));
 
         for worker in &self.workers {
@@ -172,7 +176,9 @@ impl<S: ThreadSpawner> ThreadPool<S> {
                 .unwrap();
         }
 
-        self.stop_search();
+        if stop_search {
+            self.stop_search();
+        }
     }
 }
 
@@ -208,7 +214,6 @@ impl Worker {
             let mut num_threads = num_threads;
 
             loop {
-                eprintln!("[{thread_id}] waiting for job!");
                 match worker_rx.recv() {
                     Ok(job) => match job {
                         Job::Search(search) => {
@@ -261,11 +266,7 @@ impl Worker {
                         break;
                     }
                 }
-
-                eprintln!("[{thread_id}] finished job!");
             }
-
-            eprintln!("[{thread_id}] terminating worker!");
         });
 
         Self {
