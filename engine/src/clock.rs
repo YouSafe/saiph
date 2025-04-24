@@ -32,8 +32,8 @@ impl Clock {
                 let move_overhead: u64 = 300;
                 let moves_to_go_horizon: u64 = moves_to_go.map_or(50, |v| (v as u64).min(50));
 
-                let time_left_mills = time_left[color as usize].as_millis() as u64;
-                let increment_mills = increment[color as usize].as_millis() as u64;
+                let time_left_mills = time_left[color].as_millis() as u64;
+                let increment_mills = increment[color].as_millis() as u64;
 
                 let time_left = (time_left_mills
                     + increment_mills
@@ -72,15 +72,15 @@ mod test {
     use crate::clock::Clock;
     use crate::types::search_limits::TimeLimit;
     use std::time::{Duration, Instant};
-    use types::color::Color;
+    use types::color::{Color, PerColor};
 
     #[test]
     fn test_first_move() {
         let clock = Clock::new(
             Instant::now(),
             &TimeLimit::Dynamic {
-                time_left: [Duration::from_secs(120); 2],
-                increment: [Duration::from_secs(1); 2],
+                time_left: PerColor::new([Duration::from_secs(120); 2]),
+                increment: PerColor::new([Duration::from_secs(1); 2]),
                 moves_to_go: None,
             },
             0,

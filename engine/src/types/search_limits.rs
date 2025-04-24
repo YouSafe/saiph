@@ -1,5 +1,5 @@
 use std::time::Duration;
-use types::color::NUM_COLORS;
+use types::color::PerColor;
 
 use super::uci_move::UCIMove;
 
@@ -20,8 +20,8 @@ pub enum TimeLimit {
         move_time: Duration,
     },
     Dynamic {
-        time_left: [Duration; NUM_COLORS],
-        increment: [Duration; NUM_COLORS],
+        time_left: PerColor<Duration>,
+        increment: PerColor<Duration>,
         moves_to_go: Option<u8>,
     },
     External,

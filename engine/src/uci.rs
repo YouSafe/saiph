@@ -13,7 +13,7 @@ use std::str::{FromStr, SplitAsciiWhitespace};
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::Arc;
 use std::time::Duration;
-use types::color::Color;
+use types::color::{Color, PerColor};
 
 /// Default transposition table size in MB
 const DEFAULT_HASH_SIZE: usize = 1;
@@ -285,9 +285,9 @@ fn parse_go(mut parts: Peekable<SplitAsciiWhitespace<'_>>) -> Result<Command, Pa
 
     let mut depth: Option<u8> = None;
     let mut mate: Option<u8> = None;
-    let mut time_left: [Duration; 2] = Default::default();
+    let mut time_left: PerColor<Duration> = Default::default();
     let mut move_time: Option<Duration> = None;
-    let mut increment: [Duration; 2] = Default::default();
+    let mut increment: PerColor<Duration> = Default::default();
     let mut moves_to_go: Option<u8> = None;
     let mut nodes: Option<u64> = None;
     let mut infinite = false;
@@ -307,10 +307,10 @@ fn parse_go(mut parts: Peekable<SplitAsciiWhitespace<'_>>) -> Result<Command, Pa
                 let param = Duration::from_millis(param);
 
                 match token {
-                    "wtime" => time_left[Color::White as usize] = param,
-                    "btime" => time_left[Color::Black as usize] = param,
-                    "winc" => increment[Color::White as usize] = param,
-                    "binc" => increment[Color::Black as usize] = param,
+                    "wtime" => time_left[Color::White] = param,
+                    "btime" => time_left[Color::Black] = param,
+                    "winc" => increment[Color::White] = param,
+                    "binc" => increment[Color::Black] = param,
                     "movetime" => move_time = Some(param),
                     _ => unreachable!(),
                 }
@@ -351,7 +351,7 @@ fn parse_go(mut parts: Peekable<SplitAsciiWhitespace<'_>>) -> Result<Command, Pa
         TimeLimit::Infinite
     } else if let Some(move_time) = move_time {
         TimeLimit::Fixed { move_time }
-    } else if !time_left.contains(&Duration::default()) {
+    } else if !time_left.as_ref().contains(&Duration::default()) {
         TimeLimit::Dynamic {
             time_left,
             increment,
