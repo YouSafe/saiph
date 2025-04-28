@@ -5,7 +5,7 @@ self.onmessage = async (event) => {
 
   let instance
   try {
-    instance = await init(module, memory)
+    instance = await init({ module_or_path: module, memory })
   } catch (err) {
     console.log(err)
   }
