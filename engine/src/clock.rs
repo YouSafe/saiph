@@ -1,6 +1,6 @@
 use crate::types::search_limits::TimeLimit;
-use instant::{Duration, Instant};
 use types::color::Color;
+use web_time::{Duration, Instant};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Clock {

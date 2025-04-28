@@ -6,7 +6,7 @@ use crate::transposition::TranspositionTable;
 use crate::types::search_limits::{SearchLimits, TimeLimit};
 use crate::types::uci_move::UCIMove;
 use crate::{Printer, ThreadSpawner};
-use instant::Instant;
+use web_time::Instant;
 use std::iter::Peekable;
 use std::marker::PhantomData;
 use std::str::{FromStr, SplitAsciiWhitespace};
