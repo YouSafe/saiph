@@ -142,7 +142,7 @@ mod test {
     use super::Piece;
 
     #[test]
-    fn constuction() {
+    fn construction() {
         use crate::color::Color::*;
         use crate::piece::Piece::*;
         use crate::piece::PieceType::*;
@@ -167,7 +167,7 @@ mod test {
                 let piece = Piece::new(ty, color);
                 assert_eq!(piece.color(), color);
                 assert_eq!(piece.ty(), ty);
-            }
+            }       
         }
 
         for (piece, (ty, color)) in lookup {

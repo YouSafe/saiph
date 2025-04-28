@@ -343,11 +343,4 @@ Bitboard: 9223372036854780032";
             assert_eq!(expected, BitBoard::ALL_FILES[file as usize]);
         }
     }
-
-    #[test]
-    fn aa() {
-        for dia in BitBoard::DIAGS {
-            println!("{dia}");
-        }
-    }
 }
