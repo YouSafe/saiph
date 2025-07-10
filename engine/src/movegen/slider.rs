@@ -9,8 +9,8 @@ pub fn generate_slider_moves<const CHECK: bool, const CAPTURE_ONLY: bool>(
     board: &Board,
     move_list: &mut MoveList,
 ) {
-    let mut capture_mask = !BitBoard::EMPTY;
-    let mut push_mask = !BitBoard::EMPTY;
+    let mut capture_mask = BitBoard::FULL;
+    let mut push_mask = BitBoard::FULL;
 
     let king_square =
         (board.pieces(PieceType::King) & board.occupancies(board.side_to_move())).bit_scan();

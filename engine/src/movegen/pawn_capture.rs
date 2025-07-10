@@ -6,7 +6,7 @@ use types::bitboard::BitBoard;
 use types::piece::PieceType;
 
 pub fn generate_pawn_capture_moves<const CHECK: bool>(board: &Board, move_list: &mut MoveList) {
-    let mut capture_mask = !BitBoard::EMPTY;
+    let mut capture_mask = BitBoard::FULL;
 
     let side_to_move = board.side_to_move();
     let current_sides_pawns = board.pieces(PieceType::Pawn) & board.occupancies(side_to_move);

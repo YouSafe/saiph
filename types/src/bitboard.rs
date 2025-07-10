@@ -52,6 +52,8 @@ impl BitBoard {
 
     pub const EMPTY: BitBoard = BitBoard(0);
 
+    pub const FULL: BitBoard = BitBoard(!0);
+
     pub const DIAGS: [BitBoard; 15] = [
         BitBoard(0x0100_0000_0000_0000),
         BitBoard(0x0201_0000_0000_0000),
