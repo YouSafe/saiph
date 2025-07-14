@@ -2,7 +2,6 @@ use crate::movegen::attacks::{
     between, get_bishop_attacks, get_knight_attacks, get_pawn_attacks, get_rook_attacks,
 };
 use crate::movegen::{generate_moves, MoveList};
-use crate::types::chess_move::MoveFlag::{Castling, DoublePawnPush, EnPassant};
 use crate::types::chess_move::{Move, MoveFlag};
 use crate::zobrist::{CASTLE_KEYS, EN_PASSANT_KEYS, PIECE_KEYS, SIDE_KEY};
 use std::fmt;
@@ -11,7 +10,7 @@ use std::str::FromStr;
 use types::bitboard::BitBoard;
 use types::castling_rights::{CastlingRights, UPDATE_CASTLING_RIGHT_TABLE};
 use types::color::{Color, PerColor};
-use types::piece::{PerPieceType, Piece, PieceType};
+use types::piece::{PerPieceType, Piece, PieceType, ALL_PIECES};
 use types::square::{File, PerSquare, Square};
 
 #[derive(Debug, Clone)]
@@ -45,18 +44,16 @@ impl Board {
     pub const KILLER_POS_FEN: &'static str =
         "rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR w KQkq e6 0 1";
 
-    /// Applies a move to the position. It is the callers responsibility to
-    /// ensure the move is legal.
-    pub fn apply_move(&mut self, mov: Move) {
-        // start a new state based on the previous state
+    pub fn apply_move(&mut self, mv: Move) {
         let mut new_state = self.state.clone();
+        new_state.last_move = Some(mv);
 
-        new_state.last_move = Some(mov);
+        let from = mv.from();
+        let to = mv.to();
 
         self.game_ply += 1;
         new_state.rule50 += 1;
 
-        // en passant is cleared after doing any move
         new_state.en_passant_target = None;
         if let Some(en_passant_target) = self.en_passant_target() {
             new_state.hash ^= EN_PASSANT_KEYS[en_passant_target.to_file()];
@@ -64,115 +61,105 @@ impl Board {
 
         new_state.captured_piece = None;
 
-        let source_piece = self.piece_at(mov.from()).unwrap();
+        let mut source_piece = self
+            .piece_at(from)
+            .expect("source square should not be empty");
 
-        // get piece at target square before moving
-        let target_piece = self.piece_at(mov.to());
+        let target_piece = self.piece_at(to);
 
-        // remove piece from from
-        self.pieces[source_piece.ty()] ^= mov.from();
-        self.occupancies[self.side_to_move] ^= mov.from();
-        self.combined ^= mov.from();
-        new_state.hash ^= PIECE_KEYS[self.side_to_move][source_piece.ty()][mov.from()];
+        self.remove_piece(from, source_piece);
+        new_state.hash ^= PIECE_KEYS[self.side_to_move][source_piece.ty()][from];
 
-        self.mailbox[mov.from()] = None;
+        let mut capture_target: Option<(Square, Piece)> = None;
 
-        // set piece in to
-        self.pieces[source_piece.ty()] |= mov.to();
-        self.occupancies[self.side_to_move] |= mov.to();
-        self.combined |= mov.to();
-        new_state.hash ^= PIECE_KEYS[self.side_to_move][source_piece.ty()][mov.to()];
-
-        self.mailbox[mov.to()] = Some(source_piece);
-
-        if mov.is_capture() && mov.flag() != MoveFlag::EnPassant {
-            // replace opponents piece with your own
-            // get piece that was at the target square before the move
-            let target_piece = target_piece.expect("captures require a piece on the target square");
-
-            new_state.captured_piece = Some(target_piece);
-
-            // toggle target piece bitboard if it's not the same piece
-            if target_piece.ty() != source_piece.ty() {
-                self.pieces[target_piece.ty()] ^= mov.to();
+        let flag = mv.flag();
+        match flag {
+            MoveFlag::Normal => (),
+            MoveFlag::DoublePawnPush => {
+                new_state.en_passant_target = Some(to.forward(!self.side_to_move).unwrap());
+                new_state.hash ^= EN_PASSANT_KEYS[to.to_file()];
             }
-            self.occupancies[!self.side_to_move] ^= mov.to();
-            new_state.hash ^= PIECE_KEYS[!self.side_to_move][target_piece.ty()][mov.to()];
+            MoveFlag::Castling => {
+                const CASTLE_CONFIG: [(File, File); 2] = [(File::A, File::D), (File::H, File::F)];
 
-            // combined is unchanged here
+                let backrank = self.side_to_move.backrank();
+                let target_file = to.to_file();
+                let (rook_start_file, rook_end_file) = CASTLE_CONFIG[target_file as usize / 4];
+                let (rook_start_square, rook_end_square) = (
+                    Square::from(backrank, rook_start_file),
+                    Square::from(backrank, rook_end_file),
+                );
+
+                let rook_piece = PieceType::Rook.to_piece(self.side_to_move);
+
+                self.remove_piece(rook_start_square, rook_piece);
+                new_state.hash ^= PIECE_KEYS[self.side_to_move][PieceType::Rook][rook_start_square];
+
+                self.put_piece(rook_end_square, rook_piece);
+                new_state.hash ^= PIECE_KEYS[self.side_to_move][PieceType::Rook][rook_end_square];
+            }
+            MoveFlag::Capture => {
+                capture_target = Some((
+                    to,
+                    target_piece.expect("target square should not be empty upon capture"),
+                ));
+            }
+            MoveFlag::EnPassant => {
+                capture_target = Some((
+                    to.forward(!self.side_to_move).unwrap(),
+                    Piece::new(PieceType::Pawn, !self.side_to_move),
+                ));
+            }
+            MoveFlag::KnightPromotion
+            | MoveFlag::BishopPromotion
+            | MoveFlag::RookPromotion
+            | MoveFlag::QueenPromotion => {
+                source_piece = ALL_PIECES
+                    [(flag as usize) - (MoveFlag::KnightPromotion as usize) + 1]
+                    .to_piece(self.side_to_move);
+
+                // reset early since moved piece was originally a pawn
+                new_state.rule50 = 0;
+            }
+
+            MoveFlag::KnightPromotionCapture
+            | MoveFlag::BishopPromotionCapture
+            | MoveFlag::RookPromotionCapture
+            | MoveFlag::QueenPromotionCapture => {
+                capture_target = Some((
+                    to,
+                    target_piece.expect("target square should not be empty upon promotion capture"),
+                ));
+
+                source_piece = ALL_PIECES
+                    [(flag as usize) - (MoveFlag::KnightPromotionCapture as usize) + 1]
+                    .to_piece(self.side_to_move);
+
+                // reset early since moved piece was originally a pawn
+                new_state.rule50 = 0;
+            }
+        }
+
+        if let Some((square, piece)) = capture_target {
+            new_state.captured_piece = Some(piece);
+            self.remove_piece(square, piece);
+            new_state.hash ^= PIECE_KEYS[!self.side_to_move][piece.ty()][square];
 
             // remove castling right for that side
-            if target_piece.ty() == PieceType::Rook {
-                // remove castling rights from hash
+            if piece.ty() == PieceType::Rook {
                 new_state.hash ^= CASTLE_KEYS[new_state.castling_rights];
 
-                new_state.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[mov.from()];
-                new_state.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[mov.to()];
+                new_state.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[from];
+                new_state.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[to];
 
-                // add castling rights to hash
                 new_state.hash ^= CASTLE_KEYS[new_state.castling_rights];
             }
 
             new_state.rule50 = 0;
         }
 
-        if let Some(promotion) = mov.promotion() {
-            // remove old piece type
-            self.pieces[source_piece.ty()] ^= mov.to();
-            // add to new piece type
-            self.pieces[promotion.as_piece_type()] |= mov.to();
-
-            self.mailbox[mov.to()] = Some(promotion.as_piece_type().to_piece(self.side_to_move));
-
-            new_state.hash ^= PIECE_KEYS[self.side_to_move][source_piece.ty()][mov.to()];
-            new_state.hash ^= PIECE_KEYS[self.side_to_move][promotion.as_piece_type()][mov.to()];
-        }
-
-        if mov.flag() == DoublePawnPush {
-            // update en_passant_target when double pushing
-            new_state.en_passant_target = Some(mov.to().forward(!self.side_to_move).unwrap());
-
-            new_state.hash ^= EN_PASSANT_KEYS[mov.to().to_file()];
-        }
-
-        if mov.flag() == EnPassant {
-            let capture_piece = mov.to().forward(!self.side_to_move).unwrap();
-            self.pieces[PieceType::Pawn] ^= capture_piece;
-            self.occupancies[!self.side_to_move] ^= capture_piece;
-            self.combined ^= capture_piece;
-
-            self.mailbox[capture_piece] = None;
-
-            new_state.hash ^= PIECE_KEYS[!self.side_to_move][PieceType::Pawn][capture_piece];
-        }
-
-        const CASTLE_CONFIG: [(File, File); 2] = [(File::A, File::D), (File::H, File::F)];
-
-        if mov.flag() == Castling {
-            let backrank = self.side_to_move.backrank();
-            let target_file = mov.to().to_file();
-            let (rook_start_file, rook_end_file) = CASTLE_CONFIG[target_file as usize / 4];
-            let (rook_start_square, rook_end_square) = (
-                Square::from(backrank, rook_start_file),
-                Square::from(backrank, rook_end_file),
-            );
-
-            // remove piece from from
-            self.pieces[PieceType::Rook] ^= rook_start_square;
-            self.occupancies[self.side_to_move] ^= rook_start_square;
-            self.combined ^= rook_start_square;
-            new_state.hash ^= PIECE_KEYS[self.side_to_move][PieceType::Rook][rook_start_square];
-
-            self.mailbox[rook_start_square] = None;
-
-            // set piece in to
-            self.pieces[PieceType::Rook] |= rook_end_square;
-            self.occupancies[self.side_to_move] |= rook_end_square;
-            self.combined |= rook_end_square;
-            new_state.hash ^= PIECE_KEYS[self.side_to_move][PieceType::Rook][rook_end_square];
-
-            self.mailbox[rook_end_square] = Some(PieceType::Rook.to_piece(self.side_to_move));
-        }
+        self.put_piece(to, source_piece);
+        new_state.hash ^= PIECE_KEYS[self.side_to_move][source_piece.ty()][to];
 
         if source_piece.ty() == PieceType::Pawn {
             new_state.rule50 = 0;
@@ -182,8 +169,8 @@ impl Board {
         if source_piece.ty() == PieceType::Rook {
             // rook moved
             new_state.hash ^= CASTLE_KEYS[new_state.castling_rights];
-            new_state.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[mov.from()];
-            new_state.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[mov.to()];
+            new_state.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[from];
+            new_state.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[to];
             new_state.hash ^= CASTLE_KEYS[new_state.castling_rights];
         } else if source_piece.ty() == PieceType::King {
             // remove castling rights for side if king moved (includes castling)
@@ -247,73 +234,74 @@ impl Board {
 
     pub fn undo_move(&mut self) {
         // revert last move from popped state
-        if let Some(last_move) = self.state.last_move {
-            self.side_to_move = !self.side_to_move;
-            const CASTLE_CONFIG: [(File, File); 2] = [(File::A, File::D), (File::H, File::F)];
+        let last_move = self
+            .state
+            .last_move
+            .expect("there should be a move to undo");
 
-            if last_move.flag() == Castling {
+        let from = last_move.from();
+        let to = last_move.to();
+
+        self.side_to_move = !self.side_to_move;
+
+        let mut capture_target: Option<Square> = None;
+
+        // when moving from one square to another, the left square is left empty
+        assert_eq!(self.piece_at(from), None);
+
+        let mut source_piece = self
+            .piece_at(to)
+            .expect("target square should not be empty after the last move");
+
+        self.remove_piece(to, source_piece);
+
+        match last_move.flag() {
+            MoveFlag::Normal => (),
+            MoveFlag::DoublePawnPush => {
+                // en passant target square is restored via popping the state history
+            }
+            MoveFlag::Castling => {
+                const CASTLE_CONFIG: [(File, File); 2] = [(File::A, File::D), (File::H, File::F)];
                 let backrank = self.side_to_move.backrank();
-                let target_file = last_move.to().to_file();
+                let target_file = to.to_file();
                 let (rook_start_file, rook_end_file) = CASTLE_CONFIG[target_file as usize / 4];
                 let (rook_start_square, rook_end_square) = (
                     Square::from(backrank, rook_start_file),
                     Square::from(backrank, rook_end_file),
                 );
 
-                self.pieces[PieceType::Rook] |= rook_start_square;
-                self.occupancies[self.side_to_move] |= rook_start_square;
-                self.combined |= rook_start_square;
+                let rook_piece = Piece::new(PieceType::Rook, self.side_to_move);
 
-                self.mailbox[rook_start_square] =
-                    Some(Piece::new(PieceType::Rook, self.side_to_move));
-
-                self.pieces[PieceType::Rook] ^= rook_end_square;
-                self.occupancies[self.side_to_move] ^= rook_end_square;
-                self.combined ^= rook_end_square;
-
-                self.mailbox[rook_end_square] = None;
+                self.remove_piece(rook_end_square, rook_piece);
+                self.put_piece(rook_start_square, rook_piece);
             }
-
-            if last_move.flag() == EnPassant {
-                let capture_piece = last_move.to().forward(!self.side_to_move).unwrap();
-                self.pieces[PieceType::Pawn] |= capture_piece;
-                self.occupancies[!self.side_to_move] |= capture_piece;
-                self.combined |= capture_piece;
-
-                self.mailbox[capture_piece] = Some(Piece::new(PieceType::Pawn, !self.side_to_move));
+            MoveFlag::Capture => capture_target = Some(to),
+            MoveFlag::EnPassant => {
+                capture_target = Some(to.forward(!self.side_to_move).unwrap());
             }
-
-            // undo promotion
-            if let Some(promotion) = last_move.promotion() {
-                // remove new piece type
-                self.pieces[promotion.as_piece_type()] ^= last_move.to();
-                // add old piece type
-                self.pieces[PieceType::Pawn] |= last_move.to();
-                self.mailbox[last_move.to()] = Some(Piece::new(PieceType::Pawn, self.side_to_move));
+            MoveFlag::KnightPromotion
+            | MoveFlag::BishopPromotion
+            | MoveFlag::RookPromotion
+            | MoveFlag::QueenPromotion => {
+                source_piece = Piece::new(PieceType::Pawn, self.side_to_move);
             }
-
-            let source_piece = self.piece_at(last_move.to()).unwrap();
-
-            self.pieces[source_piece.ty()] |= last_move.from();
-            self.occupancies[self.side_to_move] |= last_move.from();
-            self.combined |= last_move.from();
-
-            self.mailbox[last_move.from()] = Some(source_piece);
-
-            self.pieces[source_piece.ty()] ^= last_move.to();
-            self.occupancies[self.side_to_move] ^= last_move.to();
-            self.combined ^= last_move.to();
-
-            self.mailbox[last_move.to()] = None;
-
-            // undo capture
-            if let Some(captured_piece) = self.state.captured_piece {
-                self.pieces[captured_piece.ty()] |= last_move.to();
-                self.occupancies[!self.side_to_move] |= last_move.to();
-                self.combined |= last_move.to();
-
-                self.mailbox[last_move.to()] = Some(captured_piece);
+            MoveFlag::KnightPromotionCapture
+            | MoveFlag::BishopPromotionCapture
+            | MoveFlag::RookPromotionCapture
+            | MoveFlag::QueenPromotionCapture => {
+                source_piece = Piece::new(PieceType::Pawn, self.side_to_move);
+                capture_target = Some(to);
             }
+        }
+
+        self.put_piece(from, source_piece);
+
+        if let Some(capture_target) = capture_target {
+            let capture_piece = self
+                .state
+                .captured_piece
+                .expect("there should be captured piece set since the last move was a capture");
+            self.put_piece(capture_target, capture_piece);
         }
 
         self.game_ply -= 1;
@@ -321,6 +309,26 @@ impl Board {
         if let Some(previous_state) = self.history.pop() {
             self.state = previous_state;
         }
+    }
+
+    fn put_piece(&mut self, sq: Square, piece: Piece) {
+        debug_assert_eq!(self.piece_at(sq), None);
+
+        self.pieces[piece.ty()] ^= sq;
+        self.occupancies[piece.color()] ^= sq;
+        self.combined ^= sq;
+
+        self.mailbox[sq] = Some(piece);
+    }
+
+    fn remove_piece(&mut self, sq: Square, piece: Piece) {
+        debug_assert_eq!(self.piece_at(sq), Some(piece));
+
+        self.pieces[piece.ty()] ^= sq;
+        self.occupancies[piece.color()] ^= sq;
+        self.combined ^= sq;
+
+        self.mailbox[sq] = None;
     }
 
     pub fn generate_moves(&self) -> MoveList {

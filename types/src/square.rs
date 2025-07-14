@@ -149,6 +149,17 @@ impl From<File> for usize {
 
 pub const NUM_FILES: usize = 8;
 
+pub const ALL_FILES: [File; NUM_FILES] = [
+    File::A,
+    File::B,
+    File::C,
+    File::D,
+    File::E,
+    File::F,
+    File::G,
+    File::H,
+];
+
 declare_per_type!(PerFile, File, NUM_FILES);
 
 #[cfg(test)]
