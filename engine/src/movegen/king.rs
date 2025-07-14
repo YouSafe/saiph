@@ -1,35 +1,26 @@
 use crate::board::Board;
 use crate::movegen::attacks::get_king_attacks;
-use crate::movegen::{generate_attack_bitboard, MoveList};
+use crate::movegen::MoveList;
 use crate::types::chess_move::{Move, MoveFlag};
+use types::bitboard::BitBoard;
 use types::piece::PieceType;
 
-pub fn generate_king_moves<const CHECK: bool, const CAPTURE_ONLY: bool>(
+pub fn generate_king_moves(
     board: &Board,
     move_list: &mut MoveList,
+    capture_mask: BitBoard,
+    push_mask: BitBoard,
 ) {
-    let attacked = generate_attack_bitboard(board, !board.side_to_move());
-
-    let mut capture_mask = !attacked;
-    let mut push_mask = !attacked;
-
     let king_square =
         (board.pieces(PieceType::King) & board.occupancies(board.side_to_move())).bit_scan();
 
     let side_to_move = board.side_to_move();
 
-    // limit captures to the opponent pieces
-    capture_mask &= board.occupancies(!side_to_move);
-    // avoid opponent pieces on quiet moves
-    push_mask &= !board.occupancies(!side_to_move);
-
     let attacks = get_king_attacks(king_square) & !board.occupancies(side_to_move);
 
-    if !CAPTURE_ONLY {
-        // quiet
-        for target in (attacks & push_mask).iter() {
-            move_list.push(Move::new(king_square, target, MoveFlag::Normal));
-        }
+    // quiet
+    for target in (attacks & push_mask).iter() {
+        move_list.push(Move::new(king_square, target, MoveFlag::Normal));
     }
 
     // capture
@@ -40,52 +31,49 @@ pub fn generate_king_moves<const CHECK: bool, const CAPTURE_ONLY: bool>(
 
 #[cfg(test)]
 mod test {
-    use std::str::FromStr;
-
     use crate::board::Board;
     use crate::movegen::king::generate_king_moves;
-    use crate::movegen::MoveList;
+    use crate::movegen::test::test_move_generator;
+    use crate::movegen::{compute_king_push_capture_masks, MoveList, PushCaptureMasks};
     use crate::types::chess_move::{Move, MoveFlag};
     use types::square::Square;
 
+    fn test_king_moves(fen: &str, expected_moves: &[Move]) {
+        test_move_generator::<_, _, false>(
+            |board: &Board, moves_list: &mut MoveList, masks: &PushCaptureMasks| {
+                generate_king_moves(board, moves_list, masks.capture_mask, masks.push_mask)
+            },
+            compute_king_push_capture_masks::<false>,
+            fen,
+            expected_moves,
+        )
+    }
+
     #[test]
     fn test_xray_attack() {
-        let board = Board::from_str("8/4k3/8/8/8/4R3/8/K7 b - - 0 1").unwrap();
-        let mut move_list = MoveList::new();
-        generate_king_moves::<true, false>(&board, &mut move_list);
-        println!("{:#?}", move_list);
-
-        assert_eq!(move_list.len(), 6);
-        assert!(!move_list.contains(&Move::new(Square::E7, Square::E8, MoveFlag::Normal)));
-        assert!(!move_list.contains(&Move::new(Square::E7, Square::E6, MoveFlag::Normal)));
-
-        assert!(move_list.contains(&Move::new(Square::E7, Square::F6, MoveFlag::Normal)));
-        assert!(move_list.contains(&Move::new(Square::E7, Square::F7, MoveFlag::Normal)));
-        assert!(move_list.contains(&Move::new(Square::E7, Square::F8, MoveFlag::Normal)));
-
-        assert!(move_list.contains(&Move::new(Square::E7, Square::D6, MoveFlag::Normal)));
-        assert!(move_list.contains(&Move::new(Square::E7, Square::D7, MoveFlag::Normal)));
-        assert!(move_list.contains(&Move::new(Square::E7, Square::D8, MoveFlag::Normal)));
+        test_king_moves(
+            "8/4k3/8/8/8/4R3/8/K7 b - - 0 1",
+            &[
+                Move::new(Square::E7, Square::F6, MoveFlag::Normal),
+                Move::new(Square::E7, Square::F7, MoveFlag::Normal),
+                Move::new(Square::E7, Square::F8, MoveFlag::Normal),
+                Move::new(Square::E7, Square::D6, MoveFlag::Normal),
+                Move::new(Square::E7, Square::D7, MoveFlag::Normal),
+                Move::new(Square::E7, Square::D8, MoveFlag::Normal),
+            ],
+        );
     }
 
     #[test]
     fn test_forced_capture() {
-        let board = Board::from_str("6Qk/8/8/8/8/2q5/8/1K6 b - - 0 1").unwrap();
-        let mut move_list = MoveList::new();
-        generate_king_moves::<true, false>(&board, &mut move_list);
-        println!("{:#?}", move_list);
-
-        assert_eq!(move_list.len(), 1);
-        assert!(move_list.contains(&Move::new(Square::H8, Square::G8, MoveFlag::Capture)));
+        test_king_moves(
+            "6Qk/8/8/8/8/2q5/8/1K6 b - - 0 1",
+            &[Move::new(Square::H8, Square::G8, MoveFlag::Capture)],
+        );
     }
 
     #[test]
     fn test_checkmate() {
-        let board = Board::from_str("3Q2k1/5ppp/8/8/8/8/5PPP/6K1 b - - 0 1").unwrap();
-        let mut move_list = MoveList::new();
-        generate_king_moves::<true, false>(&board, &mut move_list);
-        println!("{:#?}", move_list);
-
-        assert_eq!(move_list.len(), 0);
+        test_king_moves("3Q2k1/5ppp/8/8/8/8/5PPP/6K1 b - - 0 1", &[]);
     }
 }

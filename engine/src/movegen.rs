@@ -9,8 +9,8 @@ use slider::generate_slider_moves;
 
 use crate::board::Board;
 use crate::movegen::attacks::{
-    get_bishop_attacks, get_king_attacks, get_knight_attacks, get_pawn_attacks, get_queen_attacks,
-    get_rook_attacks,
+    between, get_bishop_attacks, get_king_attacks, get_knight_attacks, get_pawn_attacks,
+    get_queen_attacks, get_rook_attacks,
 };
 use crate::types::chess_move::Move;
 use crate::Printer;
@@ -30,7 +30,49 @@ mod slider;
 
 pub type MoveList = ArrayVec<Move, 256>;
 
-pub type OrderingList = ArrayVec<i32, 256>;
+pub fn generate_moves<const CAPTURE_ONLY: bool>(board: &Board) -> MoveList {
+    let mut move_list = MoveList::new();
+
+    let checkers = board.checkers();
+
+    let PushCaptureMasks {
+        push_mask,
+        capture_mask,
+    } = compute_push_capture_mask::<CAPTURE_ONLY>(board);
+
+    let PushCaptureMasks {
+        push_mask: king_push_mask,
+        capture_mask: king_capture_mask,
+    } = compute_king_push_capture_masks::<CAPTURE_ONLY>(board);
+
+    if checkers.count() == 0 {
+        if !CAPTURE_ONLY {
+            generate_quiet_pawn_moves(board, &mut move_list, push_mask);
+            generate_castling_moves(board, &mut move_list);
+        }
+
+        generate_pawn_capture_moves(board, &mut move_list, capture_mask);
+        generate_en_passant_move(board, &mut move_list);
+        generate_knight_moves(board, &mut move_list, capture_mask, push_mask);
+        generate_slider_moves(board, &mut move_list, capture_mask, push_mask);
+        generate_king_moves(board, &mut move_list, king_capture_mask, king_push_mask);
+    } else if checkers.count() == 1 {
+        // a single check can be evaded by capturing the checker, blocking the check or by moving the king
+        generate_quiet_pawn_moves(board, &mut move_list, push_mask);
+        generate_pawn_capture_moves(board, &mut move_list, capture_mask);
+        generate_en_passant_move(board, &mut move_list);
+        generate_knight_moves(board, &mut move_list, capture_mask, push_mask);
+        generate_slider_moves(board, &mut move_list, capture_mask, push_mask);
+        // castling is not allowed when the king is in check
+        generate_king_moves(board, &mut move_list, king_capture_mask, king_push_mask);
+    } else {
+        // double and more checkers
+        // only the king can move
+        generate_king_moves(board, &mut move_list, king_capture_mask, king_push_mask);
+    }
+
+    move_list
+}
 
 pub fn generate_attack_bitboard(board: &Board, attacking_color: Color) -> BitBoard {
     let mut attacked = BitBoard(0);
@@ -57,47 +99,63 @@ pub fn generate_attack_bitboard(board: &Board, attacking_color: Color) -> BitBoa
     attacked
 }
 
-pub fn generate_moves<const CAPTURE_ONLY: bool>(board: &Board) -> MoveList {
-    let mut move_list = MoveList::new();
+pub struct PushCaptureMasks {
+    pub push_mask: BitBoard,
+    pub capture_mask: BitBoard,
+}
 
+pub fn compute_push_capture_mask<const CAPTURE_ONLY: bool>(board: &Board) -> PushCaptureMasks {
     let checkers = board.checkers();
-    if checkers.count() == 0 {
-        if !CAPTURE_ONLY {
-            generate_quiet_pawn_moves::<false>(board, &mut move_list);
-        }
 
-        generate_pawn_capture_moves::<false>(board, &mut move_list);
-        generate_en_passant_move::<false>(board, &mut move_list);
+    let mut push_mask = BitBoard::FULL;
+    let mut capture_mask = BitBoard::FULL;
 
-        generate_knight_moves::<false, CAPTURE_ONLY>(board, &mut move_list);
+    // limit captures to the opponent pieces
+    capture_mask &= board.occupancies(!board.side_to_move());
+    // avoid opponent pieces on quiet moves
+    push_mask &= !board.occupancies(!board.side_to_move());
 
-        generate_slider_moves::<false, CAPTURE_ONLY>(board, &mut move_list);
+    if checkers.count() == 1 {
+        let king_square =
+            (board.pieces(PieceType::King) & board.occupancies(board.side_to_move())).bit_scan();
 
-        if !CAPTURE_ONLY {
-            generate_castling_moves::<false>(board, &mut move_list);
-        }
-
-        generate_king_moves::<false, CAPTURE_ONLY>(board, &mut move_list);
-    } else if checkers.count() == 1 {
-        // a single check can be evaded by capturing the checker, blocking the check or by moving the king
-
-        generate_quiet_pawn_moves::<true>(board, &mut move_list);
-        generate_pawn_capture_moves::<true>(board, &mut move_list);
-        generate_en_passant_move::<true>(board, &mut move_list);
-
-        generate_knight_moves::<true, CAPTURE_ONLY>(board, &mut move_list);
-
-        generate_slider_moves::<true, CAPTURE_ONLY>(board, &mut move_list);
-
-        // castling is not allowed when the king is in check
-        generate_king_moves::<true, CAPTURE_ONLY>(board, &mut move_list);
-    } else {
-        // double and more checkers
-        // only the king can move
-        generate_king_moves::<true, CAPTURE_ONLY>(board, &mut move_list);
+        capture_mask = checkers;
+        push_mask = between(king_square, checkers.bit_scan());
     }
 
-    move_list
+    if CAPTURE_ONLY {
+        push_mask &= BitBoard::EMPTY;
+    }
+
+    PushCaptureMasks {
+        push_mask,
+        capture_mask,
+    }
+}
+
+pub fn compute_king_push_capture_masks<const CAPTURE_ONLY: bool>(
+    board: &Board,
+) -> PushCaptureMasks {
+    let side_to_move = board.side_to_move();
+
+    let attacked = generate_attack_bitboard(board, !side_to_move);
+
+    let mut push_mask = !attacked;
+    let mut capture_mask = !attacked;
+
+    // limit captures to the opponent pieces
+    capture_mask &= board.occupancies(!side_to_move);
+    // avoid opponent pieces on quiet moves
+    push_mask &= !board.occupancies(!side_to_move);
+
+    if CAPTURE_ONLY {
+        push_mask &= BitBoard::EMPTY;
+    }
+
+    PushCaptureMasks {
+        push_mask,
+        capture_mask,
+    }
 }
 
 pub fn is_square_attacked(board: &Board, attacked_square: Square, attacking_side: Color) -> bool {
@@ -205,10 +263,48 @@ mod test {
     use crate::board::Board;
     use crate::movegen::{
         build_attacked_bitboard, generate_attack_bitboard, generate_moves, is_square_attacked,
+        MoveList, PushCaptureMasks,
     };
+    use crate::types::chess_move::Move;
     use types::bitboard::BitBoard;
     use types::color::Color;
     use types::square::Square;
+
+    pub fn test_move_generator<F, M, const CAPTURES_ONLY: bool>(
+        generator: F,
+        mask_fn: M,
+        fen: &str,
+        expected_moves: &[Move],
+    ) where
+        F: Fn(&Board, &mut MoveList, &PushCaptureMasks),
+        M: Fn(&Board) -> PushCaptureMasks,
+    {
+        let board = Board::from_str(fen).unwrap();
+        let mut move_list = MoveList::new();
+
+        let masks = mask_fn(&board);
+        generator(&board, &mut move_list, &masks);
+
+        println!("{:#?}", move_list);
+
+        for m in expected_moves {
+            assert!(
+                move_list.contains(m),
+                "Expected move {:?} not found in move list: {:#?}",
+                m,
+                move_list
+            );
+        }
+
+        assert_eq!(
+            move_list.len(),
+            expected_moves.len(),
+            "Unexpected number of generated moves: got {}, expected {}.\nMoves: {:#?}",
+            move_list.len(),
+            expected_moves.len(),
+            move_list
+        );
+    }
 
     #[test]
     fn test_is_square_attacked_pawn_attack() {

@@ -48,9 +48,7 @@ static CASTLING_CONFIGS: [[CastlingConfig; 2]; NUM_COLORS] = [
     ],
 ];
 
-pub fn generate_castling_moves<const CHECK: bool>(board: &Board, move_list: &mut MoveList) {
-    assert!(!CHECK, "can not castle in check");
-
+pub fn generate_castling_moves(board: &Board, move_list: &mut MoveList) {
     let castling_rights = board.castling_rights();
 
     let side_to_move = board.side_to_move();
@@ -73,74 +71,64 @@ pub fn generate_castling_moves<const CHECK: bool>(board: &Board, move_list: &mut
 
 #[cfg(test)]
 mod test {
-    use std::str::FromStr;
-
     use crate::board::Board;
     use crate::movegen::castling::generate_castling_moves;
-    use crate::movegen::MoveList;
+    use crate::movegen::test::test_move_generator;
+    use crate::movegen::{compute_push_capture_mask, MoveList, PushCaptureMasks};
     use crate::types::chess_move::{Move, MoveFlag};
     use types::square::Square::*;
 
+    fn test_castling_moves(fen: &str, expected_moves: &[Move]) {
+        test_move_generator::<_, _, false>(
+            |board: &Board, moves_list: &mut MoveList, _masks: &PushCaptureMasks| {
+                generate_castling_moves(board, moves_list)
+            },
+            compute_push_capture_mask::<false>,
+            fen,
+            expected_moves,
+        )
+    }
+
     #[test]
     fn test_white_castling() {
-        let board = Board::from_str("r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1").unwrap();
-        let mut move_list = MoveList::new();
-        generate_castling_moves::<false>(&board, &mut move_list);
-        println!("{:#?}", move_list);
-
-        assert_eq!(move_list.len(), 2);
-
-        assert!(move_list.contains(&Move::new(E1, G1, MoveFlag::Castling)));
-        assert!(move_list.contains(&Move::new(E1, C1, MoveFlag::Castling)));
+        test_castling_moves(
+            "r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1",
+            &[
+                Move::new(E1, G1, MoveFlag::Castling),
+                Move::new(E1, C1, MoveFlag::Castling),
+            ],
+        );
     }
 
     #[test]
     fn test_black_castling() {
-        let board = Board::from_str("r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R b KQkq - 0 1").unwrap();
-        let mut move_list = MoveList::new();
-        generate_castling_moves::<false>(&board, &mut move_list);
-        println!("{:#?}", move_list);
-
-        assert_eq!(move_list.len(), 2);
-
-        assert!(move_list.contains(&Move::new(E8, G8, MoveFlag::Castling)));
-        assert!(move_list.contains(&Move::new(E8, C8, MoveFlag::Castling)));
+        test_castling_moves(
+            "r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R b KQkq - 0 1",
+            &[
+                Move::new(E8, G8, MoveFlag::Castling),
+                Move::new(E8, C8, MoveFlag::Castling),
+            ],
+        );
     }
 
     #[test]
     fn test_would_land_on_check_queen_side() {
-        let board =
-            Board::from_str("r3k2r/pppppppp/8/6b1/8/8/PPP1PPPP/R3K2R w KQkq - 0 1").unwrap();
-        let mut move_list = MoveList::new();
-        generate_castling_moves::<false>(&board, &mut move_list);
-        println!("{:#?}", move_list);
-
-        assert_eq!(move_list.len(), 1);
-
-        assert!(move_list.contains(&Move::new(E1, G1, MoveFlag::Castling)));
+        test_castling_moves(
+            "r3k2r/pppppppp/8/6b1/8/8/PPP1PPPP/R3K2R w KQkq - 0 1",
+            &[Move::new(E1, G1, MoveFlag::Castling)],
+        );
     }
 
     #[test]
     fn test_would_land_on_check_king_side() {
-        let board =
-            Board::from_str("r3k2r/pppppppp/8/2b5/8/5P2/PPPPP1PP/R3K2R w KQkq - 0 1").unwrap();
-        let mut move_list = MoveList::new();
-        generate_castling_moves::<false>(&board, &mut move_list);
-        println!("{:#?}", move_list);
-
-        assert_eq!(move_list.len(), 1);
-
-        assert!(move_list.contains(&Move::new(E1, C1, MoveFlag::Castling)));
+        test_castling_moves(
+            "r3k2r/pppppppp/8/2b5/8/5P2/PPPPP1PP/R3K2R w KQkq - 0 1",
+            &[Move::new(E1, C1, MoveFlag::Castling)],
+        );
     }
 
     #[test]
     fn test_both_sides_blocked() {
-        let board =
-            Board::from_str("r3k2r/pppppppp/8/8/8/1b5b/PP1PPP1P/R3K2R w KQkq - 0 1").unwrap();
-        let mut move_list = MoveList::new();
-        generate_castling_moves::<false>(&board, &mut move_list);
-        println!("{:#?}", move_list);
-
-        assert_eq!(move_list.len(), 0);
+        test_castling_moves("r3k2r/pppppppp/8/8/8/1b5b/PP1PPP1P/R3K2R w KQkq - 0 1", &[]);
     }
 }

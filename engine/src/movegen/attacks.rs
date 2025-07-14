@@ -5,7 +5,7 @@ use types::square::PerSquare;
 use types::square::Square;
 
 include!(concat!(env!("OUT_DIR"), "/tables.rs"));
-            
+
 include!(concat!(env!("OUT_DIR"), "/magics.rs"));
 
 #[repr(C)]

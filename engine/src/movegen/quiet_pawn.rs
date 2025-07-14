@@ -1,13 +1,10 @@
 use crate::board::Board;
-use crate::movegen::attacks::between;
 use crate::movegen::MoveList;
 use crate::types::chess_move::{Move, MoveFlag};
 use types::bitboard::BitBoard;
 use types::piece::PieceType;
 
-pub fn generate_quiet_pawn_moves<const CHECK: bool>(board: &Board, move_list: &mut MoveList) {
-    let mut push_mask = BitBoard::FULL;
-
+pub fn generate_quiet_pawn_moves(board: &Board, move_list: &mut MoveList, push_mask: BitBoard) {
     let side_to_move = board.side_to_move();
     let current_sides_pawns = board.pieces(PieceType::Pawn) & board.occupancies(side_to_move);
 
@@ -15,12 +12,6 @@ pub fn generate_quiet_pawn_moves<const CHECK: bool>(board: &Board, move_list: &m
 
     let king_square =
         (board.pieces(PieceType::King) & board.occupancies(board.side_to_move())).bit_scan();
-
-    if CHECK {
-        let checkers = board.checkers();
-        let checker = checkers.bit_scan();
-        push_mask = between(king_square, checker);
-    }
 
     // determine source squares that can move:
     // they have to either be not pinned or pinned with the king being on the same file
@@ -76,116 +67,115 @@ pub fn generate_quiet_pawn_moves<const CHECK: bool>(board: &Board, move_list: &m
 
 #[cfg(test)]
 mod test {
-    use std::str::FromStr;
-
     use crate::board::Board;
     use crate::movegen::quiet_pawn::generate_quiet_pawn_moves;
-    use crate::movegen::MoveList;
+    use crate::movegen::test::test_move_generator;
+    use crate::movegen::{compute_push_capture_mask, MoveList, PushCaptureMasks};
     use crate::types::chess_move::{Move, MoveFlag};
-    use types::square::Square::*;
+    use types::color::Color;
+    use types::square::Square::{self, *};
+    use types::square::{Rank, ALL_FILES};
+
+    fn test_quiet_pawn_moves(fen: &str, expected_moves: &[Move]) {
+        test_move_generator::<_, _, false>(
+            |board: &Board, moves_list: &mut MoveList, masks: &PushCaptureMasks| {
+                generate_quiet_pawn_moves(board, moves_list, masks.push_mask)
+            },
+            compute_push_capture_mask::<false>,
+            fen,
+            expected_moves,
+        )
+    }
 
     #[test]
     fn test_single_and_double_push() {
-        let board = Board::from_str("k7/8/8/8/8/8/7P/K7 w - - 0 1").unwrap();
-        let mut move_list = MoveList::new();
-        generate_quiet_pawn_moves::<false>(&board, &mut move_list);
-
-        println!("{:#?}", move_list);
-
-        assert_eq!(move_list.len(), 2);
-
-        assert!(move_list.contains(&Move::new(H2, H3, MoveFlag::Normal)));
-        assert!(move_list.contains(&Move::new(H2, H4, MoveFlag::DoublePawnPush)));
+        test_quiet_pawn_moves(
+            "k7/8/8/8/8/8/7P/K7 w - - 0 1",
+            &[
+                Move::new(H2, H3, MoveFlag::Normal),
+                Move::new(H2, H4, MoveFlag::DoublePawnPush),
+            ],
+        );
     }
 
     #[test]
     pub fn test_promotion() {
-        let board = Board::from_str("k7/7P/8/8/8/8/8/K7 w - - 0 1").unwrap();
-        let mut move_list = MoveList::new();
-        generate_quiet_pawn_moves::<false>(&board, &mut move_list);
-        println!("{:#?}", move_list);
-
-        assert_eq!(move_list.len(), 4);
-
-        assert!(move_list.contains(&Move::new(H7, H8, MoveFlag::BishopPromotion)));
-        assert!(move_list.contains(&Move::new(H7, H8, MoveFlag::KnightPromotion)));
-        assert!(move_list.contains(&Move::new(H7, H8, MoveFlag::RookPromotion)));
-        assert!(move_list.contains(&Move::new(H7, H8, MoveFlag::QueenPromotion)));
+        test_quiet_pawn_moves(
+            "k7/7P/8/8/8/8/8/K7 w - - 0 1",
+            &[
+                Move::new(H7, H8, MoveFlag::BishopPromotion),
+                Move::new(H7, H8, MoveFlag::KnightPromotion),
+                Move::new(H7, H8, MoveFlag::RookPromotion),
+                Move::new(H7, H8, MoveFlag::QueenPromotion),
+            ],
+        );
     }
 
     #[test]
     pub fn test_forced_check_block() {
-        let board = Board::from_str("6k1/8/8/8/K6r/8/4P3/8 w - - 0 1").unwrap();
-        let mut move_list = MoveList::new();
-        generate_quiet_pawn_moves::<true>(&board, &mut move_list);
-        println!("{:#?}", move_list);
-
-        assert_eq!(move_list.len(), 1);
-
-        assert!(move_list.contains(&Move::new(E2, E4, MoveFlag::DoublePawnPush)));
+        test_quiet_pawn_moves(
+            "6k1/8/8/8/K6r/8/4P3/8 w - - 0 1",
+            &[Move::new(E2, E4, MoveFlag::DoublePawnPush)],
+        );
     }
 
     #[test]
     pub fn test_pinned_by_rook_but_can_move_forward() {
-        let board = Board::from_str("1K4k1/8/8/1P6/8/1r6/8/8 w - - 0 1").unwrap();
-        let mut move_list = MoveList::new();
-        generate_quiet_pawn_moves::<false>(&board, &mut move_list);
-        println!("{:#?}", move_list);
-
-        assert_eq!(move_list.len(), 1);
-        assert!(move_list.contains(&Move::new(B5, B6, MoveFlag::Normal)));
+        test_quiet_pawn_moves(
+            "1K4k1/8/8/1P6/8/1r6/8/8 w - - 0 1",
+            &[Move::new(B5, B6, MoveFlag::Normal)],
+        )
     }
 
     #[test]
     pub fn test_rook_backward_pin() {
-        let board = Board::from_str("1r4k1/8/8/8/8/8/1P6/1K6 w - - 0 1").unwrap();
-        let mut move_list = MoveList::new();
-        generate_quiet_pawn_moves::<false>(&board, &mut move_list);
-        println!("{:#?}", move_list);
-
-        assert_eq!(move_list.len(), 2);
-        assert!(move_list.contains(&Move::new(B2, B3, MoveFlag::Normal)));
-        assert!(move_list.contains(&Move::new(B2, B4, MoveFlag::DoublePawnPush)));
+        test_quiet_pawn_moves(
+            "1r4k1/8/8/8/8/8/1P6/1K6 w - - 0 1",
+            &[
+                Move::new(B2, B3, MoveFlag::Normal),
+                Move::new(B2, B4, MoveFlag::DoublePawnPush),
+            ],
+        );
     }
 
     #[test]
     fn test_bishop_pin() {
-        let board = Board::from_str("6k1/8/5b2/8/8/8/1P6/K7 w - - 0 1").unwrap();
-        let mut move_list = MoveList::new();
-        generate_quiet_pawn_moves::<false>(&board, &mut move_list);
-        println!("{:#?}", move_list);
-
-        assert_eq!(move_list.len(), 0);
+        test_quiet_pawn_moves("6k1/8/5b2/8/8/8/1P6/K7 w - - 0 1", &[]);
     }
 
     #[test]
     fn test_two_pawns_one_bishop_pin() {
-        let board = Board::from_str("6k1/8/5b2/8/8/1P6/1P6/K7 w - - 0 1").unwrap();
-        let mut move_list = MoveList::new();
-        generate_quiet_pawn_moves::<false>(&board, &mut move_list);
-        println!("{:#?}", move_list);
-
-        assert_eq!(move_list.len(), 1);
-        assert!(move_list.contains(&Move::new(B3, B4, MoveFlag::Normal)));
+        test_quiet_pawn_moves(
+            "6k1/8/5b2/8/8/1P6/1P6/K7 w - - 0 1",
+            &[Move::new(B3, B4, MoveFlag::Normal)],
+        );
     }
 
     #[test]
     fn test_check_pawn_can_not_block() {
-        let board = Board::from_str("6k1/8/5b2/8/8/1P6/8/K7 w - - 0 1").unwrap();
-        let mut move_list = MoveList::new();
-        generate_quiet_pawn_moves::<true>(&board, &mut move_list);
-        println!("{:#?}", move_list);
-
-        assert_eq!(move_list.len(), 0);
+        test_quiet_pawn_moves("6k1/8/5b2/8/8/1P6/8/K7 w - - 0 1", &[]);
     }
 
     #[test]
     fn test_pawn_pushes_startpos() {
-        let board = Board::default();
-        let mut move_list = MoveList::new();
-        generate_quiet_pawn_moves::<false>(&board, &mut move_list);
-        println!("{:#?}", move_list);
+        let mut moves = vec![];
+        let color = Color::White;
+        let rank = Rank::R2;
 
-        assert_eq!(move_list.len(), 16);
+        for file in ALL_FILES {
+            let from = Square::from(rank, file);
+            moves.push(Move::new(
+                from,
+                from.forward(color).unwrap(),
+                MoveFlag::Normal,
+            ));
+            moves.push(Move::new(
+                from,
+                from.forward(color).unwrap().forward(color).unwrap(),
+                MoveFlag::DoublePawnPush,
+            ));
+        }
+
+        test_quiet_pawn_moves(Board::STARTING_POS_FEN, &moves);
     }
 }

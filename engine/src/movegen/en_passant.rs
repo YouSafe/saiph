@@ -31,7 +31,7 @@ fn is_valid_ep(board: &Board, capture: Square, source: Square, destination: Squa
     attack == BitBoard::EMPTY
 }
 
-pub fn generate_en_passant_move<const CHECK: bool>(board: &Board, move_list: &mut MoveList) {
+pub fn generate_en_passant_move(board: &Board, move_list: &mut MoveList) {
     if let Some(ep_square) = board.en_passant_target() {
         let side_to_move = board.side_to_move();
         let current_sides_pawns = board.pieces(PieceType::Pawn) & board.occupancies(side_to_move);
@@ -52,76 +52,57 @@ pub fn generate_en_passant_move<const CHECK: bool>(board: &Board, move_list: &mu
 
 #[cfg(test)]
 mod test {
-    use std::str::FromStr;
-
     use crate::board::Board;
     use crate::movegen::en_passant::generate_en_passant_move;
-    use crate::movegen::MoveList;
+    use crate::movegen::test::test_move_generator;
+    use crate::movegen::{compute_push_capture_mask, MoveList, PushCaptureMasks};
     use crate::types::chess_move::{Move, MoveFlag};
     use types::square::Square;
 
+    fn test_en_passant_moves(fen: &str, expected_moves: &[Move]) {
+        test_move_generator::<_, _, false>(
+            |board: &Board, moves_list: &mut MoveList, _masks: &PushCaptureMasks| {
+                generate_en_passant_move(board, moves_list)
+            },
+            compute_push_capture_mask::<false>,
+            fen,
+            expected_moves,
+        )
+    }
+
     #[test]
     fn test_valid_en_passant() {
-        let board = Board::from_str("8/8/k7/8/2Pp4/8/8/3K4 b - c3 0 1").unwrap();
-        let mut move_list = MoveList::new();
-        generate_en_passant_move::<false>(&board, &mut move_list);
-        println!("{:#?}", move_list);
-
-        assert_eq!(move_list.len(), 1);
-        assert!(move_list.contains(&Move::new(Square::D4, Square::C3, MoveFlag::EnPassant)));
+        test_en_passant_moves(
+            "8/8/k7/8/2Pp4/8/8/3K4 b - c3 0 1",
+            &[Move::new(Square::D4, Square::C3, MoveFlag::EnPassant)],
+        );
     }
 
     #[test]
     fn test_invalid_en_passant_horizontal() {
-        let board = Board::from_str("8/8/8/8/k1Pp3R/8/8/3K4 b - c3 0 1").unwrap();
-        let mut move_list = MoveList::new();
-        generate_en_passant_move::<false>(&board, &mut move_list);
-        println!("{:#?}", move_list);
-
-        assert_eq!(move_list.len(), 0);
+        test_en_passant_moves("8/8/8/8/k1Pp3R/8/8/3K4 b - c3 0 1", &[]);
     }
 
     #[test]
     fn test_invalid_en_passant_vertical() {
-        let board = Board::from_str("5q2/8/8/4pP2/8/8/8/5K2 w - e6 0 1").unwrap();
-        let mut move_list = MoveList::new();
-        generate_en_passant_move::<false>(&board, &mut move_list);
-        println!("{:#?}", move_list);
-
-        assert_eq!(move_list.len(), 0);
+        test_en_passant_moves("5q2/8/8/4pP2/8/8/8/5K2 w - e6 0 1", &[]);
     }
 
     #[test]
     fn test_invalid_en_passant_diagonal() {
-        let board = Board::from_str("8/7q/8/4pP2/8/8/8/1K6 w - e6 0 1").unwrap();
-        let mut move_list = MoveList::new();
-        generate_en_passant_move::<false>(&board, &mut move_list);
-        println!("{:#?}", move_list);
-
-        assert_eq!(move_list.len(), 0);
+        test_en_passant_moves("8/7q/8/4pP2/8/8/8/1K6 w - e6 0 1", &[]);
     }
 
     #[test]
     fn test_en_passant_edge() {
-        let board = Board::from_str(
+        test_en_passant_moves(
             "r3k2r/p1ppqpb1/bn2pnp1/3PN3/Pp2P3/2N2Q1p/1PPBBPPP/R3K2R b KQkq a3 0 1",
-        )
-        .unwrap();
-        let mut move_list = MoveList::new();
-        generate_en_passant_move::<false>(&board, &mut move_list);
-        println!("{:#?}", move_list);
-
-        assert_eq!(move_list.len(), 1);
-        assert!(move_list.contains(&Move::new(Square::B4, Square::A3, MoveFlag::EnPassant)));
+            &[Move::new(Square::B4, Square::A3, MoveFlag::EnPassant)],
+        );
     }
 
     #[test]
     fn test_en_passant_in_check() {
-        let board = Board::from_str("1kb5/p7/P7/2Ppb2B/7P/7K/8/8 w - d6 0 4").unwrap();
-        let mut move_list = MoveList::new();
-        generate_en_passant_move::<true>(&board, &mut move_list);
-        println!("{:#?}", move_list);
-
-        assert_eq!(move_list.len(), 0);
+        test_en_passant_moves("1kb5/p7/P7/2Ppb2B/7P/7K/8/8 w - d6 0 4", &[]);
     }
 }
