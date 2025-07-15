@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
 use self::PieceType::*;
-use crate::color::Color;
+use crate::types::color::Color;
 
 use crate::declare_per_type;
 
@@ -87,7 +87,7 @@ impl Piece {
     }
 
     pub fn to_unicode(&self) -> char {
-        use crate::color::Color::{Black, White};
+        use crate::types::color::Color::{Black, White};
 
         match (self.color(), self.ty()) {
             (White, Pawn) => '♙',
@@ -107,7 +107,7 @@ impl Piece {
     }
 
     pub fn to_ascii(&self) -> char {
-        use crate::color::Color::{Black, White};
+        use crate::types::color::Color::{Black, White};
         match (self.color(), self.ty()) {
             (White, Pawn) => 'P',
             (White, Knight) => 'N',
@@ -137,15 +137,15 @@ impl Debug for Piece {
 
 #[cfg(test)]
 mod test {
-    use crate::{color::ALL_COLORS, piece::ALL_PIECES};
+    use crate::types::{color::ALL_COLORS, piece::ALL_PIECES};
 
     use super::Piece;
 
     #[test]
     fn construction() {
-        use crate::color::Color::*;
-        use crate::piece::Piece::*;
-        use crate::piece::PieceType::*;
+        use crate::types::color::Color::*;
+        use crate::types::piece::Piece::*;
+        use crate::types::piece::PieceType::*;
 
         let lookup = [
             (WhitePawn, (Pawn, White)),
@@ -167,7 +167,7 @@ mod test {
                 let piece = Piece::new(ty, color);
                 assert_eq!(piece.color(), color);
                 assert_eq!(piece.ty(), ty);
-            }       
+            }
         }
 
         for (piece, (ty, color)) in lookup {

@@ -4,7 +4,7 @@ use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, S
 use std::str::FromStr;
 
 use crate::declare_per_type;
-use crate::square::Square;
+use crate::types::square::Square;
 
 use super::square::PerSquare;
 

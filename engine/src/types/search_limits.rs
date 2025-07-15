@@ -1,5 +1,5 @@
 use std::time::Duration;
-use types::color::PerColor;
+use crate::types::color::PerColor;
 
 use super::uci_move::UCIMove;
 

@@ -1,15 +1,10 @@
-use types::{
-    castling_rights::{NUM_CASTLING_RIGHTS_CONFIGURATIONS, PerCastlingRightsConfig},
-    color::{NUM_COLORS, PerColor},
-    piece::{NUM_PIECES, PerPieceType},
-    square::{NUM_FILES, NUM_SQUARES, PerFile, PerSquare},
-};
+use crate::{NUM_CASTLING_RIGHTS_CONFIGURATIONS, NUM_COLORS, NUM_FILES, NUM_PIECES, NUM_SQUARES};
 
 #[repr(C)]
 pub struct GeneratedKeys {
-    pub piece_keys: PerColor<PerPieceType<PerSquare<u64>>>,
-    pub en_passant_keys: PerFile<u64>,
-    pub castle_keys: PerCastlingRightsConfig<u64>,
+    pub piece_keys: [[[u64; NUM_SQUARES]; NUM_PIECES]; NUM_COLORS],
+    pub en_passant_keys: [u64; NUM_FILES],
+    pub castle_keys: [u64; NUM_CASTLING_RIGHTS_CONFIGURATIONS],
     pub side_key: u64,
 }
 
@@ -38,11 +33,9 @@ pub fn generate_keys() -> GeneratedKeys {
     let side_key = random_gen.next();
 
     GeneratedKeys {
-        piece_keys: PerColor::new(
-            piece_keys.map(|per_piece| PerPieceType::new(per_piece.map(PerSquare::new))),
-        ),
-        en_passant_keys: PerFile::new(en_passant_keys),
-        castle_keys: PerCastlingRightsConfig::new(castle_keys),
+        piece_keys,
+        en_passant_keys,
+        castle_keys,
         side_key,
     }
 }

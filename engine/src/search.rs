@@ -14,7 +14,7 @@ use web_time::Instant;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
-use types::color::Color;
+use crate::types::color::Color;
 
 pub struct NodeCountBuffer {
     inner: Vec<AtomicU64>,

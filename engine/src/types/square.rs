@@ -2,8 +2,8 @@ use std::fmt;
 use std::fmt::Formatter;
 use std::str::FromStr;
 
-use crate::color::Color;
 use crate::declare_per_type;
+use crate::types::color::Color;
 
 #[rustfmt::skip]
 #[repr(u8)]

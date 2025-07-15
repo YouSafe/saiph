@@ -1,8 +1,8 @@
 use crate::types::chess_move::Move;
 use std::str::FromStr;
-use types::promotion::Promotion;
-use types::promotion::Promotion::{Bishop, Knight, Queen, Rook};
-use types::square::Square;
+use crate::types::promotion::Promotion;
+use crate::types::promotion::Promotion::{Bishop, Knight, Queen, Rook};
+use crate::types::square::Square;
 
 #[derive(Debug, PartialEq, Clone, Eq)]
 pub struct UCIMove {

@@ -2,16 +2,16 @@ use crate::movegen::attacks::{
     between, get_bishop_attacks, get_knight_attacks, get_pawn_attacks, get_rook_attacks,
 };
 use crate::movegen::{generate_moves, MoveList};
+use crate::types::bitboard::BitBoard;
+use crate::types::castling_rights::{CastlingRights, UPDATE_CASTLING_RIGHT_TABLE};
 use crate::types::chess_move::{Move, MoveFlag};
-use crate::zobrist::{CASTLE_KEYS, EN_PASSANT_KEYS, PIECE_KEYS, SIDE_KEY};
+use crate::types::color::{Color, PerColor};
+use crate::types::piece::{PerPieceType, Piece, PieceType, ALL_PIECES};
+use crate::types::square::{File, PerSquare, Square};
+use crate::zobrist::{self};
 use std::fmt;
 use std::fmt::Formatter;
 use std::str::FromStr;
-use types::bitboard::BitBoard;
-use types::castling_rights::{CastlingRights, UPDATE_CASTLING_RIGHT_TABLE};
-use types::color::{Color, PerColor};
-use types::piece::{PerPieceType, Piece, PieceType, ALL_PIECES};
-use types::square::{File, PerSquare, Square};
 
 #[derive(Debug, Clone)]
 pub struct BoardState {
@@ -56,7 +56,7 @@ impl Board {
 
         new_state.en_passant_target = None;
         if let Some(en_passant_target) = self.en_passant_target() {
-            new_state.hash ^= EN_PASSANT_KEYS[en_passant_target.to_file()];
+            new_state.hash ^= zobrist::en_passant_keys(en_passant_target.to_file());
         }
 
         new_state.captured_piece = None;
@@ -68,7 +68,7 @@ impl Board {
         let target_piece = self.piece_at(to);
 
         self.remove_piece(from, source_piece);
-        new_state.hash ^= PIECE_KEYS[self.side_to_move][source_piece.ty()][from];
+        new_state.hash ^= zobrist::piece_keys(self.side_to_move, source_piece.ty(), from);
 
         let mut capture_target: Option<(Square, Piece)> = None;
 
@@ -77,7 +77,7 @@ impl Board {
             MoveFlag::Normal => (),
             MoveFlag::DoublePawnPush => {
                 new_state.en_passant_target = Some(to.forward(!self.side_to_move).unwrap());
-                new_state.hash ^= EN_PASSANT_KEYS[to.to_file()];
+                new_state.hash ^= zobrist::en_passant_keys(to.to_file());
             }
             MoveFlag::Castling => {
                 const CASTLE_CONFIG: [(File, File); 2] = [(File::A, File::D), (File::H, File::F)];
@@ -93,10 +93,12 @@ impl Board {
                 let rook_piece = PieceType::Rook.to_piece(self.side_to_move);
 
                 self.remove_piece(rook_start_square, rook_piece);
-                new_state.hash ^= PIECE_KEYS[self.side_to_move][PieceType::Rook][rook_start_square];
+                new_state.hash ^=
+                    zobrist::piece_keys(self.side_to_move, PieceType::Rook, rook_start_square);
 
                 self.put_piece(rook_end_square, rook_piece);
-                new_state.hash ^= PIECE_KEYS[self.side_to_move][PieceType::Rook][rook_end_square];
+                new_state.hash ^=
+                    zobrist::piece_keys(self.side_to_move, PieceType::Rook, rook_end_square);
             }
             MoveFlag::Capture => {
                 capture_target = Some((
@@ -143,23 +145,23 @@ impl Board {
         if let Some((square, piece)) = capture_target {
             new_state.captured_piece = Some(piece);
             self.remove_piece(square, piece);
-            new_state.hash ^= PIECE_KEYS[!self.side_to_move][piece.ty()][square];
+            new_state.hash ^= zobrist::piece_keys(!self.side_to_move, piece.ty(), square);
 
             // remove castling right for that side
             if piece.ty() == PieceType::Rook {
-                new_state.hash ^= CASTLE_KEYS[new_state.castling_rights];
+                new_state.hash ^= zobrist::castle_keys(new_state.castling_rights);
 
                 new_state.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[from];
                 new_state.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[to];
 
-                new_state.hash ^= CASTLE_KEYS[new_state.castling_rights];
+                new_state.hash ^= zobrist::castle_keys(new_state.castling_rights);
             }
 
             new_state.rule50 = 0;
         }
 
         self.put_piece(to, source_piece);
-        new_state.hash ^= PIECE_KEYS[self.side_to_move][source_piece.ty()][to];
+        new_state.hash ^= zobrist::piece_keys(self.side_to_move, source_piece.ty(), to);
 
         if source_piece.ty() == PieceType::Pawn {
             new_state.rule50 = 0;
@@ -168,23 +170,23 @@ impl Board {
         // update castling rights
         if source_piece.ty() == PieceType::Rook {
             // rook moved
-            new_state.hash ^= CASTLE_KEYS[new_state.castling_rights];
+            new_state.hash ^= zobrist::castle_keys(new_state.castling_rights);
             new_state.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[from];
             new_state.castling_rights &= UPDATE_CASTLING_RIGHT_TABLE[to];
-            new_state.hash ^= CASTLE_KEYS[new_state.castling_rights];
+            new_state.hash ^= zobrist::castle_keys(new_state.castling_rights);
         } else if source_piece.ty() == PieceType::King {
             // remove castling rights for side if king moved (includes castling)
-            new_state.hash ^= CASTLE_KEYS[new_state.castling_rights];
+            new_state.hash ^= zobrist::castle_keys(new_state.castling_rights);
             new_state.castling_rights -= match self.side_to_move {
                 Color::White => CastlingRights::WHITE_BOTH_SIDES,
                 Color::Black => CastlingRights::BLACK_BOTH_SIDES,
             };
-            new_state.hash ^= CASTLE_KEYS[new_state.castling_rights];
+            new_state.hash ^= zobrist::castle_keys(new_state.castling_rights);
         }
 
         // update side
         self.side_to_move = !self.side_to_move;
-        new_state.hash ^= SIDE_KEY;
+        new_state.hash ^= zobrist::side_key();
 
         let king_square =
             (self.pieces(PieceType::King) & self.occupancies(self.side_to_move())).bit_scan();
@@ -482,7 +484,7 @@ impl FromStr for Board {
 
                     mailbox[square] = Some(piece);
 
-                    hash ^= PIECE_KEYS[color][piece_type][square];
+                    hash ^= zobrist::piece_keys(color, piece_type, square);
 
                     file += 1;
                     if file > 8 {
@@ -550,13 +552,13 @@ impl FromStr for Board {
             .map_err(|_| ParseFenError::BadFullMoveNumber)?;
 
         if let Some(en_passant_target) = en_passant_target {
-            hash ^= EN_PASSANT_KEYS[en_passant_target.to_file()];
+            hash ^= zobrist::en_passant_keys(en_passant_target.to_file());
         }
 
-        hash ^= CASTLE_KEYS[castling_rights];
+        hash ^= zobrist::castle_keys(castling_rights);
 
         if side_to_move == Color::Black {
-            hash ^= SIDE_KEY;
+            hash ^= zobrist::side_key();
         }
 
         // ========== CALCULATE PINNED & CHECKERS ==========
@@ -678,9 +680,9 @@ Hash: 	0x4a887e3c9bc2624a
     fn test_fen_parsing() {
         let board = Board::from_str("2r5/8/8/3R4/2P1k3/2K5/8/8 b - - 0 1").unwrap();
 
-        use types::color::Color::*;
-        use types::piece::PieceType::*;
-        use types::square::Square::*;
+        use crate::types::color::Color::*;
+        use crate::types::piece::PieceType::*;
+        use crate::types::square::Square::*;
 
         assert_eq!(
             board.piece_at(C3).map(|p| (p.ty(), p.color())),

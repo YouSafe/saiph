@@ -13,7 +13,7 @@ use std::str::{FromStr, SplitAsciiWhitespace};
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::Arc;
 use std::time::Duration;
-use types::color::{Color, PerColor};
+use crate::types::color::{Color, PerColor};
 
 /// Default transposition table size in MB
 const DEFAULT_HASH_SIZE: usize = 1;

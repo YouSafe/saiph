@@ -303,7 +303,6 @@ dependencies = [
  "arrayvec",
  "criterion",
  "tablegen",
- "types",
  "web-time",
 ]
 
@@ -632,9 +631,6 @@ dependencies = [
 [[package]]
 name = "tablegen"
 version = "0.1.0"
-dependencies = [
- "types",
-]
 
 [[package]]
 name = "tinytemplate"
@@ -645,10 +641,6 @@ dependencies = [
  "serde",
  "serde_json",
 ]
-
-[[package]]
-name = "types"
-version = "0.1.0"
 
 [[package]]
 name = "unicode-ident"

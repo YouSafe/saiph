@@ -2,8 +2,8 @@ use crate::board::Board;
 use crate::movegen::attacks::get_knight_attacks;
 use crate::movegen::MoveList;
 use crate::types::chess_move::{Move, MoveFlag};
-use types::bitboard::BitBoard;
-use types::piece::PieceType;
+use crate::types::bitboard::BitBoard;
+use crate::types::piece::PieceType;
 
 pub fn generate_knight_moves(
     board: &Board,
@@ -39,7 +39,7 @@ mod test {
     use crate::movegen::test::test_move_generator;
     use crate::movegen::{compute_push_capture_mask, MoveList, PushCaptureMasks};
     use crate::types::chess_move::{Move, MoveFlag};
-    use types::square::Square::*;
+    use crate::types::square::Square::*;
 
     fn test_knight_moves(fen: &str, expected_moves: &[Move]) {
         test_move_generator::<_, _, false>(

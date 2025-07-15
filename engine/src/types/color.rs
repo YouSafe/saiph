@@ -1,6 +1,6 @@
 use std::ops::Not;
 
-use crate::{declare_per_type, square::Rank};
+use crate::{declare_per_type, types::square::Rank};
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

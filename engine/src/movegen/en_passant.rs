@@ -2,9 +2,9 @@ use crate::board::Board;
 use crate::movegen::attacks::{get_bishop_attacks, get_pawn_attacks, get_rook_attacks};
 use crate::movegen::MoveList;
 use crate::types::chess_move::{Move, MoveFlag};
-use types::bitboard::BitBoard;
-use types::piece::PieceType;
-use types::square::Square;
+use crate::types::bitboard::BitBoard;
+use crate::types::piece::PieceType;
+use crate::types::square::Square;
 
 fn is_valid_ep(board: &Board, capture: Square, source: Square, destination: Square) -> bool {
     // create combined bitboard of board with both source and capture removed.
@@ -57,7 +57,7 @@ mod test {
     use crate::movegen::test::test_move_generator;
     use crate::movegen::{compute_push_capture_mask, MoveList, PushCaptureMasks};
     use crate::types::chess_move::{Move, MoveFlag};
-    use types::square::Square;
+    use crate::types::square::Square;
 
     fn test_en_passant_moves(fen: &str, expected_moves: &[Move]) {
         test_move_generator::<_, _, false>(

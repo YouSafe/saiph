@@ -1,5 +1,5 @@
 use crate::types::search_limits::TimeLimit;
-use types::color::Color;
+use crate::types::color::Color;
 use web_time::{Duration, Instant};
 
 #[derive(Debug, Clone, Copy)]
@@ -72,7 +72,7 @@ mod test {
     use crate::clock::Clock;
     use crate::types::search_limits::TimeLimit;
     use std::time::{Duration, Instant};
-    use types::color::{Color, PerColor};
+    use crate::types::color::{Color, PerColor};
 
     #[test]
     fn test_first_move() {

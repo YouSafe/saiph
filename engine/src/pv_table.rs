@@ -79,7 +79,7 @@ impl fmt::Display for PrincipleVariationTable {
 #[cfg(test)]
 mod tests {
 
-    use types::square::Square;
+    use crate::types::square::Square;
 
     use crate::types::chess_move::MoveFlag;
 
