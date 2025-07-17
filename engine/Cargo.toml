@@ -13,3 +13,10 @@ types = { path = "../types" }
 [build-dependencies]
 tablegen = { path = "../tablegen" }
 types = { path = "../types" }
+
+[dev-dependencies]
+criterion = "0.6"
+
+[[bench]]
+name = "perft_benchmark"
+harness = false
