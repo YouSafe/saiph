@@ -21,9 +21,9 @@ pub struct State {
 
 trait FormattedWriter {
     fn typename() -> String;
-    fn write(self, file: &mut BufWriter<File>, state: State) -> std::io::Result<()>;
-    fn wrap() -> usize {
-        1
+    fn write(self, file: &mut impl Write, state: State) -> std::io::Result<()>;
+    fn is_primitive() -> bool {
+        true
     }
 }
 
@@ -32,44 +32,55 @@ impl<const N: usize, T: FormattedWriter> FormattedWriter for [T; N] {
         format!("[{}; {N}]", T::typename())
     }
 
-    fn write(self, file: &mut BufWriter<File>, state: State) -> std::io::Result<()> {
-        write!(file, "[")?;
+    fn is_primitive() -> bool {
+        false
+    }
 
-        let len = self.len();
+    fn write(self, file: &mut impl Write, state: State) -> std::io::Result<()> {
+        write!(file, "[\n")?;
 
-        fn indentation(file: &mut BufWriter<File>, indentation: usize) -> std::io::Result<()> {
+        fn indentation(file: &mut impl Write, indentation: usize) -> std::io::Result<()> {
             for _ in 0..indentation {
-                write!(file, "\t")?;
+                write!(file, "    ")?;
             }
             Ok(())
         }
 
-        writeln!(file)?;
+        let mut temp = Vec::new();
+        let mut current_line_len = (state.indentation + 1) * 4;
+        const MAX_LINE_WIDTH: usize = 80;
 
-        let mut new_line = true;
+        indentation(file, state.indentation + 1)?;
+
         for (index, val) in self.into_iter().enumerate() {
-            if new_line {
-                indentation(file, state.indentation + 1)?;
-                new_line = false;
+            let new_state = State {
+                indentation: state.indentation + 1,
+            };
+
+            if T::is_primitive() {
+                temp.clear();
+                val.write(&mut temp, new_state)?;
+            } else {
+                val.write(file, new_state)?;
             }
 
-            val.write(
-                file,
-                State {
-                    indentation: state.indentation + 1,
-                },
-            )?;
-            if index < len - 1 {
-                write!(file, ",")?;
-            }
+            let element_str = unsafe { std::str::from_utf8_unchecked(&temp) };
+            let suffix = if index < N - 1 { ", " } else { "" };
+            let piece_len = element_str.len() + suffix.len();
 
-            if (index + 1) % T::wrap() == 0 || index == len - 1 {
+            if current_line_len + piece_len > MAX_LINE_WIDTH {
                 writeln!(file)?;
-                new_line = true;
+                indentation(file, state.indentation + 1)?;
+                current_line_len = (state.indentation + 1) * 4;
             }
-        }
-        indentation(file, state.indentation)?;
 
+            file.write_all(element_str.as_bytes())?;
+            file.write_all(suffix.as_bytes())?;
+            current_line_len += piece_len;
+        }
+
+        writeln!(file)?;
+        indentation(file, state.indentation)?;
         write!(file, "]")
     }
 }
@@ -79,12 +90,8 @@ impl FormattedWriter for u64 {
         "u64".to_owned()
     }
 
-    fn write(self, file: &mut BufWriter<File>, _state: State) -> std::io::Result<()> {
+    fn write(self, file: &mut impl Write, _state: State) -> std::io::Result<()> {
         write!(file, "{self}")
-    }
-
-    fn wrap() -> usize {
-        4
     }
 }
 
@@ -93,7 +100,7 @@ impl FormattedWriter for Magic {
         "Magic".to_owned()
     }
 
-    fn write(self, file: &mut BufWriter<File>, _state: State) -> std::io::Result<()> {
+    fn write(self, file: &mut impl Write, _state: State) -> std::io::Result<()> {
         write!(
             file,
             "Magic {{ magic: {}, offset: {}, mask: {} }}",
