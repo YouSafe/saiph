@@ -86,7 +86,7 @@ impl fmt::Display for Square {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ParsePositionError {
     InvalidLength,
     InvalidRank,
@@ -168,9 +168,9 @@ mod test {
 
     #[test]
     fn test_square_parsing() {
-        assert_eq!("e2".parse::<Square>().unwrap(), Square::E2);
-        assert_eq!("D4".parse::<Square>().unwrap(), Square::D4);
-        assert_eq!("a1".parse::<Square>().unwrap(), Square::A1);
-        assert_eq!("h8".parse::<Square>().unwrap(), Square::H8);
+        assert_eq!("e2".parse::<Square>(), Ok(Square::E2));
+        assert_eq!("D4".parse::<Square>(), Ok(Square::D4));
+        assert_eq!("a1".parse::<Square>(), Ok(Square::A1));
+        assert_eq!("h8".parse::<Square>(), Ok(Square::H8));
     }
 }

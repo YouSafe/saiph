@@ -680,30 +680,14 @@ Hash: 	0x4a887e3c9bc2624a
     fn test_fen_parsing() {
         let board = Board::from_str("2r5/8/8/3R4/2P1k3/2K5/8/8 b - - 0 1").unwrap();
 
-        use crate::types::color::Color::*;
-        use crate::types::piece::PieceType::*;
+        use crate::types::piece::Piece::*;
         use crate::types::square::Square::*;
 
-        assert_eq!(
-            board.piece_at(C3).map(|p| (p.ty(), p.color())),
-            Some((King, White))
-        );
-        assert_eq!(
-            board.piece_at(E4).map(|p| (p.ty(), p.color())),
-            Some((King, Black))
-        );
-        assert_eq!(
-            board.piece_at(C4).map(|p| (p.ty(), p.color())),
-            Some((Pawn, White))
-        );
-        assert_eq!(
-            board.piece_at(D5).map(|p| (p.ty(), p.color())),
-            Some((Rook, White))
-        );
-        assert_eq!(
-            board.piece_at(C8).map(|p| (p.ty(), p.color())),
-            Some((Rook, Black))
-        );
+        assert_eq!(board.piece_at(C3), Some(WhiteKing));
+        assert_eq!(board.piece_at(E4), Some(BlackKing));
+        assert_eq!(board.piece_at(C4), Some(WhitePawn));
+        assert_eq!(board.piece_at(D5), Some(WhiteRook));
+        assert_eq!(board.piece_at(C8), Some(BlackRook));
 
         println!("{board}");
     }
