@@ -114,12 +114,35 @@ fn write_variable<T: FormattedWriter>(
     name: &str,
     variable: T,
 ) -> std::io::Result<()> {
+    writeln!(file, "#[rustfmt::skip]")?;
     write!(file, "pub static {name}: {} = ", T::typename())?;
     variable.write(file, State { indentation: 0 })?;
     writeln!(file, ";")
 }
 
-fn main() {
+trait Transform {
+    type Output;
+
+    fn transform(self) -> Self::Output;
+}
+
+impl<const N: usize> Transform for [BitBoard; N] {
+    type Output = [u64; N];
+
+    fn transform(self) -> Self::Output {
+        self.map(|BitBoard(v)| v)
+    }
+}
+
+impl<const N: usize, T: Transform> Transform for [T; N] {
+    type Output = [T::Output; N];
+
+    fn transform(self) -> Self::Output {
+        self.map(|inner| inner.transform())
+    }
+}
+
+fn main() -> std::io::Result<()> {
     println!("cargo:rerun-if-changed=../tablegen/");
 
     let pawn_attacks = generate_pawn_attacks();
@@ -131,61 +154,45 @@ fn main() {
 
     let zobrist: GeneratedKeys = generate_keys();
 
-    let out_dir = env::var("OUT_DIR").unwrap();
+    let out_dir = env::var("OUT_DIR").expect("should be set by cargo");
 
     let dest_path = Path::new(&out_dir).join("tables.rs");
-    let tables = File::create(&dest_path).unwrap();
+    let tables = File::create(&dest_path)?;
     let mut writer = BufWriter::new(tables);
 
-    write_variable(
-        &mut writer,
-        "PAWN_ATTACKS",
-        pawn_attacks.map(|color| color.map(|BitBoard(v)| v)),
-    )
-    .unwrap();
-    write_variable(
-        &mut writer,
-        "KING_ATTACKS",
-        king_attacks.map(|BitBoard(v)| v),
-    )
-    .unwrap();
-    write_variable(
-        &mut writer,
-        "KNIGHT_ATTACKS",
-        knight_attacks.map(|BitBoard(v)| v),
-    )
-    .unwrap();
-    write_variable(
-        &mut writer,
-        "SQUARES_BETWEEN",
-        squares_between.map(|from| from.map(|BitBoard(v)| v)),
-    )
-    .unwrap();
-    write_variable(
-        &mut writer,
-        "SQUARES_LINE",
-        squares_line.map(|from| from.map(|BitBoard(v)| v)),
-    )
-    .unwrap();
-    write_variable(
-        &mut writer,
-        "SLIDER_ATTACKS",
-        slider_attacks.map(|BitBoard(v)| v),
-    )
-    .unwrap();
+    write_variable(&mut writer, "PAWN_ATTACKS", pawn_attacks.transform())?;
+    write_variable(&mut writer, "KING_ATTACKS", king_attacks.transform())?;
+    write_variable(&mut writer, "KNIGHT_ATTACKS", knight_attacks.transform())?;
+    write_variable(&mut writer, "SQUARES_BETWEEN", squares_between.transform())?;
+    write_variable(&mut writer, "SQUARES_LINE", squares_line.transform())?;
+    write_variable(&mut writer, "SLIDER_ATTACKS", slider_attacks.transform())?;
 
     let dest_path = Path::new(&out_dir).join("zobrist.rs");
-    let tables = File::create(&dest_path).unwrap();
+    let tables = File::create(&dest_path)?;
     let mut writer = BufWriter::new(tables);
 
-    write_variable(&mut writer, "PIECE_KEYS", zobrist.piece_keys).unwrap();
-    write_variable(&mut writer, "EN_PASSANT_KEYS", zobrist.en_passant_keys).unwrap();
-    write_variable(&mut writer, "CASTLE_KEYS", zobrist.castle_keys).unwrap();
-    write_variable(&mut writer, "SIDE_KEY", zobrist.side_key).unwrap();
+    write_variable(&mut writer, "PIECE_KEYS", zobrist.piece_keys)?;
+    write_variable(&mut writer, "EN_PASSANT_KEYS", zobrist.en_passant_keys)?;
+    write_variable(&mut writer, "CASTLE_KEYS", zobrist.castle_keys)?;
+    write_variable(&mut writer, "SIDE_KEY", zobrist.side_key)?;
 
     let dest_path = Path::new(&out_dir).join("magics.rs");
-    let tables = File::create(&dest_path).unwrap();
+    let tables = File::create(&dest_path)?;
     let mut writer = BufWriter::new(tables);
-    write_variable(&mut writer, "ROOK_MAGICS", ROOK_MAGICS).unwrap();
-    write_variable(&mut writer, "BISHOP_MAGICS", BISHOP_MAGICS).unwrap();
+
+    writeln!(
+        writer,
+        r#"
+#[repr(C)]
+pub struct Magic {{
+    pub magic: u64,
+    pub mask: u64,
+    pub offset: u64,
+}}
+"#
+    )?;
+
+    write_variable(&mut writer, "ROOK_MAGICS", ROOK_MAGICS)?;
+    write_variable(&mut writer, "BISHOP_MAGICS", BISHOP_MAGICS)?;
+    Ok(())
 }

@@ -3,13 +3,6 @@ use crate::types::color::Color;
 use crate::types::square::Square;
 
 mod internal {
-    #[repr(C)]
-    pub struct Magic {
-        pub magic: u64,
-        pub mask: u64,
-        pub offset: u64,
-    }
-
     include!(concat!(env!("OUT_DIR"), "/tables.rs"));
     include!(concat!(env!("OUT_DIR"), "/magics.rs"));
 }
