@@ -42,14 +42,6 @@ macro_rules! declare_per_type {
             pub const fn new(inner: [T; $num_elements]) -> Self {
                 Self { inner }
             }
-
-            pub fn into_inner(self) -> [T; $num_elements] {
-                self.inner
-            }
-
-            pub fn as_ref(&self) -> &[T] {
-                &self.inner
-            }
         }
     };
 }

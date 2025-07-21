@@ -50,6 +50,12 @@ impl From<Color> for usize {
 
 declare_per_type!(PerColor, Color, NUM_COLORS);
 
+impl<T: PartialEq> PerColor<T> {
+    pub fn contains(&self, x: &T) -> bool {
+        self.inner.contains(x)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

@@ -3,17 +3,17 @@ use crate::clock::Clock;
 use crate::movegen::perf_test;
 use crate::threadpool::ThreadPool;
 use crate::transposition::TranspositionTable;
+use crate::types::color::{Color, PerColor};
 use crate::types::search_limits::{SearchLimits, TimeLimit};
 use crate::types::uci_move::UCIMove;
 use crate::{Printer, ThreadSpawner};
-use web_time::Instant;
 use std::iter::Peekable;
 use std::marker::PhantomData;
 use std::str::{FromStr, SplitAsciiWhitespace};
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::Arc;
 use std::time::Duration;
-use crate::types::color::{Color, PerColor};
+use web_time::Instant;
 
 /// Default transposition table size in MB
 const DEFAULT_HASH_SIZE: usize = 1;
@@ -351,7 +351,7 @@ fn parse_go(mut parts: Peekable<SplitAsciiWhitespace<'_>>) -> Result<Command, Pa
         TimeLimit::Infinite
     } else if let Some(move_time) = move_time {
         TimeLimit::Fixed { move_time }
-    } else if !time_left.as_ref().contains(&Duration::default()) {
+    } else if !time_left.contains(&Duration::default()) {
         TimeLimit::Dynamic {
             time_left,
             increment,
