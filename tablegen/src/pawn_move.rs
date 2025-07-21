@@ -3,36 +3,36 @@ use crate::{BitBoard, Color, Square};
 pub fn generate_pawn_attacks() -> [[BitBoard; 64]; 2] {
     let mut result = [[BitBoard(0); 64]; 2];
 
-    let mut square = 0;
-    while square < 64 {
+    for square in 0..64 {
         let sq = Square::from_index(square as u8);
         result[Color::White as usize][square] = mask_pawn_attacks(sq, Color::White);
         result[Color::Black as usize][square] = mask_pawn_attacks(sq, Color::Black);
-        square += 1;
     }
 
     result
 }
 
 fn mask_pawn_attacks(square: Square, side: Color) -> BitBoard {
-    let BitBoard(mut attacks) = BitBoard(0);
+    let mut attacks = BitBoard(0);
 
-    let BitBoard(bitboard) = BitBoard::from_square(square);
+    let bitboard = BitBoard::from_square(square);
 
     // left and right from the point of view of the white player
-    let (left_diagonal, right_diagonal) = match side {
-        Color::White => (bitboard << 7, bitboard << 9),
-        Color::Black => (bitboard >> 9, bitboard >> 7),
-    };
+    const MOVES: [[(i8, BitBoard); 2]; 2] = [
+        // White Moves
+        [(-7, BitBoard::NOT_H_FILE), (-9, BitBoard::NOT_A_FILE)],
+        // Black Moves
+        [(9, BitBoard::NOT_H_FILE), (7, BitBoard::NOT_A_FILE)],
+    ];
 
-    if (left_diagonal & BitBoard::NOT_H_FILE.0) != BitBoard(0).0 {
-        attacks |= left_diagonal;
-    }
-    if (right_diagonal & BitBoard::NOT_A_FILE.0) != BitBoard(0).0 {
-        attacks |= right_diagonal;
+    for (shift, mask) in MOVES[side as usize] {
+        let shifted = bitboard.shifted(shift);
+        if (shifted & mask) != BitBoard(0) {
+            attacks |= shifted;
+        }
     }
 
-    BitBoard(attacks)
+    attacks
 }
 
 #[cfg(test)]

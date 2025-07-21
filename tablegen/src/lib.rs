@@ -1,6 +1,6 @@
 use std::{
     fmt::{self, Formatter},
-    ops::BitOrAssign,
+    ops::{BitAnd, BitOr, BitOrAssign, BitXorAssign},
 };
 
 pub mod king_move;
@@ -62,6 +62,13 @@ pub const NUM_COLORS: usize = 2;
 pub const NUM_PIECES: usize = 6;
 
 impl BitBoard {
+    pub fn shifted(&self, shift: i8) -> BitBoard {
+        BitBoard(match shift > 0 {
+            true => self.0 >> shift as i32,
+            false => self.0 << shift.abs() as i32,
+        })
+    }
+
     pub const fn from_square(square: Square) -> BitBoard {
         BitBoard(1 << square.to_index())
     }
@@ -125,6 +132,34 @@ const fn generate_all_files() -> [BitBoard; 8] {
 impl BitOrAssign<Square> for BitBoard {
     fn bitor_assign(&mut self, rhs: Square) {
         self.0 |= BitBoard::from_square(rhs).0
+    }
+}
+
+impl BitXorAssign<Square> for BitBoard {
+    fn bitxor_assign(&mut self, rhs: Square) {
+        self.0 ^= 1 << rhs as u64;
+    }
+}
+
+impl BitOrAssign<BitBoard> for BitBoard {
+    fn bitor_assign(&mut self, rhs: BitBoard) {
+        self.0 |= rhs.0
+    }
+}
+
+impl BitAnd for BitBoard {
+    type Output = BitBoard;
+
+    fn bitand(self, rhs: Self) -> Self::Output {
+        BitBoard(self.0 & rhs.0)
+    }
+}
+
+impl BitOr for BitBoard {
+    type Output = BitBoard;
+
+    fn bitor(self, rhs: Self) -> Self::Output {
+        BitBoard(self.0 | rhs.0)
     }
 }
 

@@ -3,62 +3,25 @@ use crate::BitBoard;
 pub fn generate_squares_between() -> [[BitBoard; 64]; 64] {
     let mut result = [[BitBoard(0); 64]; 64];
 
-    const fn to_square_bitboard(rank: i8, file: i8) -> u64 {
-        1 << (rank * 8 + file)
-    }
+    const DIRECTIONS: [i8; 8] = [9, 8, 7, 1, -1, -7, -8, -9];
 
-    const fn max(a: i8, b: i8) -> i8 {
-        [a, b][(a < b) as usize]
-    }
+    for from in 0..64 {
+        for dir in DIRECTIONS {
+            let mut attacks = 0;
+            let mut prev_square = from;
 
-    let mut from: i8 = 0;
-    while from < 64 {
-        let mut to: i8 = 0;
-        while to < 64 {
-            let from_indices @ (from_rank, from_file) = (from / 8, from % 8);
-            let to_indices @ (to_rank, to_file) = (to / 8, to % 8);
-            let (dir_rank, dir_file) = (
-                (to_rank - from_rank).signum(),
-                (to_file - from_file).signum(),
-            );
-
-            const fn share_diagonal(
-                (from_rank, from_file): (i8, i8),
-                (to_rank, to_file): (i8, i8),
-            ) -> bool {
-                (from_file - to_file).abs() == (from_rank - to_rank).abs()
-            }
-
-            const fn share_line(
-                (from_rank, from_file): (i8, i8),
-                (to_rank, to_file): (i8, i8),
-            ) -> bool {
-                ((from_file == to_file) && (from_rank != to_rank))
-                    || ((from_rank == to_rank) && (from_file != to_file))
-            }
-
-            if share_diagonal(from_indices, to_indices) || share_line(from_indices, to_indices) {
-                let chebyshev_dist = max((from_file - to_file).abs(), (from_rank - to_rank).abs());
-
-                let mut marching_index = 1;
-                while marching_index < chebyshev_dist {
-                    let (march_rank, march_file) = (
-                        from_rank + marching_index * dir_rank,
-                        from_file + marching_index * dir_file,
-                    );
-
-                    result[from as usize][to as usize] = BitBoard(
-                        result[from as usize][to as usize].0
-                            | to_square_bitboard(march_rank, march_file),
-                    );
-
-                    marching_index += 1;
+            loop {
+                let curr_square = prev_square + dir;
+                let abs_file_diff = ((prev_square % 8) - (curr_square % 8)).abs();
+                if !(0..64).contains(&curr_square) || abs_file_diff > 2 {
+                    break;
                 }
-            }
 
-            to += 1;
+                result[from as usize][curr_square as usize] = BitBoard(attacks);
+                attacks |= 1 << curr_square;
+                prev_square = curr_square;
+            }
         }
-        from += 1;
     }
 
     result
