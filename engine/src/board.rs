@@ -273,6 +273,34 @@ impl Board {
         }
     }
 
+    pub fn make_null(&mut self) {
+        assert!(self.checkers().is_empty());
+
+        let mut new_state = self.state.clone();
+        if let Some(target) = self.state.en_passant_target {
+            new_state.en_passant_target = None;
+            new_state.hash ^= zobrist::en_passant_keys(target.file());
+        }
+
+        self.side_to_move = !self.side_to_move;
+        new_state.hash ^= zobrist::side_key();
+
+        self.update_checker_info(&mut new_state);
+
+        let old_state = std::mem::replace(&mut self.state, new_state);
+        self.history.push(old_state);
+    }
+
+    pub fn undo_null(&mut self) {
+        assert!(self.checkers().is_empty());
+
+        if let Some(previous_state) = self.history.pop() {
+            self.state = previous_state;
+        }
+
+        self.side_to_move = !self.side_to_move;
+    }
+
     fn update_checker_info(&mut self, new_state: &mut BoardState) {
         let king_square =
             (self.pieces(PieceType::King) & self.occupancies(self.side_to_move())).bit_scan();
@@ -316,7 +344,6 @@ impl Board {
         new_state.pinned = pinned;
         new_state.checkers = checkers;
     }
-
 
     fn put_piece(&mut self, sq: Square, piece: Piece) {
         debug_assert_eq!(self.piece_at(sq), None);
@@ -694,5 +721,15 @@ Hash: 	0x4a887e3c9bc2624a
         assert_eq!(board.piece_at(C8), Some(BlackRook));
 
         println!("{board}");
+    }
+
+    #[test]
+    fn test_make_null() {
+        let board = Board::from_str("2r5/8/8/3R4/2P1k3/2K5/8/8 b - - 0 1").unwrap();
+        let mut clone = board.clone();
+        clone.make_null();
+        clone.undo_null();
+        println!("{board}, {clone}");
+        assert_eq!(board, clone);
     }
 }
