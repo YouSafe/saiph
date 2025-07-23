@@ -157,9 +157,9 @@ impl<S: ThreadSpawner> ThreadPool<S> {
         });
     }
 
-    pub fn clear(&self, tt: Arc<TranspositionTable>) {
+    pub fn clear_tt(&self, tt: Arc<TranspositionTable>) {
         for worker in &self.workers {
-            worker.worker_tx.send(Job::Clear(tt.clone())).unwrap();
+            worker.worker_tx.send(Job::ClearTT(tt.clone())).unwrap();
         }
     }
 
@@ -188,7 +188,7 @@ enum Job {
         new_num_threads: u8,
         new_barrier: Arc<Barrier>,
     },
-    Clear(Arc<TranspositionTable>),
+    ClearTT(Arc<TranspositionTable>),
     Quit {
         active_threads: Arc<AtomicU8>,
         engine_tx: Sender<EngineMessage>,
@@ -239,7 +239,7 @@ impl Worker {
                             num_threads = new_num_threads;
                             barrier = new_barrier
                         }
-                        Job::Clear(transposition_table) => {
+                        Job::ClearTT(transposition_table) => {
                             barrier.wait();
 
                             let chunk =
