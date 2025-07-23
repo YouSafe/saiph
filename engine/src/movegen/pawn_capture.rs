@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::movegen::attacks::{get_pawn_attacks, line};
+use crate::movegen::attacks::{pawn_attacks, line};
 use crate::movegen::MoveList;
 use crate::types::chess_move::{Move, MoveFlag};
 use crate::types::bitboard::BitBoard;
@@ -21,7 +21,7 @@ pub fn generate_pawn_capture_moves(
     // splitting the loop with an if inside into two for pinned and non-pinned
     // resulted in a ~9% increase in move generation performance
     for source in (current_sides_pawns & pinned).iter() {
-        let attacks = get_pawn_attacks(source, side_to_move)
+        let attacks = pawn_attacks(source, side_to_move)
             & board.occupancies(!side_to_move)
             & capture_mask
             & line(king_square, source);
@@ -43,7 +43,7 @@ pub fn generate_pawn_capture_moves(
     }
 
     for source in (current_sides_pawns & !pinned).iter() {
-        let attacks = get_pawn_attacks(source, side_to_move)
+        let attacks = pawn_attacks(source, side_to_move)
             & board.occupancies(!side_to_move)
             & capture_mask;
 

@@ -1,5 +1,5 @@
 use crate::movegen::attacks::{
-    between, get_bishop_attacks, get_knight_attacks, get_pawn_attacks, get_rook_attacks,
+    between, bishop_attacks, knight_attacks, pawn_attacks, rook_attacks,
 };
 use crate::movegen::{generate_moves, MoveList};
 use crate::types::bitboard::BitBoard;
@@ -188,47 +188,7 @@ impl Board {
         self.side_to_move = !self.side_to_move;
         new_state.hash ^= zobrist::side_key();
 
-        let king_square =
-            (self.pieces(PieceType::King) & self.occupancies(self.side_to_move())).bit_scan();
-
-        let mut potential_pinners = BitBoard(0);
-        let mut pinned = BitBoard(0);
-
-        let mut checkers = BitBoard(0);
-
-        // pretend king is a bishop and see if any other bishop OR queen is attacked by that
-        potential_pinners |= get_bishop_attacks(king_square, BitBoard(0))
-            & (self.pieces(PieceType::Bishop) | self.pieces(PieceType::Queen));
-
-        // now pretend the king is a rook and so the same procedure
-        potential_pinners |= get_rook_attacks(king_square, BitBoard(0))
-            & (self.pieces(PieceType::Rook) | self.pieces(PieceType::Queen));
-
-        // limit to opponent's pieces
-        potential_pinners &= self.occupancies(!self.side_to_move());
-
-        for square in potential_pinners.iter() {
-            let potentially_pinned = between(square, king_square) & self.combined();
-            if potentially_pinned.is_empty() {
-                checkers |= square;
-            } else if potentially_pinned.count() == 1 {
-                pinned |= potentially_pinned;
-            }
-        }
-
-        // now pretend the king is a knight and check if it attacks an enemy knight
-        checkers |= get_knight_attacks(king_square)
-            & self.pieces(PieceType::Knight)
-            & self.occupancies(!self.side_to_move());
-
-        // do the same thing for pawns
-        checkers |= get_pawn_attacks(king_square, self.side_to_move())
-            & self.pieces(PieceType::Pawn)
-            & self.occupancies(!self.side_to_move());
-
-        // update pinned, checkers
-        new_state.pinned = pinned;
-        new_state.checkers = checkers;
+        self.update_checker_info(&mut new_state);
 
         let old_state = std::mem::replace(&mut self.state, new_state);
         self.history.push(old_state);
@@ -312,6 +272,51 @@ impl Board {
             self.state = previous_state;
         }
     }
+
+    fn update_checker_info(&mut self, new_state: &mut BoardState) {
+        let king_square =
+            (self.pieces(PieceType::King) & self.occupancies(self.side_to_move())).bit_scan();
+
+        let mut potential_pinners = BitBoard(0);
+        let mut pinned = BitBoard(0);
+
+        let mut checkers = BitBoard(0);
+
+        // pretend king is a bishop and see if any other bishop OR queen is attacked by that
+        potential_pinners |= bishop_attacks(king_square, BitBoard(0))
+            & (self.pieces(PieceType::Bishop) | self.pieces(PieceType::Queen));
+
+        // now pretend the king is a rook and so the same procedure
+        potential_pinners |= rook_attacks(king_square, BitBoard(0))
+            & (self.pieces(PieceType::Rook) | self.pieces(PieceType::Queen));
+
+        // limit to opponent's pieces
+        potential_pinners &= self.occupancies(!self.side_to_move());
+
+        for square in potential_pinners.iter() {
+            let potentially_pinned = between(square, king_square) & self.combined();
+            if potentially_pinned.is_empty() {
+                checkers |= square;
+            } else if potentially_pinned.count() == 1 {
+                pinned |= potentially_pinned;
+            }
+        }
+
+        // now pretend the king is a knight and check if it attacks an enemy knight
+        checkers |= knight_attacks(king_square)
+            & self.pieces(PieceType::Knight)
+            & self.occupancies(!self.side_to_move());
+
+        // do the same thing for pawns
+        checkers |= pawn_attacks(king_square, self.side_to_move())
+            & self.pieces(PieceType::Pawn)
+            & self.occupancies(!self.side_to_move());
+
+        // update pinned, checkers
+        new_state.pinned = pinned;
+        new_state.checkers = checkers;
+    }
+
 
     fn put_piece(&mut self, sq: Square, piece: Piece) {
         debug_assert_eq!(self.piece_at(sq), None);
@@ -570,11 +575,11 @@ impl FromStr for Board {
         let mut checkers = BitBoard(0);
 
         // pretend king is a bishop and see if any other bishop OR queen is attacked by that
-        potential_pinners |= get_bishop_attacks(king_square, BitBoard(0))
+        potential_pinners |= bishop_attacks(king_square, BitBoard(0))
             & (pieces[PieceType::Bishop] | pieces[PieceType::Queen]);
 
         // now pretend the king is a rook and so the same procedure
-        potential_pinners |= get_rook_attacks(king_square, BitBoard(0))
+        potential_pinners |= rook_attacks(king_square, BitBoard(0))
             & (pieces[PieceType::Rook] | pieces[PieceType::Queen]);
 
         // limit to opponent's pieces
@@ -590,12 +595,11 @@ impl FromStr for Board {
         }
 
         // now pretend the king is a knight and check if it attacks an enemy knight
-        checkers |= get_knight_attacks(king_square)
-            & pieces[PieceType::Knight]
-            & occupancies[!side_to_move];
+        checkers |=
+            knight_attacks(king_square) & pieces[PieceType::Knight] & occupancies[!side_to_move];
 
         // do the same thing for pawns
-        checkers |= get_pawn_attacks(king_square, side_to_move)
+        checkers |= pawn_attacks(king_square, side_to_move)
             & pieces[PieceType::Pawn]
             & occupancies[!side_to_move];
 

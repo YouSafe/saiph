@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::movegen::attacks::get_knight_attacks;
+use crate::movegen::attacks::knight_attacks;
 use crate::movegen::MoveList;
 use crate::types::chess_move::{Move, MoveFlag};
 use crate::types::bitboard::BitBoard;
@@ -18,7 +18,7 @@ pub fn generate_knight_moves(
 
     // pinned knights can't move at all
     for source in (current_sides_knights & !pinned).iter() {
-        let attacks = get_knight_attacks(source) & !board.occupancies(side_to_move);
+        let attacks = knight_attacks(source) & !board.occupancies(side_to_move);
 
         // captures     
         for target in (attacks & capture_mask).iter() {

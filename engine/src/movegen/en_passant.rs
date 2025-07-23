@@ -1,8 +1,8 @@
 use crate::board::Board;
-use crate::movegen::attacks::{get_bishop_attacks, get_pawn_attacks, get_rook_attacks};
+use crate::movegen::attacks::{bishop_attacks, pawn_attacks, rook_attacks};
 use crate::movegen::MoveList;
-use crate::types::chess_move::{Move, MoveFlag};
 use crate::types::bitboard::BitBoard;
+use crate::types::chess_move::{Move, MoveFlag};
 use crate::types::piece::PieceType;
 use crate::types::square::Square;
 
@@ -19,12 +19,12 @@ fn is_valid_ep(board: &Board, capture: Square, source: Square, destination: Squa
     let mut attack = BitBoard(0);
 
     // pretend like the king is a rook
-    attack |= get_rook_attacks(king_square, combined)
+    attack |= rook_attacks(king_square, combined)
         & (board.pieces(PieceType::Rook) | board.pieces(PieceType::Queen))
         & board.occupancies(!board.side_to_move());
 
     // pretend like the king is a bishop
-    attack |= get_bishop_attacks(king_square, combined)
+    attack |= bishop_attacks(king_square, combined)
         & (board.pieces(PieceType::Bishop) | board.pieces(PieceType::Queen))
         & board.occupancies(!board.side_to_move());
 
@@ -37,7 +37,7 @@ pub fn generate_en_passant_move(board: &Board, move_list: &mut MoveList) {
         let current_sides_pawns = board.pieces(PieceType::Pawn) & board.occupancies(side_to_move);
 
         for source in current_sides_pawns.iter() {
-            let attack = get_pawn_attacks(source, side_to_move) & BitBoard::from_square(ep_square);
+            let attack = pawn_attacks(source, side_to_move) & BitBoard::from_square(ep_square);
 
             for destination in attack.iter() {
                 let capture = destination.forward(!side_to_move).unwrap();

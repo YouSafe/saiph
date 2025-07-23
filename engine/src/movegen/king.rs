@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::movegen::attacks::get_king_attacks;
+use crate::movegen::attacks::king_attacks;
 use crate::movegen::MoveList;
 use crate::types::chess_move::{Move, MoveFlag};
 use crate::types::bitboard::BitBoard;
@@ -16,7 +16,7 @@ pub fn generate_king_moves(
 
     let side_to_move = board.side_to_move();
 
-    let attacks = get_king_attacks(king_square) & !board.occupancies(side_to_move);
+    let attacks = king_attacks(king_square) & !board.occupancies(side_to_move);
 
     // quiet
     for target in (attacks & push_mask).iter() {

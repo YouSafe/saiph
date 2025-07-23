@@ -1,8 +1,8 @@
 use crate::board::Board;
-use crate::movegen::attacks::{get_bishop_attacks, get_rook_attacks, line};
+use crate::movegen::attacks::{bishop_attacks, line, rook_attacks};
 use crate::movegen::MoveList;
-use crate::types::chess_move::{Move, MoveFlag};
 use crate::types::bitboard::BitBoard;
+use crate::types::chess_move::{Move, MoveFlag};
 use crate::types::piece::PieceType;
 
 pub fn generate_slider_moves(
@@ -28,7 +28,7 @@ pub fn generate_slider_moves(
 
     // diagonal attackers
     for source in ((bishops | queens) & !pinned).iter() {
-        let attacks = get_bishop_attacks(source, combined) & !board.occupancies(side_to_move);
+        let attacks = bishop_attacks(source, combined) & !board.occupancies(side_to_move);
 
         // captures
         for target in (attacks & capture_mask).iter() {
@@ -42,7 +42,7 @@ pub fn generate_slider_moves(
     }
 
     for source in ((bishops | queens) & pinned).iter() {
-        let attacks = get_bishop_attacks(source, combined)
+        let attacks = bishop_attacks(source, combined)
             & line(king_square, source)
             & !board.occupancies(side_to_move);
 
@@ -59,7 +59,7 @@ pub fn generate_slider_moves(
 
     // line attackers
     for source in ((rooks | queens) & !pinned).iter() {
-        let attacks = get_rook_attacks(source, combined) & !board.occupancies(side_to_move);
+        let attacks = rook_attacks(source, combined) & !board.occupancies(side_to_move);
 
         // captures
         for target in (attacks & capture_mask).iter() {
@@ -73,7 +73,7 @@ pub fn generate_slider_moves(
     }
 
     for source in ((rooks | queens) & pinned).iter() {
-        let attacks = get_rook_attacks(source, combined)
+        let attacks = rook_attacks(source, combined)
             & line(king_square, source)
             & !board.occupancies(side_to_move);
 
