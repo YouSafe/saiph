@@ -37,7 +37,7 @@ impl<const N: usize, T: FormattedWriter> FormattedWriter for [T; N] {
     }
 
     fn write(self, file: &mut impl Write, state: State) -> std::io::Result<()> {
-        write!(file, "[\n")?;
+        writeln!(file, "[")?;
 
         fn indentation(file: &mut impl Write, indentation: usize) -> std::io::Result<()> {
             for _ in 0..indentation {

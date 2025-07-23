@@ -109,7 +109,7 @@ impl<S: ThreadSpawner, P: Printer> EngineUCI<S, P> {
         let command = self.parse_command(message);
         match command {
             Ok(command) => self.process_command(command),
-            Err(err) => eprintln!("Parsing error: {:?}", err),
+            Err(err) => eprintln!("Parsing error: {err:?}"),
         }
     }
 

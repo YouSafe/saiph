@@ -213,56 +213,51 @@ impl Worker {
             let mut barrier = barrier;
             let mut num_threads = num_threads;
 
-            loop {
-                match worker_rx.recv() {
-                    Ok(job) => match job {
-                        Job::Search(search) => {
-                            let wait = barrier.wait();
-                            if wait.is_leader() {
-                                stop_sync.stop.store(false, Ordering::SeqCst);
+            while let Ok(job) = worker_rx.recv() {
+                match job {
+                    Job::Search(search) => {
+                        let wait = barrier.wait();
+                        if wait.is_leader() {
+                            stop_sync.stop.store(false, Ordering::SeqCst);
 
-                                let mut wait_for_stop = stop_sync.wait_for_stop.lock().unwrap();
-                                // set to false if not infinite search or ponder
-                                *wait_for_stop = search.limits().time == TimeLimit::Infinite;
-                                drop(wait_for_stop);
-                            }
-
-                            let wait = barrier.wait();
-                            search.search(wait.is_leader());
-
-                            barrier.wait();
+                            let mut wait_for_stop = stop_sync.wait_for_stop.lock().unwrap();
+                            // set to false if not infinite search or ponder
+                            *wait_for_stop = search.limits().time == TimeLimit::Infinite;
+                            drop(wait_for_stop);
                         }
-                        Job::Resize {
-                            new_num_threads,
-                            new_barrier,
-                        } => {
-                            num_threads = new_num_threads;
-                            barrier = new_barrier
-                        }
-                        Job::ClearTT(transposition_table) => {
-                            barrier.wait();
 
-                            let chunk =
-                                transposition_table.chunk(thread_id as usize, num_threads as usize);
+                        let wait = barrier.wait();
+                        search.search(wait.is_leader());
 
-                            for val in chunk {
-                                val.store(0, Ordering::Relaxed);
-                            }
+                        barrier.wait();
+                    }
+                    Job::Resize {
+                        new_num_threads,
+                        new_barrier,
+                    } => {
+                        num_threads = new_num_threads;
+                        barrier = new_barrier
+                    }
+                    Job::ClearTT(transposition_table) => {
+                        barrier.wait();
 
-                            barrier.wait();
+                        let chunk =
+                            transposition_table.chunk(thread_id as usize, num_threads as usize);
+
+                        for val in chunk {
+                            val.store(0, Ordering::Relaxed);
                         }
-                        Job::Quit {
-                            active_threads,
-                            engine_tx,
-                        } => {
-                            let previous_value = active_threads.fetch_sub(1, Ordering::SeqCst);
-                            if previous_value == 1 {
-                                engine_tx.send(EngineMessage::Terminate).unwrap();
-                            }
-                            break;
+
+                        barrier.wait();
+                    }
+                    Job::Quit {
+                        active_threads,
+                        engine_tx,
+                    } => {
+                        let previous_value = active_threads.fetch_sub(1, Ordering::SeqCst);
+                        if previous_value == 1 {
+                            engine_tx.send(EngineMessage::Terminate).unwrap();
                         }
-                    },
-                    Err(_) => {
                         break;
                     }
                 }

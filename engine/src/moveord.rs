@@ -33,7 +33,7 @@ mod test {
         scores.sort_by_key(|(_, _, score)| *score);
 
         for (src_piece, dst_piece, score) in scores {
-            println!("{:?} takes {:?}: {}", src_piece, dst_piece, score);
+            println!("{src_piece:?} takes {dst_piece:?}: {score}");
         }
     }
 }

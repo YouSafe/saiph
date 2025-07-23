@@ -3,9 +3,9 @@ use crate::{BitBoard, Square};
 pub fn generate_king_attacks() -> [BitBoard; 64] {
     let mut result = [BitBoard(0); 64];
 
-    for square in 0..64 {
+    for (square, item) in result.iter_mut().enumerate() {
         let sq = Square::from_index(square as u8);
-        result[square] = mask_king_attacks(sq);
+        *item = mask_king_attacks(sq);
     }
 
     result

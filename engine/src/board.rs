@@ -445,13 +445,13 @@ impl fmt::Display for Board {
                 } else {
                     '.'
                 };
-                write!(f, "{} ", symbol)?;
+                write!(f, "{symbol} ")?;
             }
             writeln!(f)?;
         }
         write!(f, "\n    ")?;
         for file in 'a'..='h' {
-            write!(f, "{} ", file)?;
+            write!(f, "{file} ")?;
         }
 
         writeln!(f, "\n")?;
@@ -649,7 +649,7 @@ impl FromStr for Board {
                 captured_piece: None,
             },
             history: vec![],
-            game_ply: (2 * (fullmove_number - 1)).max(0) + [0, 1][side_to_move as usize],
+            game_ply: 2 * fullmove_number.saturating_sub(1) + (side_to_move == Color::Black) as u16,
         };
 
         // TODO: check if board is sane
@@ -703,7 +703,7 @@ Last move:	None
 Hash: 	0x4a887e3c9bc2624a
 ";
         let board = Board::default();
-        println!("{}", board);
+        println!("{board}");
         assert_eq!(expected, board.to_string());
     }
 

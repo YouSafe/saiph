@@ -87,7 +87,7 @@ mod test {
             Color::White,
         );
 
-        println!("{:#?}", clock);
+        println!("{clock:#?}");
         println!(
             "Optimum duration: {:?}",
             (clock.optimum.unwrap() - clock.start)

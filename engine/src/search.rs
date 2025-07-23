@@ -124,7 +124,7 @@ impl Search {
                     if evaluation.is_mate() {
                         format!("mate {}", evaluation.mate_full_moves())
                     } else {
-                        format!("cp {}", evaluation)
+                        format!("cp {evaluation}")
                     },
                     self.clock.start.elapsed().as_millis(),
                     self.nodes_buffer.accumulate(),

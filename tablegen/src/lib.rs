@@ -172,13 +172,13 @@ impl fmt::Display for BitBoard {
                 let square = rank * 8 + file;
                 let value = (self.0 & (1 << square)) == (1 << square);
                 let symbol = if value { 'X' } else { '.' };
-                write!(f, "{} ", symbol)?;
+                write!(f, "{symbol} ")?;
             }
             writeln!(f)?;
         }
         write!(f, "\n    ")?;
         for file in 'a'..='h' {
-            write!(f, "{} ", file)?;
+            write!(f, "{file} ")?;
         }
 
         write!(f, "\n\nBitboard: {}", self.0)

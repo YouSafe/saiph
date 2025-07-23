@@ -35,9 +35,9 @@ fn perft_benchmark(c: &mut Criterion) {
     group.measurement_time(Duration::new(10, 0));
     group.sample_size(10);
 
-    group.bench_function("kiwipete", |b| b.iter(|| perft_kiwipete()));
-    group.bench_function("startpos", |b| b.iter(|| perft_startpos()));
-    group.bench_function("king vs pawn", |b| b.iter(|| perft_king_vs_pawn()));
+    group.bench_function("kiwipete", |b| b.iter(perft_kiwipete));
+    group.bench_function("startpos", |b| b.iter(perft_startpos));
+    group.bench_function("king vs pawn", |b| b.iter(perft_king_vs_pawn));
 }
 
 criterion_group!(benches, perft_benchmark);

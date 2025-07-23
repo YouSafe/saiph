@@ -285,14 +285,12 @@ mod test {
         let masks = mask_fn(&board);
         generator(&board, &mut move_list, &masks);
 
-        println!("{:#?}", move_list);
+        println!("{move_list:#?}");
 
         for m in expected_moves {
             assert!(
                 move_list.contains(m),
-                "Expected move {:?} not found in move list: {:#?}",
-                m,
-                move_list
+                "Expected move {m:?} not found in move list: {move_list:#?}"
             );
         }
 
@@ -326,10 +324,7 @@ mod test {
 
         assert!(is_c6_attacked_by_black);
 
-        println!(
-            "is the pawn on c6 attacked by the bishop on g2? {}",
-            is_c6_attacked_by_black
-        );
+        println!("is the pawn on c6 attacked by the bishop on g2? {is_c6_attacked_by_black}");
     }
 
     #[test]
@@ -341,10 +336,7 @@ mod test {
 
         assert!(is_f4_attacked_by_white);
 
-        println!(
-            "is the bishop on f4 attacked by the rook on c4? {}",
-            is_f4_attacked_by_white
-        );
+        println!("is the bishop on f4 attacked by the rook on c4? {is_f4_attacked_by_white}");
     }
 
     #[test]
@@ -356,10 +348,7 @@ mod test {
 
         assert!(is_e6_attacked_by_white);
 
-        println!(
-            "is the queen on e6 attacked by the knight on d4? {}",
-            is_e6_attacked_by_white
-        );
+        println!("is the queen on e6 attacked by the knight on d4? {is_e6_attacked_by_white}");
     }
 
     #[test]
@@ -371,10 +360,7 @@ mod test {
 
         assert!(is_a7_attacked_by_black);
 
-        println!(
-            "is the pawn on a7 attacked by the queen on g1? {}",
-            is_a7_attacked_by_black
-        );
+        println!("is the pawn on a7 attacked by the queen on g1? {is_a7_attacked_by_black}");
     }
 
     #[test]
@@ -406,7 +392,7 @@ mod test {
         let board = Board::default();
         let moves = generate_moves::<false>(&board);
 
-        println!("{:#?}", moves);
+        println!("{moves:#?}");
         assert_eq!(moves.len(), 20);
     }
 
@@ -417,7 +403,7 @@ mod test {
         )
         .unwrap();
         let moves = generate_moves::<false>(&board);
-        println!("{:#?}", moves);
+        println!("{moves:#?}");
 
         assert_eq!(moves.len(), 46);
     }
@@ -429,7 +415,7 @@ mod test {
         )
         .unwrap();
         let moves = generate_moves::<true>(&board);
-        println!("{:#?}", moves);
+        println!("{moves:#?}");
 
         assert_eq!(moves.len(), 4);
     }

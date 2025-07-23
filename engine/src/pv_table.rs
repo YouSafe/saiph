@@ -13,6 +13,12 @@ pub struct PrincipleVariationTable {
     lengths: [usize; MAX_PLY],
 }
 
+impl Default for PrincipleVariationTable {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PrincipleVariationTable {
     pub fn new() -> Self {
         Self {
@@ -64,7 +70,7 @@ impl fmt::Display for PrincipleVariationTable {
             for pv_index in 0..(MAX_PLY - ply) {
                 let chess_move = self.inner[index(ply) + pv_index];
                 if chess_move != Move::NULL {
-                    write!(f, "{} ", chess_move)?;
+                    write!(f, "{chess_move} ")?;
                 } else {
                     write!(f, ".... ")?;
                 }
@@ -97,10 +103,10 @@ mod tests {
     #[test]
     fn test_update() {
         let mut pv_table = PrincipleVariationTable::new();
-        eprintln!("{}", pv_table);
+        eprintln!("{pv_table}");
         pv_table.update(4, Move::new(Square::A4, Square::A5, MoveFlag::Normal));
-        eprintln!("{}", pv_table);
+        eprintln!("{pv_table}");
         pv_table.update(3, Move::new(Square::A3, Square::A5, MoveFlag::Normal));
-        eprintln!("{}", pv_table);
+        eprintln!("{pv_table}");
     }
 }

@@ -79,7 +79,7 @@ impl fmt::Display for CastlingRights {
         ];
         for (right, symbol) in RIGHTS {
             if self.contains(right) {
-                write!(f, "{}", symbol)?;
+                write!(f, "{symbol}")?;
             } else {
                 write!(f, "-")?
             }
