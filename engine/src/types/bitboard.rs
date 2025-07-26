@@ -52,34 +52,8 @@ impl BitBoard {
 
     pub const FULL: BitBoard = BitBoard(!0);
 
-    pub const DIAGS: [BitBoard; 15] = [
-        BitBoard(0x0100_0000_0000_0000),
-        BitBoard(0x0201_0000_0000_0000),
-        BitBoard(0x0402_0100_0000_0000),
-        BitBoard(0x0804_0201_0000_0000),
-        BitBoard(0x1008_0402_0100_0000),
-        BitBoard(0x2010_0804_0201_0000),
-        BitBoard(0x4020_1008_0402_0100),
-        BitBoard(0x8040_2010_0804_0201),
-        BitBoard(0x0080_4020_1008_0402),
-        BitBoard(0x0000_8040_2010_0804),
-        BitBoard(0x0000_0080_4020_1008),
-        BitBoard(0x0000_0000_8040_2010),
-        BitBoard(0x0000_0000_0080_4020),
-        BitBoard(0x0000_0000_0000_8040),
-        BitBoard(0x0000_0000_0000_0080),
-    ];
-
     pub const ALL_RANKS: [BitBoard; 8] = generate_all_ranks();
     pub const ALL_FILES: [BitBoard; 8] = generate_all_files();
-
-    pub const NOT_1ST_RANK: BitBoard = BitBoard(18446744073709551360);
-    pub const NOT_8TH_RANK: BitBoard = BitBoard(72057594037927935);
-
-    pub const NOT_A_FILE: BitBoard = BitBoard(18374403900871474942);
-    pub const NOT_H_FILE: BitBoard = BitBoard(9187201950435737471);
-    pub const NOT_AB_FILE: BitBoard = BitBoard(18229723555195321596);
-    pub const NOT_GH_FILE: BitBoard = BitBoard(4557430888798830399);
 }
 
 const fn generate_all_ranks() -> [BitBoard; 8] {
@@ -243,92 +217,6 @@ mod test {
 Bitboard: 9223372036854780032";
         println!("{bitboard}");
         assert_eq!(bitboard.to_string(), expected);
-    }
-
-    #[test]
-    fn test_not_a_file() {
-        let mut expected = BitBoard(0);
-        let file = 0;
-        for rank in 0..8 {
-            let square = rank * 8 + file;
-            expected |= Square::from_index(square);
-        }
-        expected = !expected;
-
-        println!("{}", BitBoard::NOT_A_FILE);
-        assert_eq!(expected, BitBoard::NOT_A_FILE);
-    }
-
-    #[test]
-    fn test_not_h_file() {
-        let mut expected = BitBoard(0);
-        let file = 7;
-        for rank in 0..8 {
-            let square = rank * 8 + file;
-            expected |= Square::from_index(square);
-        }
-        expected = !expected;
-
-        println!("{}", BitBoard::NOT_H_FILE);
-        assert_eq!(expected, BitBoard::NOT_H_FILE);
-    }
-
-    #[test]
-    fn test_not_ab_file() {
-        let mut expected = BitBoard(0);
-        for file in 0..2 {
-            for rank in 0..8 {
-                let square = rank * 8 + file;
-                expected |= Square::from_index(square);
-            }
-        }
-        expected = !expected;
-
-        println!("{}", BitBoard::NOT_AB_FILE);
-        assert_eq!(expected, BitBoard::NOT_AB_FILE);
-    }
-
-    #[test]
-    fn test_not_gh_file() {
-        let mut expected = BitBoard(0);
-        for file in 6..8 {
-            for rank in 0..8 {
-                let square = rank * 8 + file;
-                expected |= Square::from_index(square);
-            }
-        }
-        expected = !expected;
-
-        println!("{}", BitBoard::NOT_GH_FILE);
-        assert_eq!(expected, BitBoard::NOT_GH_FILE);
-    }
-
-    #[test]
-    fn test_not_1st_rank() {
-        let mut expected = BitBoard(0);
-        let rank = 0;
-        for file in 0..8 {
-            let square = rank * 8 + file;
-            expected |= Square::from_index(square);
-        }
-        expected = !expected;
-
-        println!("{}", BitBoard::NOT_1ST_RANK);
-        assert_eq!(expected, BitBoard::NOT_1ST_RANK);
-    }
-
-    #[test]
-    fn test_not_8th_rank() {
-        let mut expected = BitBoard(0);
-        let rank = 7;
-        for file in 0..8 {
-            let square = rank * 8 + file;
-            expected |= Square::from_index(square);
-        }
-        expected = !expected;
-
-        println!("{}", BitBoard::NOT_8TH_RANK);
-        assert_eq!(expected, BitBoard::NOT_8TH_RANK);
     }
 
     #[test]
