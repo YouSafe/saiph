@@ -4,7 +4,7 @@ use crate::movegen::perf_test;
 use crate::threadpool::ThreadPool;
 use crate::transposition::TranspositionTable;
 use crate::types::color::{Color, PerColor};
-use crate::types::search_limits::{SearchLimits, TimeLimit};
+use crate::types::search_limits::{Millis, SearchLimits, TimeLimit};
 use crate::types::uci_move::UCIMove;
 use crate::{Printer, ThreadSpawner};
 use std::iter::Peekable;
@@ -12,7 +12,6 @@ use std::marker::PhantomData;
 use std::str::{FromStr, SplitAsciiWhitespace};
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::Arc;
-use std::time::Duration;
 use web_time::Instant;
 
 /// Default transposition table size in MB
@@ -285,9 +284,9 @@ fn parse_go(mut parts: Peekable<SplitAsciiWhitespace<'_>>) -> Result<Command, Pa
 
     let mut depth: Option<u8> = None;
     let mut mate: Option<u8> = None;
-    let mut time_left: PerColor<Duration> = Default::default();
-    let mut move_time: Option<Duration> = None;
-    let mut increment: PerColor<Duration> = Default::default();
+    let mut time_left: PerColor<Millis> = Default::default();
+    let mut move_time: Option<Millis> = None;
+    let mut increment: PerColor<Millis> = Default::default();
     let mut moves_to_go: Option<u8> = None;
     let mut nodes: Option<u64> = None;
     let mut infinite = false;
@@ -304,7 +303,7 @@ fn parse_go(mut parts: Peekable<SplitAsciiWhitespace<'_>>) -> Result<Command, Pa
                     .parse()
                     .map_err(|_| ParseCommandError::InvalidNumber)?;
 
-                let param = Duration::from_millis(param);
+                let param = Millis(param);
 
                 match token {
                     "wtime" => time_left[Color::White] = param,
@@ -351,7 +350,7 @@ fn parse_go(mut parts: Peekable<SplitAsciiWhitespace<'_>>) -> Result<Command, Pa
         TimeLimit::Infinite
     } else if let Some(move_time) = move_time {
         TimeLimit::Fixed { move_time }
-    } else if !time_left.contains(&Duration::default()) {
+    } else if !time_left.contains(&Millis(0)) {
         TimeLimit::Dynamic {
             time_left,
             increment,
