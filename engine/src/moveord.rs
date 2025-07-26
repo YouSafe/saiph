@@ -1,4 +1,4 @@
-use crate::types::piece::{PieceType, NUM_PIECES};
+use crate::types::piece::{NUM_PIECES, PieceType};
 
 #[rustfmt::skip]
 const MVV_LVA: [[u8; NUM_PIECES]; NUM_PIECES] = [
@@ -17,7 +17,7 @@ pub(crate) fn mmv_lva(src_piece: PieceType, dst_piece: PieceType) -> i32 {
 #[cfg(test)]
 mod test {
     use crate::moveord::mmv_lva;
-    use crate::types::piece::{PieceType, ALL_PIECES};
+    use crate::types::piece::{ALL_PIECES, PieceType};
 
     #[test]
     fn test() {

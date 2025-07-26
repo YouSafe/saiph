@@ -1,7 +1,7 @@
 use crate::board::Board;
 use crate::movegen::MoveList;
-use crate::types::chess_move::{Move, MoveFlag};
 use crate::types::bitboard::BitBoard;
+use crate::types::chess_move::{Move, MoveFlag};
 use crate::types::piece::PieceType;
 
 pub fn generate_quiet_pawn_moves(board: &Board, move_list: &mut MoveList, push_mask: BitBoard) {
@@ -70,11 +70,11 @@ mod test {
     use crate::board::Board;
     use crate::movegen::quiet_pawn::generate_quiet_pawn_moves;
     use crate::movegen::test::test_move_generator;
-    use crate::movegen::{compute_push_capture_mask, MoveList, PushCaptureMasks};
+    use crate::movegen::{MoveList, PushCaptureMasks, compute_push_capture_mask};
     use crate::types::chess_move::{Move, MoveFlag};
     use crate::types::color::Color;
     use crate::types::square::Square::{self, *};
-    use crate::types::square::{Rank, ALL_FILES};
+    use crate::types::square::{ALL_FILES, Rank};
 
     fn test_quiet_pawn_moves(fen: &str, expected_moves: &[Move]) {
         test_move_generator::<_, _, false>(

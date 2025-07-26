@@ -1,8 +1,8 @@
 use crate::board::Board;
-use crate::movegen::attacks::king_attacks;
 use crate::movegen::MoveList;
-use crate::types::chess_move::{Move, MoveFlag};
+use crate::movegen::attacks::king_attacks;
 use crate::types::bitboard::BitBoard;
+use crate::types::chess_move::{Move, MoveFlag};
 use crate::types::piece::PieceType;
 
 pub fn generate_king_moves(
@@ -34,7 +34,7 @@ mod test {
     use crate::board::Board;
     use crate::movegen::king::generate_king_moves;
     use crate::movegen::test::test_move_generator;
-    use crate::movegen::{compute_king_push_capture_masks, MoveList, PushCaptureMasks};
+    use crate::movegen::{MoveList, PushCaptureMasks, compute_king_push_capture_masks};
     use crate::types::chess_move::{Move, MoveFlag};
     use crate::types::square::Square;
 

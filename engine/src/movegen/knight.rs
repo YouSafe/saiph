@@ -1,8 +1,8 @@
 use crate::board::Board;
-use crate::movegen::attacks::knight_attacks;
 use crate::movegen::MoveList;
-use crate::types::chess_move::{Move, MoveFlag};
+use crate::movegen::attacks::knight_attacks;
 use crate::types::bitboard::BitBoard;
+use crate::types::chess_move::{Move, MoveFlag};
 use crate::types::piece::PieceType;
 
 pub fn generate_knight_moves(
@@ -20,7 +20,7 @@ pub fn generate_knight_moves(
     for source in (current_sides_knights & !pinned).iter() {
         let attacks = knight_attacks(source) & !board.occupancies(side_to_move);
 
-        // captures     
+        // captures
         for target in (attacks & capture_mask).iter() {
             move_list.push(Move::new(source, target, MoveFlag::Capture))
         }
@@ -37,7 +37,7 @@ mod test {
     use crate::board::Board;
     use crate::movegen::knight::generate_knight_moves;
     use crate::movegen::test::test_move_generator;
-    use crate::movegen::{compute_push_capture_mask, MoveList, PushCaptureMasks};
+    use crate::movegen::{MoveList, PushCaptureMasks, compute_push_capture_mask};
     use crate::types::chess_move::{Move, MoveFlag};
     use crate::types::square::Square::*;
 

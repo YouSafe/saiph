@@ -1,8 +1,8 @@
 use std::io::Write;
 use std::{env, fs::File, io::BufWriter, path::Path};
 
-use tablegen::magics::Magic;
 use tablegen::BitBoard;
+use tablegen::magics::Magic;
 use tablegen::{
     king_move::generate_king_attacks,
     knight_move::generate_knight_attacks,
@@ -11,7 +11,7 @@ use tablegen::{
     rays_between::generate_squares_between,
     slider_move::generate_slider_attacks,
     xray_line::generate_squares_line,
-    zobrist::{generate_keys, GeneratedKeys},
+    zobrist::{GeneratedKeys, generate_keys},
 };
 
 #[derive(Clone, Copy)]

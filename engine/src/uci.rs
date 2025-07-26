@@ -10,8 +10,8 @@ use crate::{Printer, ThreadSpawner};
 use std::iter::Peekable;
 use std::marker::PhantomData;
 use std::str::{FromStr, SplitAsciiWhitespace};
-use std::sync::mpsc::{Receiver, Sender};
 use std::sync::Arc;
+use std::sync::mpsc::{Receiver, Sender};
 use web_time::Instant;
 
 /// Default transposition table size in MB

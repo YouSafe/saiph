@@ -1,12 +1,12 @@
 use std::{
-    io::{stdin, BufRead},
+    io::{BufRead, stdin},
     sync::mpsc::channel,
     thread::{self, spawn},
 };
 
 use engine::{
-    uci::{EngineMessage, EngineUCI},
     Printer, ThreadSpawner,
+    uci::{EngineMessage, EngineUCI},
 };
 
 struct DefaultSpawner;

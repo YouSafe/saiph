@@ -1,6 +1,6 @@
 use crate::board::Board;
 use crate::types::color::Color;
-use crate::types::piece::{PieceType, ALL_PIECES};
+use crate::types::piece::{ALL_PIECES, PieceType};
 use crate::types::square::Square;
 
 use super::Evaluation;

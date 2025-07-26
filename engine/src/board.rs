@@ -1,12 +1,12 @@
 use crate::movegen::attacks::{
     between, bishop_attacks, knight_attacks, pawn_attacks, rook_attacks,
 };
-use crate::movegen::{generate_moves, MoveList};
+use crate::movegen::{MoveList, generate_moves};
 use crate::types::bitboard::BitBoard;
 use crate::types::castling_rights::{CastlingRights, UPDATE_CASTLING_RIGHT_TABLE};
 use crate::types::chess_move::{Move, MoveFlag};
 use crate::types::color::{Color, PerColor};
-use crate::types::piece::{PerPieceType, Piece, PieceType, ALL_PIECES};
+use crate::types::piece::{ALL_PIECES, PerPieceType, Piece, PieceType};
 use crate::types::square::{File, PerSquare, Square};
 use crate::zobrist::{self};
 use std::fmt;

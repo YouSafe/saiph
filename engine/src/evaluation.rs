@@ -1,10 +1,10 @@
 pub mod hce;
 pub mod nnue;
 
+use crate::types::color::Color;
 use std::fmt;
 use std::fmt::Formatter;
 use std::ops::Neg;
-use crate::types::color::Color;
 
 #[derive(PartialEq, Clone, Copy, Debug, PartialOrd, Ord, Eq)]
 pub struct Evaluation(i16);

@@ -1,6 +1,6 @@
 use crate::board::Board;
-use crate::movegen::attacks::{bishop_attacks, line, rook_attacks};
 use crate::movegen::MoveList;
+use crate::movegen::attacks::{bishop_attacks, line, rook_attacks};
 use crate::types::bitboard::BitBoard;
 use crate::types::chess_move::{Move, MoveFlag};
 use crate::types::piece::PieceType;
@@ -94,7 +94,7 @@ mod test {
     use crate::board::Board;
     use crate::movegen::slider::generate_slider_moves;
     use crate::movegen::test::test_move_generator;
-    use crate::movegen::{compute_push_capture_mask, MoveList, PushCaptureMasks};
+    use crate::movegen::{MoveList, PushCaptureMasks, compute_push_capture_mask};
     use crate::types::chess_move::{Move, MoveFlag};
     use crate::types::square::Square;
 

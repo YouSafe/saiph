@@ -7,6 +7,7 @@ use pawn_capture::generate_pawn_capture_moves;
 use quiet_pawn::generate_quiet_pawn_moves;
 use slider::generate_slider_moves;
 
+use crate::Printer;
 use crate::board::Board;
 use crate::movegen::attacks::{
     between, bishop_attacks, king_attacks, knight_attacks, pawn_attacks, queen_attacks,
@@ -15,9 +16,8 @@ use crate::movegen::attacks::{
 use crate::types::bitboard::BitBoard;
 use crate::types::chess_move::Move;
 use crate::types::color::Color;
-use crate::types::piece::{PieceType, ALL_PIECES};
+use crate::types::piece::{ALL_PIECES, PieceType};
 use crate::types::square::Square;
-use crate::Printer;
 
 pub(crate) mod attacks;
 mod castling;
@@ -262,8 +262,8 @@ mod test {
 
     use crate::board::Board;
     use crate::movegen::{
-        build_attacked_bitboard, generate_attack_bitboard, generate_moves, is_square_attacked,
-        MoveList, PushCaptureMasks,
+        MoveList, PushCaptureMasks, build_attacked_bitboard, generate_attack_bitboard,
+        generate_moves, is_square_attacked,
     };
     use crate::types::bitboard::BitBoard;
     use crate::types::chess_move::Move;

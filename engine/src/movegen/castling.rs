@@ -1,9 +1,9 @@
 use crate::board::Board;
 use crate::movegen::attacks::between;
-use crate::movegen::{is_square_attacked, MoveList};
-use crate::types::chess_move::{Move, MoveFlag};
+use crate::movegen::{MoveList, is_square_attacked};
 use crate::types::bitboard::BitBoard;
 use crate::types::castling_rights::CastlingRights;
+use crate::types::chess_move::{Move, MoveFlag};
 use crate::types::color::NUM_COLORS;
 use crate::types::piece::PieceType;
 use crate::types::square::Square;
@@ -74,7 +74,7 @@ mod test {
     use crate::board::Board;
     use crate::movegen::castling::generate_castling_moves;
     use crate::movegen::test::test_move_generator;
-    use crate::movegen::{compute_push_capture_mask, MoveList, PushCaptureMasks};
+    use crate::movegen::{MoveList, PushCaptureMasks, compute_push_capture_mask};
     use crate::types::chess_move::{Move, MoveFlag};
     use crate::types::square::Square::*;
 

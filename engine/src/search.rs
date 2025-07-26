@@ -1,20 +1,20 @@
 use crate::board::Board;
 use crate::clock::Clock;
-use crate::evaluation::hce::board_value;
 use crate::evaluation::Evaluation;
+use crate::evaluation::hce::board_value;
 use crate::movegen::MoveList;
 use crate::moveord::mmv_lva;
 use crate::pv_table::PrincipleVariationTable;
 use crate::threadpool::StopSync;
 use crate::transposition::{Entry, TranspositionTable, ValueType};
 use crate::types::chess_move::Move;
+use crate::types::color::Color;
 use crate::types::search_limits::SearchLimits;
 use crate::uci::EngineMessage;
-use web_time::Instant;
+use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::Sender;
-use std::sync::Arc;
-use crate::types::color::Color;
+use web_time::Instant;
 
 pub struct NodeCountBuffer {
     inner: Vec<AtomicU64>,

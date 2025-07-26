@@ -1,11 +1,11 @@
-use std::sync::mpsc::{channel, Sender};
+use std::sync::mpsc::{Sender, channel};
 
 use engine::uci::EngineUCI;
-use engine::{uci::EngineMessage, Printer, ThreadSpawner};
+use engine::{Printer, ThreadSpawner, uci::EngineMessage};
 use wasm_bindgen::prelude::*;
 use web_sys::{
-    js_sys::{self, Function},
     Blob, DedicatedWorkerGlobalScope, MessageEvent, Url, Worker, WorkerOptions,
+    js_sys::{self, Function},
 };
 
 struct WebWorkerSpawner;

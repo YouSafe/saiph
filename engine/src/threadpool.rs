@@ -1,20 +1,20 @@
 use std::{
     marker::PhantomData,
     sync::{
-        atomic::{AtomicBool, AtomicU8, Ordering},
-        mpsc::{channel, Sender},
         Arc, Barrier, Condvar, Mutex,
+        atomic::{AtomicBool, AtomicU8, Ordering},
+        mpsc::{Sender, channel},
     },
 };
 
 use crate::{
+    ThreadSpawner,
     board::Board,
     clock::Clock,
     search::{NodeCountBuffer, Search},
     transposition::TranspositionTable,
     types::search_limits::{SearchLimits, TimeLimit},
     uci::EngineMessage,
-    ThreadSpawner,
 };
 
 #[derive(Debug, Default)]
