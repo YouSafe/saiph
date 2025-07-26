@@ -31,10 +31,8 @@ impl BitBoard {
     pub const fn shift(self, offset: i32) -> BitBoard {
         BitBoard(if offset >= 0 {
             self.0 << offset
-        } else if offset >= -63 {
-            self.0 >> -offset
         } else {
-            0
+            self.0 >> -offset
         })
     }
 
