@@ -156,7 +156,7 @@ impl Search {
         &mut self,
         mut alpha: Evaluation,
         mut beta: Evaluation,
-        depth: u8,
+        mut depth: u8,
         ply: u8,
     ) -> Evaluation {
         self.pv_table.clear(ply as usize);
@@ -175,6 +175,10 @@ impl Search {
 
             if alpha >= beta {
                 return alpha;
+            }
+
+            if !self.board.checkers().is_empty() {
+                depth += 1;
             }
         }
 
