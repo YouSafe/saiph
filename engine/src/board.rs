@@ -700,7 +700,7 @@ Side to move:		White
 Castling rights:	KQkq
 Captured piece:	None
 Last move:	None
-Hash: 	0x4a887e3c9bc2624a
+Hash: 	0x63db9ee8e39032b7
 ";
         let board = Board::default();
         println!("{board}");
