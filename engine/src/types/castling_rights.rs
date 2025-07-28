@@ -3,7 +3,6 @@ use std::fmt::Formatter;
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
 use std::str::FromStr;
 
-use crate::declare_per_type;
 use crate::types::square::Square;
 
 use super::square::PerSquare;
@@ -117,12 +116,6 @@ impl From<CastlingRights> for usize {
 }
 
 pub const NUM_CASTLING_RIGHTS_CONFIGURATIONS: usize = 16;
-
-declare_per_type!(
-    PerCastlingRightsConfig,
-    CastlingRights,
-    NUM_CASTLING_RIGHTS_CONFIGURATIONS
-);
 
 impl BitAnd for CastlingRights {
     type Output = Self;

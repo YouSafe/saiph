@@ -132,8 +132,6 @@ impl From<Rank> for usize {
 
 pub const NUM_RANKS: usize = 8;
 
-declare_per_type!(PerRank, Rank, NUM_RANKS);
-
 #[rustfmt::skip]
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -159,8 +157,6 @@ pub const ALL_FILES: [File; NUM_FILES] = [
     File::G,
     File::H,
 ];
-
-declare_per_type!(PerFile, File, NUM_FILES);
 
 #[cfg(test)]
 mod test {
