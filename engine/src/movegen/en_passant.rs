@@ -40,7 +40,7 @@ pub fn generate_en_passant_move(board: &Board, move_list: &mut MoveList) {
             let attack = pawn_attacks(source, side_to_move) & BitBoard::from_square(ep_square);
 
             for destination in attack.iter() {
-                let capture = destination.forward(!side_to_move).unwrap();
+                let capture = destination.forward(!side_to_move);
 
                 if is_valid_ep(board, capture, source, destination) {
                     move_list.push(Move::new(source, destination, MoveFlag::EnPassant));

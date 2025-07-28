@@ -36,17 +36,13 @@ impl Square {
         *self as u8
     }
 
-    pub const fn forward(&self, color: Color) -> Option<Square> {
+    pub const fn forward(&self, color: Color) -> Square {
         let new_index = match color {
-            Color::White => self.to_index() as i8 + 8,
-            Color::Black => self.to_index() as i8 - 8,
+            Color::White => *self as i8 + 8,
+            Color::Black => *self as i8 - 8,
         };
-
-        if new_index < 0 || new_index > 63 {
-            None
-        } else {
-            Some(Square::from_index(new_index as u8))
-        }
+        assert!(new_index >= 0 && new_index <= 63);
+        Square::from_index(new_index as u8)
     }
 
     pub const fn file(&self) -> File {

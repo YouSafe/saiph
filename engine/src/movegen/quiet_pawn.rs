@@ -40,7 +40,7 @@ pub fn generate_quiet_pawn_moves(board: &Board, move_list: &mut MoveList, push_m
     let promotions = single_push_targets & promotion_rank;
 
     for target in promotions.iter() {
-        let source = target.forward(!side_to_move).unwrap();
+        let source = target.forward(!side_to_move);
 
         move_list.push(Move::new(source, target, MoveFlag::KnightPromotion));
         move_list.push(Move::new(source, target, MoveFlag::BishopPromotion));
@@ -49,17 +49,13 @@ pub fn generate_quiet_pawn_moves(board: &Board, move_list: &mut MoveList, push_m
     }
 
     for target in double_push_targets.iter() {
-        let source = target
-            .forward(!side_to_move)
-            .unwrap()
-            .forward(!side_to_move)
-            .unwrap();
+        let source = target.forward(!side_to_move).forward(!side_to_move);
 
         move_list.push(Move::new(source, target, MoveFlag::DoublePawnPush));
     }
 
     for target in non_promotions.iter() {
-        let source = target.forward(!side_to_move).unwrap();
+        let source = target.forward(!side_to_move);
 
         move_list.push(Move::new(source, target, MoveFlag::Normal));
     }
@@ -167,14 +163,10 @@ mod test {
 
         for file in ALL_FILES {
             let from = Square::from(rank, file);
+            moves.push(Move::new(from, from.forward(color), MoveFlag::Normal));
             moves.push(Move::new(
                 from,
-                from.forward(color).unwrap(),
-                MoveFlag::Normal,
-            ));
-            moves.push(Move::new(
-                from,
-                from.forward(color).unwrap().forward(color).unwrap(),
+                from.forward(color).forward(color),
                 MoveFlag::DoublePawnPush,
             ));
         }

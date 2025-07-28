@@ -76,7 +76,7 @@ impl Board {
         match flag {
             MoveFlag::Normal => (),
             MoveFlag::DoublePawnPush => {
-                new_state.en_passant_target = Some(to.forward(!self.side_to_move).unwrap());
+                new_state.en_passant_target = Some(to.forward(!self.side_to_move));
                 new_state.hash ^= zobrist::en_passant_keys(to.file());
             }
             MoveFlag::Castling => {
@@ -108,7 +108,7 @@ impl Board {
             }
             MoveFlag::EnPassant => {
                 capture_target = Some((
-                    to.forward(!self.side_to_move).unwrap(),
+                    to.forward(!self.side_to_move),
                     Piece::new(PieceType::Pawn, !self.side_to_move),
                 ));
             }
@@ -239,7 +239,7 @@ impl Board {
             }
             MoveFlag::Capture => capture_target = Some(to),
             MoveFlag::EnPassant => {
-                capture_target = Some(to.forward(!self.side_to_move).unwrap());
+                capture_target = Some(to.forward(!self.side_to_move));
             }
             MoveFlag::KnightPromotion
             | MoveFlag::BishopPromotion
