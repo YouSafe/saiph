@@ -1,4 +1,5 @@
 use crate::types::color::PerColor;
+use web_time::Duration;
 
 use super::uci_move::UCIMove;
 
@@ -11,19 +12,16 @@ pub struct SearchLimits {
     pub search_moves: Vec<UCIMove>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
-pub struct Millis(pub u64);
-
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum TimeLimit {
     #[default]
     Infinite,
     Fixed {
-        move_time: Millis,
+        move_time: Duration,
     },
     Dynamic {
-        time_left: PerColor<Millis>,
-        increment: PerColor<Millis>,
+        time_left: PerColor<Duration>,
+        increment: PerColor<Duration>,
         moves_to_go: Option<u8>,
     },
     External,
