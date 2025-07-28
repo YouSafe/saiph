@@ -48,8 +48,8 @@ pub fn board_value(board: &Board) -> Evaluation {
 pub fn piece_square_table(piece: PieceType, square: Square, piece_color: Color) -> i16 {
     let square_index = square as usize;
 
-    let rank = square.to_rank() as usize;
-    let file = square.to_file() as usize;
+    let rank = square.rank() as usize;
+    let file = square.file() as usize;
 
     let lookup_index = match piece_color {
         Color::White => (7 - rank) * 8 + file,

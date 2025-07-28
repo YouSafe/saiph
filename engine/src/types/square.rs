@@ -21,15 +21,6 @@ pub enum Square {
 
 pub const NUM_SQUARES: usize = 64;
 
-impl Square {
-    pub fn to_file(&self) -> File {
-        unsafe { std::mem::transmute::<u8, File>(*self as u8 % 8) }
-    }
-    pub fn to_rank(&self) -> Rank {
-        unsafe { std::mem::transmute::<u8, Rank>(*self as u8 / 8) }
-    }
-}
-
 impl From<Square> for usize {
     fn from(value: Square) -> Self {
         value as usize
@@ -67,7 +58,7 @@ impl Square {
     }
 
     pub const fn file(&self) -> File {
-        unsafe { std::mem::transmute(*self as u8 & 7) }
+        unsafe { std::mem::transmute(*self as u8 % 8) }
     }
 
     pub const fn rank(&self) -> Rank {

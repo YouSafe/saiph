@@ -56,7 +56,7 @@ impl Board {
 
         new_state.en_passant_target = None;
         if let Some(en_passant_target) = self.en_passant_target() {
-            new_state.hash ^= zobrist::en_passant_keys(en_passant_target.to_file());
+            new_state.hash ^= zobrist::en_passant_keys(en_passant_target.file());
         }
 
         new_state.captured_piece = None;
@@ -77,13 +77,13 @@ impl Board {
             MoveFlag::Normal => (),
             MoveFlag::DoublePawnPush => {
                 new_state.en_passant_target = Some(to.forward(!self.side_to_move).unwrap());
-                new_state.hash ^= zobrist::en_passant_keys(to.to_file());
+                new_state.hash ^= zobrist::en_passant_keys(to.file());
             }
             MoveFlag::Castling => {
                 const CASTLE_CONFIG: [(File, File); 2] = [(File::A, File::D), (File::H, File::F)];
 
                 let backrank = self.side_to_move.backrank();
-                let target_file = to.to_file();
+                let target_file = to.file();
                 let (rook_start_file, rook_end_file) = CASTLE_CONFIG[target_file as usize / 4];
                 let (rook_start_square, rook_end_square) = (
                     Square::from(backrank, rook_start_file),
@@ -225,7 +225,7 @@ impl Board {
             MoveFlag::Castling => {
                 const CASTLE_CONFIG: [(File, File); 2] = [(File::A, File::D), (File::H, File::F)];
                 let backrank = self.side_to_move.backrank();
-                let target_file = to.to_file();
+                let target_file = to.file();
                 let (rook_start_file, rook_end_file) = CASTLE_CONFIG[target_file as usize / 4];
                 let (rook_start_square, rook_end_square) = (
                     Square::from(backrank, rook_start_file),
@@ -584,7 +584,7 @@ impl FromStr for Board {
             .map_err(|_| ParseFenError::BadFullMoveNumber)?;
 
         if let Some(en_passant_target) = en_passant_target {
-            hash ^= zobrist::en_passant_keys(en_passant_target.to_file());
+            hash ^= zobrist::en_passant_keys(en_passant_target.file());
         }
 
         hash ^= zobrist::castle_keys(castling_rights);
