@@ -74,7 +74,7 @@ mod test {
     use crate::types::chess_move::{Move, MoveFlag};
     use crate::types::color::Color;
     use crate::types::square::Square::{self, *};
-    use crate::types::square::{ALL_FILES, Rank};
+    use crate::types::square::{File, NUM_FILES, Rank};
 
     fn test_quiet_pawn_moves(fen: &str, expected_moves: &[Move]) {
         test_move_generator::<_, _, false>(
@@ -161,6 +161,9 @@ mod test {
         let mut moves = vec![];
         let color = Color::White;
         let rank = Rank::R2;
+
+        use File::*;
+        pub const ALL_FILES: [File; NUM_FILES] = [A, B, C, D, E, F, G, H];
 
         for file in ALL_FILES {
             let from = Square::from(rank, file);

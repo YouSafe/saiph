@@ -21,14 +21,6 @@ pub enum Square {
 
 pub const NUM_SQUARES: usize = 64;
 
-impl From<Square> for usize {
-    fn from(value: Square) -> Self {
-        value as usize
-    }
-}
-
-declare_per_type!(PerSquare, Square, NUM_SQUARES);
-
 impl Square {
     pub fn from(rank: Rank, file: File) -> Square {
         Self::from_index(rank as u8 * 8 + file as u8)
@@ -70,10 +62,47 @@ impl Square {
     }
 }
 
+impl From<Square> for usize {
+    fn from(value: Square) -> Self {
+        value as usize
+    }
+}
+
+declare_per_type!(PerSquare, Square, NUM_SQUARES);
+
 impl fmt::Display for Square {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let (rank, file) = (self.to_index() / 8, self.to_index() % 8);
         write!(f, "{}{}", (b'a' + file) as char, (b'1' + rank) as char)
+    }
+}
+
+#[rustfmt::skip]
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Rank {
+    R1, R2, R3, R4, R5, R6, R7, R8
+}
+
+#[rustfmt::skip]
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum File {
+    A, B, C, D, E, F, G, H
+}
+
+pub const NUM_RANKS: usize = 8;
+pub const NUM_FILES: usize = 8;
+
+impl From<Rank> for usize {
+    fn from(value: Rank) -> Self {
+        value as usize
+    }
+}
+
+impl From<File> for usize {
+    fn from(value: File) -> Self {
+        value as usize
     }
 }
 
@@ -107,47 +136,6 @@ impl FromStr for Square {
         Ok(Square::from_index(rank as u8 * 8 + file as u8))
     }
 }
-
-#[rustfmt::skip]
-#[repr(u8)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Rank {
-    R1, R2, R3, R4, R5, R6, R7, R8
-}
-
-impl From<Rank> for usize {
-    fn from(value: Rank) -> Self {
-        value as usize
-    }
-}
-
-pub const NUM_RANKS: usize = 8;
-
-#[rustfmt::skip]
-#[repr(u8)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum File {
-    A, B, C, D, E, F, G, H
-}
-
-impl From<File> for usize {
-    fn from(value: File) -> Self {
-        value as usize
-    }
-}
-
-pub const NUM_FILES: usize = 8;
-
-pub const ALL_FILES: [File; NUM_FILES] = [
-    File::A,
-    File::B,
-    File::C,
-    File::D,
-    File::E,
-    File::F,
-    File::G,
-    File::H,
-];
 
 #[cfg(test)]
 mod test {
