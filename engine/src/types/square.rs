@@ -117,23 +117,21 @@ impl FromStr for Square {
     type Err = ParsePositionError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.len() != 2 {
-            return Err(ParsePositionError::InvalidLength);
+        match s.as_bytes() {
+            [file, rank] => {
+                let file = file.to_ascii_lowercase();
+                if !(b'a'..=b'h').contains(&file) {
+                    return Err(ParsePositionError::InvalidFile);
+                }
+                if !(b'1'..=b'8').contains(rank) {
+                    return Err(ParsePositionError::InvalidRank);
+                }
+                let file_idx = file - b'a';
+                let rank_idx = rank - b'1';
+                Ok(Square::from_index(rank_idx * 8 + file_idx))
+            }
+            _ => Err(ParsePositionError::InvalidLength),
         }
-        let mut chars = s.chars();
-
-        let file = (chars.next().unwrap().to_ascii_lowercase() as i8) - ('a' as i8);
-        let rank = (chars.next().unwrap().to_ascii_lowercase() as i8) - ('1' as i8);
-
-        if !(0..=7).contains(&file) {
-            return Err(ParsePositionError::InvalidFile);
-        }
-
-        if !(0..=7).contains(&rank) {
-            return Err(ParsePositionError::InvalidRank);
-        }
-
-        Ok(Square::from_index(rank as u8 * 8 + file as u8))
     }
 }
 
