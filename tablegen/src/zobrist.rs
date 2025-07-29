@@ -12,12 +12,8 @@ pub fn generate_keys() -> GeneratedKeys {
     let mut random_gen = RandomNumberGenerator::new(465864546584658);
 
     let mut piece_keys = [[[0u64; NUM_SQUARES]; NUM_PIECES]; NUM_COLORS];
-    for piece_type in piece_keys.iter_mut() {
-        for color in piece_type.iter_mut() {
-            for square in color.iter_mut() {
-                *square = random_gen.next();
-            }
-        }
+    for square in piece_keys.iter_mut().flatten().flatten() {
+        *square = random_gen.next();
     }
 
     let mut en_passant_keys = [0u64; NUM_FILES];
@@ -46,6 +42,7 @@ pub struct RandomNumberGenerator {
 
 impl RandomNumberGenerator {
     pub fn new(seed: u64) -> Self {
+        assert!(seed != 0);
         Self { state: seed }
     }
 
