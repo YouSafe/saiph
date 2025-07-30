@@ -53,11 +53,11 @@ impl CastlingRights {
         Self(0)
     }
 
-    pub const fn contains(&self, other: Self) -> bool {
+    pub const fn contains(self, other: Self) -> bool {
         self.0 & other.0 == other.0
     }
 
-    pub const fn subtract(&self, other: Self) -> CastlingRights {
+    pub const fn subtract(self, other: Self) -> CastlingRights {
         Self(self.0 & !other.0)
     }
 }

@@ -35,19 +35,19 @@ impl Move {
         Move(((flag as u16) << 12) | ((to as u16) << 6) | (from as u16))
     }
 
-    pub const fn from(&self) -> Square {
+    pub const fn from(self) -> Square {
         Square::from_index((self.0 & 0x3f) as u8)
     }
 
-    pub const fn to(&self) -> Square {
+    pub const fn to(self) -> Square {
         Square::from_index(((self.0 >> 6) & 0x3f) as u8)
     }
 
-    pub const fn flag(&self) -> MoveFlag {
+    pub const fn flag(self) -> MoveFlag {
         unsafe { std::mem::transmute((self.0 >> 12) as u8) }
     }
 
-    pub const fn promotion(&self) -> Option<Promotion> {
+    pub const fn promotion(self) -> Option<Promotion> {
         match self.flag() {
             MoveFlag::KnightPromotion | MoveFlag::KnightPromotionCapture => Some(Promotion::Knight),
             MoveFlag::BishopPromotion | MoveFlag::BishopPromotionCapture => Some(Promotion::Bishop),
@@ -57,7 +57,7 @@ impl Move {
         }
     }
 
-    pub const fn is_capture(&self) -> bool {
+    pub const fn is_capture(self) -> bool {
         (self.0 >> 14) & 1 != 0
     }
 }

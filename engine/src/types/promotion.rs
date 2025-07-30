@@ -10,7 +10,7 @@ pub enum Promotion {
 }
 
 impl Promotion {
-    pub const fn as_piece_type(&self) -> PieceType {
+    pub const fn as_piece_type(self) -> PieceType {
         match self {
             Promotion::Queen => PieceType::Queen,
             Promotion::Rook => PieceType::Rook,

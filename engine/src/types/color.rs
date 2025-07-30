@@ -18,27 +18,27 @@ impl Not for Color {
 }
 
 impl Color {
-    pub const fn backrank(&self) -> Rank {
+    pub const fn backrank(self) -> Rank {
         unsafe { self.unchecked_relative_rank(0) }
     }
 
-    pub const fn initial_pawn_rank(&self) -> Rank {
+    pub const fn initial_pawn_rank(self) -> Rank {
         unsafe { self.unchecked_relative_rank(1) }
     }
 
-    pub const fn double_pawn_push_rank(&self) -> Rank {
+    pub const fn double_pawn_push_rank(self) -> Rank {
         unsafe { self.unchecked_relative_rank(3) }
     }
 
-    pub const fn promotion_rank(&self) -> Rank {
+    pub const fn promotion_rank(self) -> Rank {
         unsafe { self.unchecked_relative_rank(7) }
     }
 
     /// # Safety
     ///
     /// `index` must be between 0 to 7
-    pub const unsafe fn unchecked_relative_rank(&self, index: u8) -> Rank {
-        let index = match *self {
+    pub const unsafe fn unchecked_relative_rank(self, index: u8) -> Rank {
+        let index = match self {
             Color::White => index,
             Color::Black => 7 - index,
         };

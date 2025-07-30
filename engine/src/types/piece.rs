@@ -60,12 +60,12 @@ impl Piece {
         unsafe { std::mem::transmute(pack(ty, color)) }
     }
 
-    pub const fn color(&self) -> Color {
-        unsafe { std::mem::transmute((*self as u8 >> 3) & 1) }
+    pub const fn color(self) -> Color {
+        unsafe { std::mem::transmute((self as u8 >> 3) & 1) }
     }
 
-    pub const fn ty(&self) -> PieceType {
-        unsafe { std::mem::transmute(*self as u8 & 7) }
+    pub const fn ty(self) -> PieceType {
+        unsafe { std::mem::transmute(self as u8 & 7) }
     }
 
     pub fn from_algebraic(letter: char) -> Option<Piece> {
@@ -86,7 +86,7 @@ impl Piece {
         }
     }
 
-    pub fn to_unicode(&self) -> char {
+    pub fn to_unicode(self) -> char {
         use crate::types::color::Color::{Black, White};
 
         match (self.color(), self.ty()) {
@@ -106,7 +106,7 @@ impl Piece {
         }
     }
 
-    pub fn to_ascii(&self) -> char {
+    pub fn to_ascii(self) -> char {
         use crate::types::color::Color::{Black, White};
         match (self.color(), self.ty()) {
             (White, Pawn) => 'P',
