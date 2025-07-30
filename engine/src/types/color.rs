@@ -34,7 +34,10 @@ impl Color {
     ///
     /// `index` must be between 0 to 7
     pub const unsafe fn unchecked_relative_rank(&self, index: u8) -> Rank {
-        let index = (*self as u8) * (7 - 2 * index) + index;
+        let index = match *self {
+            Color::White => index,
+            Color::Black => 7 - index,
+        };
         unsafe { std::mem::transmute(index) }
     }
 }
