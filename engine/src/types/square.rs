@@ -3,6 +3,7 @@ use std::fmt::Formatter;
 use std::str::FromStr;
 
 use crate::declare_per_type;
+use crate::types::bitboard::BitBoard;
 use crate::types::color::Color;
 
 #[rustfmt::skip]
@@ -80,11 +81,23 @@ pub enum Rank {
     R1, R2, R3, R4, R5, R6, R7, R8
 }
 
+impl Rank {
+    pub fn mask(self) -> BitBoard {
+        BitBoard::mask_rank(self)
+    }
+}
+
 #[rustfmt::skip]
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum File {
     A, B, C, D, E, F, G, H
+}
+
+impl File {
+    pub fn mask(self) -> BitBoard {
+        BitBoard::mask_file(self)
+    }
 }
 
 pub const NUM_RANKS: usize = 8;

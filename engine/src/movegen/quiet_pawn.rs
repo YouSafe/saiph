@@ -15,8 +15,7 @@ pub fn generate_quiet_pawn_moves(board: &Board, move_list: &mut MoveList, push_m
 
     // determine source squares that can move:
     // they have to either be not pinned or pinned with the king being on the same file
-    let movable_sources =
-        current_sides_pawns & (!pinned | (pinned & BitBoard::mask_file(king_square.file())));
+    let movable_sources = current_sides_pawns & (!pinned | (pinned & king_square.file().mask()));
 
     let forward_shift: i32 = 8 - 16 * (side_to_move as i32);
 
@@ -31,10 +30,10 @@ pub fn generate_quiet_pawn_moves(board: &Board, move_list: &mut MoveList, push_m
     // legal squares, respecting checks
     let double_push_targets = single_push.shift(forward_shift)
         & !board.combined()
-        & BitBoard::mask_rank(side_to_move.double_pawn_push_rank())
+        & side_to_move.double_pawn_push_rank().mask()
         & push_mask;
 
-    let promotion_rank = BitBoard::mask_rank((!side_to_move).backrank());
+    let promotion_rank = side_to_move.promotion_rank().mask();
 
     let non_promotions = single_push_targets & !promotion_rank;
     let promotions = single_push_targets & promotion_rank;

@@ -30,6 +30,10 @@ impl Color {
         unsafe { self.unchecked_relative_rank(3) }
     }
 
+    pub const fn promotion_rank(&self) -> Rank {
+        unsafe { self.unchecked_relative_rank(7) }
+    }
+
     /// # Safety
     ///
     /// `index` must be between 0 to 7
@@ -79,5 +83,8 @@ mod test {
 
         assert_eq!(Color::White.double_pawn_push_rank(), Rank::R4);
         assert_eq!(Color::Black.double_pawn_push_rank(), Rank::R5);
+
+        assert_eq!(Color::White.promotion_rank(), Rank::R8);
+        assert_eq!(Color::Black.promotion_rank(), Rank::R1);
     }
 }

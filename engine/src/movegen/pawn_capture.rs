@@ -18,6 +18,8 @@ pub fn generate_pawn_capture_moves(
     let king_square =
         (board.pieces(PieceType::King) & board.occupancies(board.side_to_move())).bit_scan();
 
+    let promotion_rank = side_to_move.promotion_rank().mask();
+
     // splitting the loop with an if inside into two for pinned and non-pinned
     // resulted in a ~9% increase in move generation performance
     for source in (current_sides_pawns & pinned).iter() {
@@ -25,8 +27,6 @@ pub fn generate_pawn_capture_moves(
             & board.occupancies(!side_to_move)
             & capture_mask
             & line(king_square, source);
-
-        let promotion_rank = BitBoard::mask_rank((!side_to_move).backrank());
 
         for target in (attacks & promotion_rank).iter() {
             // fill in promotion moves
@@ -45,8 +45,6 @@ pub fn generate_pawn_capture_moves(
     for source in (current_sides_pawns & !pinned).iter() {
         let attacks =
             pawn_attacks(source, side_to_move) & board.occupancies(!side_to_move) & capture_mask;
-
-        let promotion_rank = BitBoard::mask_rank((!side_to_move).backrank());
 
         for target in (attacks & promotion_rank).iter() {
             // fill in promotion moves
