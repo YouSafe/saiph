@@ -84,7 +84,7 @@ pub fn generate_attack_bitboard(board: &Board, attacking_color: Color) -> BitBoa
 
     for piece in ALL_PIECES {
         let piece_bitboard = board.pieces(piece) & board.occupancies(attacking_color);
-        for square in piece_bitboard.iter() {
+        for square in piece_bitboard {
             attacked |= match piece {
                 PieceType::Pawn => pawn_attacks(square, attacking_color),
                 PieceType::Knight => knight_attacks(square),

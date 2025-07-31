@@ -325,7 +325,7 @@ impl Board {
         // limit to opponent's pieces
         potential_pinners &= self.occupancies(!self.side_to_move());
 
-        for square in potential_pinners.iter() {
+        for square in potential_pinners {
             let potentially_pinned = between(square, king_square) & self.combined();
             if potentially_pinned.is_empty() {
                 checkers |= square;
@@ -616,7 +616,7 @@ impl FromStr for Board {
         // limit to opponent's pieces
         potential_pinners &= occupancies[!side_to_move];
 
-        for square in potential_pinners.iter() {
+        for square in potential_pinners {
             let potentially_pinned = between(square, king_square) & combined;
             if potentially_pinned.is_empty() {
                 checkers |= square;

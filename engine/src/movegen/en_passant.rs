@@ -36,10 +36,10 @@ pub fn generate_en_passant_move(board: &Board, move_list: &mut MoveList) {
         let side_to_move = board.side_to_move();
         let current_sides_pawns = board.pieces(PieceType::Pawn) & board.occupancies(side_to_move);
 
-        for source in current_sides_pawns.iter() {
+        for source in current_sides_pawns {
             let attack = pawn_attacks(source, side_to_move) & BitBoard::from_square(ep_square);
 
-            for destination in attack.iter() {
+            for destination in attack {
                 let capture = destination.forward(!side_to_move);
 
                 if is_valid_ep(board, capture, source, destination) {

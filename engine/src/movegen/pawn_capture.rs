@@ -22,13 +22,13 @@ pub fn generate_pawn_capture_moves(
 
     // splitting the loop with an if inside into two for pinned and non-pinned
     // resulted in a ~9% increase in move generation performance
-    for source in (current_sides_pawns & pinned).iter() {
+    for source in (current_sides_pawns & pinned).into_iter() {
         let attacks = pawn_attacks(source, side_to_move)
             & board.occupancies(!side_to_move)
             & capture_mask
             & line(king_square, source);
 
-        for target in (attacks & promotion_rank).iter() {
+        for target in (attacks & promotion_rank).into_iter() {
             // fill in promotion moves
             move_list.push(Move::new(source, target, MoveFlag::KnightPromotionCapture));
             move_list.push(Move::new(source, target, MoveFlag::BishopPromotionCapture));
@@ -36,17 +36,17 @@ pub fn generate_pawn_capture_moves(
             move_list.push(Move::new(source, target, MoveFlag::QueenPromotionCapture));
         }
 
-        for target in (attacks & !promotion_rank).iter() {
+        for target in (attacks & !promotion_rank).into_iter() {
             // regular pawn capture
             move_list.push(Move::new(source, target, MoveFlag::Capture));
         }
     }
 
-    for source in (current_sides_pawns & !pinned).iter() {
+    for source in (current_sides_pawns & !pinned).into_iter() {
         let attacks =
             pawn_attacks(source, side_to_move) & board.occupancies(!side_to_move) & capture_mask;
 
-        for target in (attacks & promotion_rank).iter() {
+        for target in (attacks & promotion_rank).into_iter() {
             // fill in promotion moves
             move_list.push(Move::new(source, target, MoveFlag::KnightPromotionCapture));
             move_list.push(Move::new(source, target, MoveFlag::BishopPromotionCapture));
@@ -54,7 +54,7 @@ pub fn generate_pawn_capture_moves(
             move_list.push(Move::new(source, target, MoveFlag::QueenPromotionCapture));
         }
 
-        for target in (attacks & !promotion_rank).iter() {
+        for target in (attacks & !promotion_rank).into_iter() {
             // regular pawn capture
             move_list.push(Move::new(source, target, MoveFlag::Capture));
         }

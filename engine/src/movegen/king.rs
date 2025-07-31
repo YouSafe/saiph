@@ -19,12 +19,12 @@ pub fn generate_king_moves(
     let attacks = king_attacks(king_square) & !board.occupancies(side_to_move);
 
     // quiet
-    for target in (attacks & push_mask).iter() {
+    for target in (attacks & push_mask).into_iter() {
         move_list.push(Move::new(king_square, target, MoveFlag::Normal));
     }
 
     // capture
-    for target in (attacks & capture_mask).iter() {
+    for target in (attacks & capture_mask).into_iter() {
         move_list.push(Move::new(king_square, target, MoveFlag::Capture));
     }
 }

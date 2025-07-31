@@ -17,16 +17,16 @@ pub fn generate_knight_moves(
     let pinned = board.pinned();
 
     // pinned knights can't move at all
-    for source in (current_sides_knights & !pinned).iter() {
+    for source in (current_sides_knights & !pinned).into_iter() {
         let attacks = knight_attacks(source) & !board.occupancies(side_to_move);
 
         // captures
-        for target in (attacks & capture_mask).iter() {
+        for target in (attacks & capture_mask).into_iter() {
             move_list.push(Move::new(source, target, MoveFlag::Capture))
         }
 
         // quiet
-        for target in (attacks & push_mask).iter() {
+        for target in (attacks & push_mask).into_iter() {
             move_list.push(Move::new(source, target, MoveFlag::Normal));
         }
     }

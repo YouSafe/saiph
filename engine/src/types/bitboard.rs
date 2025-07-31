@@ -40,10 +40,6 @@ impl BitBoard {
         })
     }
 
-    pub fn iter(&self) -> BitBoardIterator {
-        BitBoardIterator(*self)
-    }
-
     pub const fn mask_rank(rank: Rank) -> BitBoard {
         Self::ALL_RANKS[rank as usize]
     }
@@ -103,6 +99,17 @@ impl fmt::Display for BitBoard {
         }
 
         write!(f, "\n\nBitboard: {}", self.0)
+    }
+}
+
+impl IntoIterator for BitBoard {
+    type Item = Square;
+
+    type IntoIter = BitBoardIterator;
+
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter {
+        BitBoardIterator(self)
     }
 }
 

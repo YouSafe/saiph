@@ -36,7 +36,7 @@ fn piece_value(piece: PieceType, square: Square, piece_color: Color) -> i16 {
 pub fn board_value(board: &Board) -> Evaluation {
     let mut result: i16 = 0;
     for piece in ALL_PIECES {
-        for square in board.pieces(piece).iter() {
+        for square in board.pieces(piece) {
             result += piece_value(piece, square, board.piece_at(square).unwrap().color());
         }
     }
