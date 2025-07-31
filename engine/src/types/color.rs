@@ -12,6 +12,7 @@ pub enum Color {
 impl Not for Color {
     type Output = Color;
 
+    #[inline]
     fn not(self) -> Self::Output {
         unsafe { std::mem::transmute::<u8, Color>(self as u8 ^ 1) }
     }

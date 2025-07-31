@@ -8,18 +8,22 @@ use crate::types::square::{File, Rank, Square};
 pub struct BitBoard(pub u64);
 
 impl BitBoard {
+    #[inline]
     pub const fn contains(&self, square: Square) -> bool {
         (self.0 & (1 << square.to_index())) != 0
     }
 
+    #[inline]
     pub const fn is_empty(&self) -> bool {
         self.0 == 0
     }
 
+    #[inline]
     pub const fn from_square(square: Square) -> BitBoard {
         BitBoard(1 << square.to_index())
     }
 
+    #[inline]
     pub const fn count(&self) -> u8 {
         self.0.count_ones() as u8
     }
@@ -107,6 +111,7 @@ pub struct BitBoardIterator(BitBoard);
 impl Iterator for BitBoardIterator {
     type Item = Square;
 
+    #[inline]
     fn next(&mut self) -> Option<Square> {
         if self.0.is_empty() {
             None
@@ -144,6 +149,7 @@ impl_bitwise_op!(BitBoard, BitXor, BitXorAssign, bitxor, bitxor_assign, ^, ^=);
 impl Shl<i32> for BitBoard {
     type Output = BitBoard;
 
+    #[inline]
     fn shl(self, rhs: i32) -> Self::Output {
         BitBoard(self.0 << rhs)
     }
@@ -152,6 +158,7 @@ impl Shl<i32> for BitBoard {
 impl Shr<i32> for BitBoard {
     type Output = BitBoard;
 
+    #[inline]
     fn shr(self, rhs: i32) -> Self::Output {
         BitBoard(self.0 >> rhs)
     }
@@ -160,18 +167,21 @@ impl Shr<i32> for BitBoard {
 impl Not for BitBoard {
     type Output = BitBoard;
 
+    #[inline]
     fn not(self) -> Self::Output {
         BitBoard(self.0.not())
     }
 }
 
 impl BitOrAssign<Square> for BitBoard {
+    #[inline]
     fn bitor_assign(&mut self, rhs: Square) {
         self.0 |= 1 << rhs as u64;
     }
 }
 
 impl BitXorAssign<Square> for BitBoard {
+    #[inline]
     fn bitxor_assign(&mut self, rhs: Square) {
         self.0 ^= 1 << rhs as u64;
     }

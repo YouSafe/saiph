@@ -73,6 +73,7 @@ impl Evaluation {
 impl Neg for Evaluation {
     type Output = Self;
 
+    #[inline]
     fn neg(self) -> Self::Output {
         Evaluation(self.0.neg())
     }
