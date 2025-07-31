@@ -9,12 +9,12 @@ pub struct BitBoard(pub u64);
 
 impl BitBoard {
     #[inline]
-    pub const fn contains(&self, square: Square) -> bool {
+    pub const fn contains(self, square: Square) -> bool {
         (self.0 & (1 << square.to_index())) != 0
     }
 
     #[inline]
-    pub const fn is_empty(&self) -> bool {
+    pub const fn is_empty(self) -> bool {
         self.0 == 0
     }
 
@@ -24,11 +24,11 @@ impl BitBoard {
     }
 
     #[inline]
-    pub const fn count(&self) -> u8 {
+    pub const fn count(self) -> u8 {
         self.0.count_ones() as u8
     }
 
-    pub const fn bit_scan(&self) -> Square {
+    pub const fn bit_scan(self) -> Square {
         Square::from_index(self.0.trailing_zeros() as u8)
     }
 
