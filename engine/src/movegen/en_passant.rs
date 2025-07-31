@@ -34,17 +34,17 @@ fn is_valid_ep(board: &Board, capture: Square, source: Square, destination: Squa
 pub fn generate_en_passant_move(board: &Board, move_list: &mut MoveList) {
     if let Some(ep_square) = board.en_passant_target() {
         let side_to_move = board.side_to_move();
-        let current_sides_pawns = board.pieces(PieceType::Pawn) & board.occupancies(side_to_move);
 
-        for source in current_sides_pawns {
-            let attack = pawn_attacks(source, side_to_move) & BitBoard::from_square(ep_square);
+        let capture = ep_square.forward(!side_to_move);
+        let potential_sources = pawn_attacks(ep_square, !side_to_move)
+            & board.pieces(PieceType::Pawn)
+            & board.occupancies(side_to_move);
 
-            for destination in attack {
-                let capture = destination.forward(!side_to_move);
+        let destination = ep_square;
 
-                if is_valid_ep(board, capture, source, destination) {
-                    move_list.push(Move::new(source, destination, MoveFlag::EnPassant));
-                }
+        for source in potential_sources {
+            if is_valid_ep(board, capture, source, destination) {
+                move_list.push(Move::new(source, destination, MoveFlag::EnPassant));
             }
         }
     }
@@ -75,6 +75,17 @@ mod test {
         test_en_passant_moves(
             "8/8/k7/8/2Pp4/8/8/3K4 b - c3 0 1",
             &[Move::new(Square::D4, Square::C3, MoveFlag::EnPassant)],
+        );
+    }
+
+    #[test]
+    fn test_two_en_passant_moves() {
+        test_en_passant_moves(
+            "8/8/k7/8/1pPp4/8/8/3K4 b - c3 0 1",
+            &[
+                Move::new(Square::B4, Square::C3, MoveFlag::EnPassant),
+                Move::new(Square::D4, Square::C3, MoveFlag::EnPassant),
+            ],
         );
     }
 
