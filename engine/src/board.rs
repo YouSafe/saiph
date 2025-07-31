@@ -283,6 +283,9 @@ impl Board {
         }
 
         self.side_to_move = !self.side_to_move;
+        self.game_ply += 1;
+        new_state.rule50 += 1;
+
         new_state.hash ^= zobrist::side_key();
 
         self.update_checker_info(&mut new_state);
@@ -298,6 +301,7 @@ impl Board {
             self.state = previous_state;
         }
 
+        self.game_ply -= 1;
         self.side_to_move = !self.side_to_move;
     }
 
