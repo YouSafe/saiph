@@ -138,7 +138,7 @@ pub fn compute_king_push_capture_masks<const CAPTURE_ONLY: bool>(
 ) -> PushCaptureMasks {
     let side_to_move = board.side_to_move();
 
-    let attacked = generate_attack_bitboard(board, !side_to_move);
+    let attacked = attacked_unguarded_king_neighbors(board, !side_to_move);
 
     let mut push_mask = !attacked;
     let mut capture_mask = !attacked;
@@ -158,16 +158,16 @@ pub fn compute_king_push_capture_masks<const CAPTURE_ONLY: bool>(
     }
 }
 
-pub fn is_square_attacked(board: &Board, attacked_square: Square, attacking_side: Color) -> bool {
-    // attacked by pawns?
-    if (pawn_attacks(attacked_square, !attacking_side)
-        & board.pieces(PieceType::Pawn)
-        & board.occupancies(attacking_side))
-        != BitBoard(0)
-    {
-        return true;
-    }
+pub fn sq_attacked(board: &Board, attacked_square: Square, attacking_side: Color) -> bool {
+    sq_attacked_given_blockers(board, attacked_square, attacking_side, board.combined())
+}
 
+pub fn sq_attacked_given_blockers(
+    board: &Board,
+    attacked_square: Square,
+    attacking_side: Color,
+    blockers: BitBoard,
+) -> bool {
     // attacked by knight?
     if (knight_attacks(attacked_square)
         & board.pieces(PieceType::Knight)
@@ -186,9 +186,9 @@ pub fn is_square_attacked(board: &Board, attacked_square: Square, attacking_side
         return true;
     }
 
-    // attacked by bishop or queen?
-    if (bishop_attacks(attacked_square, board.combined())
-        & (board.pieces(PieceType::Bishop) | board.pieces(PieceType::Queen))
+    // attacked by pawns?
+    if (pawn_attacks(attacked_square, !attacking_side)
+        & board.pieces(PieceType::Pawn)
         & board.occupancies(attacking_side))
         != BitBoard(0)
     {
@@ -196,8 +196,17 @@ pub fn is_square_attacked(board: &Board, attacked_square: Square, attacking_side
     }
 
     // attacked by rook or queen?
-    if (rook_attacks(attacked_square, board.combined())
+    if (rook_attacks(attacked_square, blockers)
         & (board.pieces(PieceType::Rook) | board.pieces(PieceType::Queen))
+        & board.occupancies(attacking_side))
+        != BitBoard(0)
+    {
+        return true;
+    }
+
+    // attacked by bishop or queen?
+    if (bishop_attacks(attacked_square, blockers)
+        & (board.pieces(PieceType::Bishop) | board.pieces(PieceType::Queen))
         & board.occupancies(attacking_side))
         != BitBoard(0)
     {
@@ -207,12 +216,25 @@ pub fn is_square_attacked(board: &Board, attacked_square: Square, attacking_side
     false
 }
 
-pub fn build_attacked_bitboard(board: &Board, attacking_side: Color) -> BitBoard {
+pub fn attacked_unguarded_king_neighbors(board: &Board, attacking_side: Color) -> BitBoard {
     let mut bitboard = BitBoard(0);
-    for square in 0..64 {
-        let square = Square::from_index(square);
 
-        if is_square_attacked(board, square, attacking_side) {
+    let king_bb = board.pieces(PieceType::King) & board.occupancies(!attacking_side);
+
+    // remove opponent king from blockers to simulate xray attack
+    let blockers = board.combined() ^ king_bb;
+
+    let mut near_king_bb = king_bb // center
+        | (king_bb & BitBoard::NOT_A_FILE) >> 1 // left
+        | (king_bb & BitBoard::NOT_H_FILE) << 1; // right
+
+    near_king_bb |= near_king_bb << 8 // up
+        | near_king_bb >> 8; // down
+
+    let unguarded = near_king_bb & !board.occupancies(!attacking_side);
+
+    for square in unguarded {
+        if sq_attacked_given_blockers(board, square, attacking_side, blockers) {
             bitboard |= square;
         }
     }
@@ -262,8 +284,8 @@ mod test {
 
     use crate::board::Board;
     use crate::movegen::{
-        MoveList, PushCaptureMasks, build_attacked_bitboard, generate_attack_bitboard,
-        generate_moves, is_square_attacked,
+        MoveList, PushCaptureMasks, attacked_unguarded_king_neighbors, generate_attack_bitboard,
+        generate_moves, sq_attacked,
     };
     use crate::types::bitboard::BitBoard;
     use crate::types::chess_move::Move;
@@ -309,7 +331,7 @@ mod test {
         let board = Board::from_str("k7/8/8/3p4/8/8/8/K7 w - - 0 1").unwrap();
         println!("board: {board}");
 
-        let is_e4_attacked_by_black = is_square_attacked(&board, Square::E4, Color::Black);
+        let is_e4_attacked_by_black = sq_attacked(&board, Square::E4, Color::Black);
 
         assert!(is_e4_attacked_by_black);
         println!("is e4 attacked by black pawn? {is_e4_attacked_by_black}",);
@@ -320,7 +342,7 @@ mod test {
         let board = Board::from_str("7k/8/2P5/8/8/8/6b1/K7 w - - 0 1").unwrap();
         println!("board: {board}");
 
-        let is_c6_attacked_by_black = is_square_attacked(&board, Square::C6, Color::Black);
+        let is_c6_attacked_by_black = sq_attacked(&board, Square::C6, Color::Black);
 
         assert!(is_c6_attacked_by_black);
 
@@ -332,7 +354,7 @@ mod test {
         let board = Board::from_str("7k/8/8/8/2R2b2/8/8/K7 w - - 0 1").unwrap();
         println!("{board}");
 
-        let is_f4_attacked_by_white = is_square_attacked(&board, Square::F4, Color::White);
+        let is_f4_attacked_by_white = sq_attacked(&board, Square::F4, Color::White);
 
         assert!(is_f4_attacked_by_white);
 
@@ -344,7 +366,7 @@ mod test {
         let board = Board::from_str("7k/8/4q3/8/3N4/8/8/K7 w - - 0 1").unwrap();
         println!("{board}");
 
-        let is_e6_attacked_by_white = is_square_attacked(&board, Square::E6, Color::White);
+        let is_e6_attacked_by_white = sq_attacked(&board, Square::E6, Color::White);
 
         assert!(is_e6_attacked_by_white);
 
@@ -356,7 +378,7 @@ mod test {
         let board = Board::from_str("7k/P7/8/8/8/8/8/K5q1 w - - 0 1").unwrap();
         println!("{board}");
 
-        let is_a7_attacked_by_black = is_square_attacked(&board, Square::A7, Color::Black);
+        let is_a7_attacked_by_black = sq_attacked(&board, Square::A7, Color::Black);
 
         assert!(is_a7_attacked_by_black);
 
@@ -364,12 +386,14 @@ mod test {
     }
 
     #[test]
-    fn test_build_attacked_bitboard() {
-        let board = Board::default();
-        let attacked = build_attacked_bitboard(&board, Color::White);
+    fn test_attacked_unguarded_king_neighbors() {
+        let board =
+            Board::from_str("rnb1kbnr/pppp1ppp/4p3/8/5P1q/2N5/PPPPP1PP/R1BQKBNR w KQkq - 0 1")
+                .unwrap();
+        let attacked = attacked_unguarded_king_neighbors(&board, Color::Black);
         println!("{attacked}");
 
-        let expected = BitBoard(16777086);
+        let expected = BitBoard(8192);
         println!("expected: {expected}");
         assert_eq!(attacked, expected);
     }
@@ -382,7 +406,8 @@ mod test {
         println!("{}", board.combined());
         println!("{attacked}");
 
-        let test = build_attacked_bitboard(&board, Color::White);
+        // attacked_unguarded_king_neighbors should be subset of full attack bitboard
+        let test = attacked | attacked_unguarded_king_neighbors(&board, Color::White);
         println!("{test}");
         assert_eq!(attacked, test);
     }

@@ -1,6 +1,6 @@
 use crate::board::Board;
 use crate::movegen::attacks::between;
-use crate::movegen::{MoveList, is_square_attacked};
+use crate::movegen::{MoveList, sq_attacked};
 use crate::types::bitboard::BitBoard;
 use crate::types::castling_rights::CastlingRights;
 use crate::types::chess_move::{Move, MoveFlag};
@@ -57,8 +57,8 @@ pub fn generate_castling_moves(board: &Board, move_list: &mut MoveList) {
     for config in &CASTLING_CONFIGS[side_to_move as usize] {
         if castling_rights.contains(config.required_rights)
             && (board.combined() & between(king_square, config.accompanied_rook)) == BitBoard::EMPTY
-            && !is_square_attacked(board, config.safe_squares[0], !side_to_move)
-            && !is_square_attacked(board, config.safe_squares[1], !side_to_move)
+            && !sq_attacked(board, config.safe_squares[0], !side_to_move)
+            && !sq_attacked(board, config.safe_squares[1], !side_to_move)
         {
             move_list.push(Move::new(
                 king_square,

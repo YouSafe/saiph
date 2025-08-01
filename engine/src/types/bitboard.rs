@@ -58,6 +58,12 @@ impl BitBoard {
 
     pub const ALL_RANKS: [BitBoard; 8] = generate_all_ranks();
     pub const ALL_FILES: [BitBoard; 8] = generate_all_files();
+
+    pub const NOT_1ST_RANK: BitBoard = BitBoard(18446744073709551360);
+    pub const NOT_8TH_RANK: BitBoard = BitBoard(72057594037927935);
+
+    pub const NOT_A_FILE: BitBoard = BitBoard(18374403900871474942);
+    pub const NOT_H_FILE: BitBoard = BitBoard(9187201950435737471);
 }
 
 const fn generate_all_ranks() -> [BitBoard; 8] {
