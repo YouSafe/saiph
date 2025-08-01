@@ -1,9 +1,11 @@
 use crate::board::Board;
 use crate::movegen::MoveList;
-use crate::movegen::attacks::{line, pawn_attacks};
 use crate::types::bitboard::BitBoard;
 use crate::types::chess_move::{Move, MoveFlag};
+use crate::types::color::Color;
+use crate::types::direction::RelativeDir;
 use crate::types::piece::PieceType;
+use crate::types::square::Square;
 
 pub fn generate_pawn_capture_moves(
     board: &Board,
@@ -18,46 +20,55 @@ pub fn generate_pawn_capture_moves(
     let king_square =
         (board.pieces(PieceType::King) & board.occupancies(board.side_to_move())).bit_scan();
 
+    let (main, anti) = match side_to_move {
+        Color::White => (king_square.main_diagonal(), king_square.anti_diagonal()),
+        Color::Black => (king_square.anti_diagonal(), king_square.main_diagonal()),
+    };
+
+    let movable_sources_main = current_sides_pawns & (!pinned | (pinned & main));
+    let movable_sources_anti = current_sides_pawns & (!pinned | (pinned & anti));
+
     let promotion_rank = side_to_move.promotion_rank().mask();
 
-    // splitting the loop with an if inside into two for pinned and non-pinned
-    // resulted in a ~9% increase in move generation performance
-    for source in (current_sides_pawns & pinned).into_iter() {
-        let attacks = pawn_attacks(source, side_to_move)
-            & board.occupancies(!side_to_move)
-            & capture_mask
-            & line(king_square, source);
+    let right_dir = RelativeDir::ForwardRight.to_absolute(side_to_move);
+    let left_dir = RelativeDir::ForwardLeft.to_absolute(side_to_move);
 
-        for target in (attacks & promotion_rank).into_iter() {
-            // fill in promotion moves
-            move_list.push(Move::new(source, target, MoveFlag::KnightPromotionCapture));
-            move_list.push(Move::new(source, target, MoveFlag::BishopPromotionCapture));
-            move_list.push(Move::new(source, target, MoveFlag::RookPromotionCapture));
-            move_list.push(Move::new(source, target, MoveFlag::QueenPromotionCapture));
-        }
+    let right_targets =
+        right_dir.masked_shift(movable_sources_main) & board.occupancies(!side_to_move) & capture_mask;
+    let left_targets =
+        left_dir.masked_shift(movable_sources_anti) & board.occupancies(!side_to_move) & capture_mask;
 
-        for target in (attacks & !promotion_rank).into_iter() {
-            // regular pawn capture
-            move_list.push(Move::new(source, target, MoveFlag::Capture));
-        }
+    let right_flip_shift = right_dir.flip().shift();
+    let left_flip_shift = left_dir.flip().shift();
+
+    for target in (right_targets & promotion_rank).into_iter() {
+        let source = Square::from_index((target as i8 + right_flip_shift) as u8);
+
+        move_list.push(Move::new(source, target, MoveFlag::KnightPromotionCapture));
+        move_list.push(Move::new(source, target, MoveFlag::BishopPromotionCapture));
+        move_list.push(Move::new(source, target, MoveFlag::RookPromotionCapture));
+        move_list.push(Move::new(source, target, MoveFlag::QueenPromotionCapture));
     }
 
-    for source in (current_sides_pawns & !pinned).into_iter() {
-        let attacks =
-            pawn_attacks(source, side_to_move) & board.occupancies(!side_to_move) & capture_mask;
+    for target in (left_targets & promotion_rank).into_iter() {
+        let source = Square::from_index((target as i8 + left_flip_shift) as u8);
 
-        for target in (attacks & promotion_rank).into_iter() {
-            // fill in promotion moves
-            move_list.push(Move::new(source, target, MoveFlag::KnightPromotionCapture));
-            move_list.push(Move::new(source, target, MoveFlag::BishopPromotionCapture));
-            move_list.push(Move::new(source, target, MoveFlag::RookPromotionCapture));
-            move_list.push(Move::new(source, target, MoveFlag::QueenPromotionCapture));
-        }
+        move_list.push(Move::new(source, target, MoveFlag::KnightPromotionCapture));
+        move_list.push(Move::new(source, target, MoveFlag::BishopPromotionCapture));
+        move_list.push(Move::new(source, target, MoveFlag::RookPromotionCapture));
+        move_list.push(Move::new(source, target, MoveFlag::QueenPromotionCapture));
+    }
 
-        for target in (attacks & !promotion_rank).into_iter() {
-            // regular pawn capture
-            move_list.push(Move::new(source, target, MoveFlag::Capture));
-        }
+    for target in (right_targets & !promotion_rank).into_iter() {
+        let source = Square::from_index((target as i8 + right_flip_shift) as u8);
+
+        move_list.push(Move::new(source, target, MoveFlag::Capture));
+    }
+
+    for target in (left_targets & !promotion_rank).into_iter() {
+        let source = Square::from_index((target as i8 + left_flip_shift) as u8);
+
+        move_list.push(Move::new(source, target, MoveFlag::Capture));
     }
 }
 

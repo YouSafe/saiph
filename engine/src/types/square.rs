@@ -54,6 +54,14 @@ impl Square {
         unsafe { std::mem::transmute(*self as u8 / 8) }
     }
 
+    pub const fn anti_diagonal(&self) -> BitBoard {
+        BitBoard::mask_anti_diagonal(*self)
+    }
+
+    pub const fn main_diagonal(&self) -> BitBoard {
+        BitBoard::mask_main_diagonal(*self)
+    }
+
     pub const fn mirror_vertically(&self) -> Square {
         Square::from_index((*self as u8) ^ 56)
     }

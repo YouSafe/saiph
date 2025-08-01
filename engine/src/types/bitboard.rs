@@ -19,6 +19,11 @@ impl BitBoard {
     }
 
     #[inline]
+    pub const fn intersect(self, other: BitBoard) -> BitBoard {
+        BitBoard(self.0 & other.0)
+    }
+
+    #[inline]
     pub const fn from_square(square: Square) -> BitBoard {
         BitBoard(1 << square.to_index())
     }
@@ -52,6 +57,18 @@ impl BitBoard {
         Self::ALL_FILES[file as usize]
     }
 
+    pub const fn mask_main_diagonal(square: Square) -> BitBoard {
+        let file = square.file() as usize;
+        let rank = square.rank() as usize;
+        Self::DIAGS[7 + file - rank]
+    }
+
+    pub const fn mask_anti_diagonal(square: Square) -> BitBoard {
+        let file = square.file() as usize;
+        let rank = square.rank() as usize;
+        BitBoard(Self::DIAGS[file + rank].0.swap_bytes())
+    }
+
     pub const EMPTY: BitBoard = BitBoard(0);
 
     pub const FULL: BitBoard = BitBoard(!0);
@@ -64,6 +81,24 @@ impl BitBoard {
 
     pub const NOT_A_FILE: BitBoard = BitBoard(18374403900871474942);
     pub const NOT_H_FILE: BitBoard = BitBoard(9187201950435737471);
+
+    pub const DIAGS: [BitBoard; 15] = [
+        BitBoard(0x0100_0000_0000_0000),
+        BitBoard(0x0201_0000_0000_0000),
+        BitBoard(0x0402_0100_0000_0000),
+        BitBoard(0x0804_0201_0000_0000),
+        BitBoard(0x1008_0402_0100_0000),
+        BitBoard(0x2010_0804_0201_0000),
+        BitBoard(0x4020_1008_0402_0100),
+        BitBoard(0x8040_2010_0804_0201),
+        BitBoard(0x0080_4020_1008_0402),
+        BitBoard(0x0000_8040_2010_0804),
+        BitBoard(0x0000_0080_4020_1008),
+        BitBoard(0x0000_0000_8040_2010),
+        BitBoard(0x0000_0000_0080_4020),
+        BitBoard(0x0000_0000_0000_8040),
+        BitBoard(0x0000_0000_0000_0080),
+    ];
 }
 
 const fn generate_all_ranks() -> [BitBoard; 8] {

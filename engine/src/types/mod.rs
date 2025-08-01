@@ -7,6 +7,7 @@ pub mod promotion;
 pub mod search_limits;
 pub mod square;
 pub mod uci_move;
+pub mod direction;
 
 #[macro_export]
 macro_rules! declare_per_type {
