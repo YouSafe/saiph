@@ -52,7 +52,7 @@ pub fn generate_moves<const CAPTURE_ONLY: bool>(board: &Board) -> MoveList {
         }
 
         generate_pawn_capture_moves(board, &mut move_list, capture_mask);
-        generate_en_passant_move(board, &mut move_list);
+        generate_en_passant_move(board, &mut move_list, push_mask);
         generate_knight_moves(board, &mut move_list, capture_mask, push_mask);
         generate_slider_moves(board, &mut move_list, capture_mask, push_mask);
         generate_king_moves(board, &mut move_list, king_capture_mask, king_push_mask);
@@ -60,7 +60,7 @@ pub fn generate_moves<const CAPTURE_ONLY: bool>(board: &Board) -> MoveList {
         // a single check can be evaded by capturing the checker, blocking the check or by moving the king
         generate_quiet_pawn_moves(board, &mut move_list, push_mask);
         generate_pawn_capture_moves(board, &mut move_list, capture_mask);
-        generate_en_passant_move(board, &mut move_list);
+        generate_en_passant_move(board, &mut move_list, push_mask);
         generate_knight_moves(board, &mut move_list, capture_mask, push_mask);
         generate_slider_moves(board, &mut move_list, capture_mask, push_mask);
         // castling is not allowed when the king is in check

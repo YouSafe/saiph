@@ -3,6 +3,7 @@ use std::{env, fs::File, io::BufWriter, path::Path};
 
 use tablegen::BitBoard;
 use tablegen::magics::Magic;
+use tablegen::slider_move::FIRST_RANK_ATTACKS;
 use tablegen::{
     king_move::generate_king_attacks,
     knight_move::generate_knight_attacks,
@@ -94,6 +95,16 @@ impl FormattedWriter for u64 {
     }
 }
 
+impl FormattedWriter for u8 {
+    fn typename() -> String {
+        "u8".to_owned()
+    }
+
+    fn write(self, file: &mut impl Write, _state: State) -> std::io::Result<()> {
+        write!(file, "{self}")
+    }
+}
+
 impl FormattedWriter for Magic {
     fn typename() -> String {
         "Magic".to_owned()
@@ -133,6 +144,14 @@ impl<const N: usize> Transform for [BitBoard; N] {
     }
 }
 
+impl<const N: usize> Transform for [u8; N] {
+    type Output = [u8; N];
+
+    fn transform(self) -> Self::Output {
+        self
+    }
+}
+
 impl<const N: usize, T: Transform> Transform for [T; N] {
     type Output = [T::Output; N];
 
@@ -163,6 +182,11 @@ fn main() -> std::io::Result<()> {
     write_variable(&mut writer, "KNIGHT_ATTACKS", knight_attacks.transform())?;
     write_variable(&mut writer, "SQUARES_BETWEEN", squares_between.transform())?;
     write_variable(&mut writer, "SLIDER_ATTACKS", slider_attacks.transform())?;
+    write_variable(
+        &mut writer,
+        "FIRST_RANK_ATTACKS",
+        FIRST_RANK_ATTACKS.transform(),
+    )?;
 
     let dest_path = Path::new(&out_dir).join("zobrist.rs");
     let tables = File::create(&dest_path)?;
