@@ -33,37 +33,37 @@ impl Square {
     }
 
     #[inline]
-    pub const fn to_index(&self) -> u8 {
-        *self as u8
+    pub const fn to_index(self) -> u8 {
+        self as u8
     }
 
-    pub const fn forward(&self, color: Color) -> Square {
+    pub const fn forward(self, color: Color) -> Square {
         let new_index = match color {
-            Color::White => *self as i8 + 8,
-            Color::Black => *self as i8 - 8,
+            Color::White => self as i8 + 8,
+            Color::Black => self as i8 - 8,
         };
         assert!(new_index >= 0 && new_index <= 63);
         Square::from_index(new_index as u8)
     }
 
-    pub const fn file(&self) -> File {
-        unsafe { std::mem::transmute(*self as u8 % 8) }
+    pub const fn file(self) -> File {
+        unsafe { std::mem::transmute(self as u8 % 8) }
     }
 
-    pub const fn rank(&self) -> Rank {
-        unsafe { std::mem::transmute(*self as u8 / 8) }
+    pub const fn rank(self) -> Rank {
+        unsafe { std::mem::transmute(self as u8 / 8) }
     }
 
-    pub const fn anti_diagonal(&self) -> BitBoard {
-        BitBoard::mask_anti_diagonal(*self)
+    pub const fn anti_diagonal(self) -> BitBoard {
+        BitBoard::mask_anti_diagonal(self)
     }
 
-    pub const fn main_diagonal(&self) -> BitBoard {
-        BitBoard::mask_main_diagonal(*self)
+    pub const fn main_diagonal(self) -> BitBoard {
+        BitBoard::mask_main_diagonal(self)
     }
 
-    pub const fn mirror_vertically(&self) -> Square {
-        Square::from_index((*self as u8) ^ 56)
+    pub const fn mirror_vertically(self) -> Square {
+        Square::from_index((self as u8) ^ 56)
     }
 }
 
