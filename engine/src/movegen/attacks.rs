@@ -40,7 +40,3 @@ pub fn queen_attacks(square: Square, blockers: BitBoard) -> BitBoard {
 pub fn between(from: Square, to: Square) -> BitBoard {
     BitBoard(internal::SQUARES_BETWEEN[from as usize][to as usize])
 }
-
-pub fn line(from: Square, target: Square) -> BitBoard {
-    BitBoard(internal::SQUARES_LINE[from as usize][target as usize])
-}

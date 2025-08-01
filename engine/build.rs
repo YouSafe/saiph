@@ -10,7 +10,6 @@ use tablegen::{
     pawn_move::generate_pawn_attacks,
     rays_between::generate_squares_between,
     slider_move::generate_slider_attacks,
-    xray_line::generate_squares_line,
     zobrist::{GeneratedKeys, generate_keys},
 };
 
@@ -148,7 +147,6 @@ fn main() -> std::io::Result<()> {
     let pawn_attacks = generate_pawn_attacks();
     let king_attacks = generate_king_attacks();
     let squares_between = generate_squares_between();
-    let squares_line = generate_squares_line();
     let knight_attacks = generate_knight_attacks();
     let slider_attacks: [BitBoard; SLIDER_ATTACK_TABLE_SIZE] = generate_slider_attacks();
 
@@ -164,7 +162,6 @@ fn main() -> std::io::Result<()> {
     write_variable(&mut writer, "KING_ATTACKS", king_attacks.transform())?;
     write_variable(&mut writer, "KNIGHT_ATTACKS", knight_attacks.transform())?;
     write_variable(&mut writer, "SQUARES_BETWEEN", squares_between.transform())?;
-    write_variable(&mut writer, "SQUARES_LINE", squares_line.transform())?;
     write_variable(&mut writer, "SLIDER_ATTACKS", slider_attacks.transform())?;
 
     let dest_path = Path::new(&out_dir).join("zobrist.rs");
