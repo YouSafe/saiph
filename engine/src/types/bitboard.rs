@@ -32,6 +32,10 @@ impl BitBoard {
         Square::from_index(self.0.trailing_zeros() as u8)
     }
 
+    pub const fn lsb(self) -> BitBoard {
+        BitBoard(self.0 & self.0.wrapping_neg())
+    }
+
     pub const fn shift(self, offset: i32) -> BitBoard {
         BitBoard(if offset >= 0 {
             self.0 << offset
@@ -124,7 +128,7 @@ impl Iterator for BitBoardIterator {
             None
         } else {
             let square = self.0.bit_scan();
-            self.0 ^= square;
+            self.0 ^= self.0.lsb();
             Some(square)
         }
     }
