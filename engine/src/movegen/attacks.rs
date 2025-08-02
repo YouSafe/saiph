@@ -11,14 +11,14 @@ pub fn bishop_attacks(square: Square, blockers: BitBoard) -> BitBoard {
     let magic = &internal::BISHOP_MAGICS[square as usize];
     let magic_index =
         ((blockers.0 & magic.mask).wrapping_mul(magic.magic) >> (64 - 9)) + magic.offset;
-    BitBoard(internal::SLIDER_ATTACKS[magic_index as usize])
+    BitBoard(unsafe { *internal::SLIDER_ATTACKS.get_unchecked(magic_index as usize) })
 }
 
 pub fn rook_attacks(square: Square, blockers: BitBoard) -> BitBoard {
     let magic = &internal::ROOK_MAGICS[square as usize];
     let magic_index =
         ((blockers.0 & magic.mask).wrapping_mul(magic.magic) >> (64 - 12)) + magic.offset;
-    BitBoard(internal::SLIDER_ATTACKS[magic_index as usize])
+    BitBoard(unsafe { *internal::SLIDER_ATTACKS.get_unchecked(magic_index as usize) })
 }
 
 pub fn pawn_attacks(square: Square, color: Color) -> BitBoard {
@@ -45,7 +45,7 @@ pub fn slider_horizontal(square: Square, blockers: BitBoard) -> BitBoard {
     let rankx8 = square.rank() as i32 * 8;
     let file = square.file();
 
-    // mask for rank 
+    // mask for rank
     let mask = BitBoard(0xFF << rankx8);
 
     // mask and map to first rank
