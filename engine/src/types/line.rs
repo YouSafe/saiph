@@ -1,29 +1,29 @@
 use crate::types::{bitboard::BitBoard, square::Square};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Line {
+pub enum LineType {
     MainDiagonal,
     AntiDiagonal,
     Vertical,
     Horizontal,
 }
 
-impl Line {
-    pub fn shared(s1: Square, s2: Square) -> Option<Line> {
-        let from = s1 as i8;
-        let to = s2 as i8;
+impl LineType {
+    pub fn shared(s1: Square, s2: Square) -> Option<LineType> {
+        let s1 = s1 as i8;
+        let s2 = s2 as i8;
 
-        let df = (to % 8) - (from % 8);
-        let dr = (to / 8) - (from / 8);
+        let df = (s2 % 8) - (s1 % 8);
+        let dr = (s2 / 8) - (s1 / 8);
 
         if dr == df {
-            Some(Line::MainDiagonal)
+            Some(LineType::MainDiagonal)
         } else if dr == -df {
-            Some(Line::AntiDiagonal)
+            Some(LineType::AntiDiagonal)
         } else if dr == 0 {
-            Some(Line::Horizontal)
+            Some(LineType::Horizontal)
         } else if df == 0 {
-            Some(Line::Vertical)
+            Some(LineType::Vertical)
         } else {
             None
         }
@@ -31,30 +31,36 @@ impl Line {
 
     pub fn mask(self, anchor: Square) -> BitBoard {
         match self {
-            Line::MainDiagonal => anchor.main_diagonal(),
-            Line::AntiDiagonal => anchor.anti_diagonal(),
-            Line::Vertical => anchor.file().mask(),
-            Line::Horizontal => anchor.rank().mask(),
+            LineType::MainDiagonal => anchor.main_diagonal(),
+            LineType::AntiDiagonal => anchor.anti_diagonal(),
+            LineType::Vertical => anchor.file().mask(),
+            LineType::Horizontal => anchor.rank().mask(),
         }
     }
 }
 
 #[cfg(test)]
 mod test {
-    use crate::types::{line::Line, square::Square};
+    use crate::types::{line::LineType, square::Square};
 
     #[test]
     fn test_shared() {
-        assert_eq!(Line::shared(Square::A1, Square::F1), Some(Line::Horizontal));
         assert_eq!(
-            Line::shared(Square::G6, Square::E4),
-            Some(Line::MainDiagonal)
+            LineType::shared(Square::A1, Square::F1),
+            Some(LineType::Horizontal)
         );
-        assert_eq!(Line::shared(Square::D4, Square::D6), Some(Line::Vertical));
         assert_eq!(
-            Line::shared(Square::E2, Square::A6),
-            Some(Line::AntiDiagonal)
+            LineType::shared(Square::G6, Square::E4),
+            Some(LineType::MainDiagonal)
         );
-        assert_eq!(Line::shared(Square::A1, Square::F2), None);
+        assert_eq!(
+            LineType::shared(Square::D4, Square::D6),
+            Some(LineType::Vertical)
+        );
+        assert_eq!(
+            LineType::shared(Square::E2, Square::A6),
+            Some(LineType::AntiDiagonal)
+        );
+        assert_eq!(LineType::shared(Square::A1, Square::F2), None);
     }
 }

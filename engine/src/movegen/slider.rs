@@ -3,7 +3,7 @@ use crate::movegen::MoveList;
 use crate::movegen::attacks::{bishop_attacks, rook_attacks};
 use crate::types::bitboard::BitBoard;
 use crate::types::chess_move::{Move, MoveFlag};
-use crate::types::line::Line;
+use crate::types::line::LineType;
 use crate::types::piece::PieceType;
 
 pub fn generate_slider_moves(
@@ -42,7 +42,7 @@ pub fn generate_slider_moves(
 
     for source in ((bishops | queens) & pinned).into_iter() {
         // SAFETY: pinned piece and king must share a line
-        let line = unsafe { Line::shared(king_square, source).unwrap_unchecked() }.mask(source);
+        let line = unsafe { LineType::shared(king_square, source).unwrap_unchecked() }.mask(source);
 
         let attacks = bishop_attacks(source, combined) & line & !board.occupancies(side_to_move);
 
@@ -74,7 +74,7 @@ pub fn generate_slider_moves(
 
     for source in ((rooks | queens) & pinned).into_iter() {
         // SAFETY: pinned piece and king must share a line
-        let line = unsafe { Line::shared(king_square, source).unwrap_unchecked() }.mask(source);
+        let line = unsafe { LineType::shared(king_square, source).unwrap_unchecked() }.mask(source);
 
         let attacks = rook_attacks(source, combined) & line & !board.occupancies(side_to_move);
 
