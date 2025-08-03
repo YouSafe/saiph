@@ -25,7 +25,7 @@ impl Direction {
         }
     }
 
-    pub const fn repeated_masked_shift<const N: i8>(self, mut bb: BitBoard) -> BitBoard {
+    pub const fn repeated_masked_shift<const N: u8>(self, mut bb: BitBoard) -> BitBoard {
         let mut i = N;
         while i > 0 {
             bb = self.masked_shift(bb);

@@ -72,7 +72,7 @@ impl BitBoard {
     }
 
     #[inline]
-    pub const fn masked_shift<const N: i8>(self, direction: Direction) -> BitBoard {
+    pub const fn masked_shift<const N: u8>(self, direction: Direction) -> BitBoard {
         direction.repeated_masked_shift::<N>(self)
     }
 

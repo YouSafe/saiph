@@ -57,7 +57,7 @@ pub fn generate_slider_moves(
         }
     }
 
-    // line attackers
+    // orthogonal attackers
     for source in ((rooks | queens) & !pinned).into_iter() {
         let attacks = rook_attacks(source, combined) & !board.occupancies(side_to_move);
 

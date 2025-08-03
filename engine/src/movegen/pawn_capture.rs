@@ -5,7 +5,6 @@ use crate::types::chess_move::{Move, MoveFlag};
 use crate::types::color::Color;
 use crate::types::direction::RelativeDir;
 use crate::types::piece::PieceType;
-use crate::types::square::Square;
 
 pub fn generate_pawn_capture_moves(
     board: &Board,
@@ -33,16 +32,18 @@ pub fn generate_pawn_capture_moves(
     let right_dir = RelativeDir::ForwardRight.to_absolute(side_to_move);
     let left_dir = RelativeDir::ForwardLeft.to_absolute(side_to_move);
 
-    let right_targets =
-        right_dir.masked_shift(movable_sources_main) & board.occupancies(!side_to_move) & capture_mask;
-    let left_targets =
-        left_dir.masked_shift(movable_sources_anti) & board.occupancies(!side_to_move) & capture_mask;
+    let right_targets = right_dir.masked_shift(movable_sources_main)
+        & board.occupancies(!side_to_move)
+        & capture_mask;
+    let left_targets = left_dir.masked_shift(movable_sources_anti)
+        & board.occupancies(!side_to_move)
+        & capture_mask;
 
     let right_flip_shift = right_dir.flip().shift();
     let left_flip_shift = left_dir.flip().shift();
 
     for target in (right_targets & promotion_rank).into_iter() {
-        let source = Square::from_index((target as i8 + right_flip_shift) as u8);
+        let source = target.shift(right_flip_shift);
 
         move_list.push(Move::new(source, target, MoveFlag::KnightPromotionCapture));
         move_list.push(Move::new(source, target, MoveFlag::BishopPromotionCapture));
@@ -51,7 +52,7 @@ pub fn generate_pawn_capture_moves(
     }
 
     for target in (left_targets & promotion_rank).into_iter() {
-        let source = Square::from_index((target as i8 + left_flip_shift) as u8);
+        let source = target.shift(left_flip_shift);
 
         move_list.push(Move::new(source, target, MoveFlag::KnightPromotionCapture));
         move_list.push(Move::new(source, target, MoveFlag::BishopPromotionCapture));
@@ -60,13 +61,13 @@ pub fn generate_pawn_capture_moves(
     }
 
     for target in (right_targets & !promotion_rank).into_iter() {
-        let source = Square::from_index((target as i8 + right_flip_shift) as u8);
+        let source = target.shift(right_flip_shift);
 
         move_list.push(Move::new(source, target, MoveFlag::Capture));
     }
 
     for target in (left_targets & !promotion_rank).into_iter() {
-        let source = Square::from_index((target as i8 + left_flip_shift) as u8);
+        let source = target.shift(left_flip_shift);
 
         move_list.push(Move::new(source, target, MoveFlag::Capture));
     }

@@ -46,6 +46,12 @@ impl Square {
         Square::from_index(new_index as u8)
     }
 
+    #[inline]
+    pub const fn shift(self, offset: i8) -> Square {
+        let new_index = self as i8 + offset;
+        Square::from_index(new_index as u8)
+    }
+
     pub const fn file(self) -> File {
         unsafe { std::mem::transmute(self as u8 % 8) }
     }
