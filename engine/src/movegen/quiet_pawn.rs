@@ -65,18 +65,17 @@ mod test {
     use crate::board::Board;
     use crate::movegen::quiet_pawn::generate_quiet_pawn_moves;
     use crate::movegen::test::test_move_generator;
-    use crate::movegen::{MoveList, PushCaptureMasks, compute_push_capture_mask};
+    use crate::movegen::{MoveList, PushCaptureMasks};
     use crate::types::chess_move::{Move, MoveFlag};
     use crate::types::color::Color;
     use crate::types::square::Square::{self, *};
     use crate::types::square::{File, NUM_FILES, Rank};
 
     fn test_quiet_pawn_moves(fen: &str, expected_moves: &[Move]) {
-        test_move_generator::<_, _, false>(
+        test_move_generator::<_, false>(
             |board: &Board, moves_list: &mut MoveList, masks: &PushCaptureMasks| {
                 generate_quiet_pawn_moves(board, moves_list, masks.push_mask)
             },
-            compute_push_capture_mask::<false>,
             fen,
             expected_moves,
         )

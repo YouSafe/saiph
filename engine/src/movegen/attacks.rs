@@ -1,5 +1,6 @@
 use crate::types::bitboard::BitBoard;
 use crate::types::color::Color;
+use crate::types::direction::{Direction, RelativeDir};
 use crate::types::square::{Rank, Square};
 
 mod internal {
@@ -33,12 +34,37 @@ pub fn king_attacks(square: Square) -> BitBoard {
     BitBoard(internal::KING_ATTACKS[square as usize])
 }
 
-pub fn queen_attacks(square: Square, blockers: BitBoard) -> BitBoard {
-    rook_attacks(square, blockers) | bishop_attacks(square, blockers)
+pub const fn between(from: Square, to: Square) -> BitBoard {
+    BitBoard(internal::SQUARES_BETWEEN[from as usize][to as usize])
 }
 
-pub fn between(from: Square, to: Square) -> BitBoard {
-    BitBoard(internal::SQUARES_BETWEEN[from as usize][to as usize])
+pub fn pawn_attacks_all(bb: BitBoard, color: Color) -> BitBoard {
+    bb.masked_shift_oriented(RelativeDir::ForwardRight, color)
+        | bb.masked_shift_oriented(RelativeDir::ForwardLeft, color)
+}
+
+pub fn knight_attacks_all(knights: BitBoard) -> BitBoard {
+    let l1 = knights.masked_shift::<1>(Direction::W);
+    let l2 = knights.masked_shift::<2>(Direction::W);
+    let r1 = knights.masked_shift::<1>(Direction::E);
+    let r2 = knights.masked_shift::<2>(Direction::E);
+
+    let h1 = l1 | r1;
+    let h2 = l2 | r2;
+
+    h1.masked_shift::<2>(Direction::N)
+        | h1.masked_shift::<2>(Direction::S)
+        | h2.masked_shift::<1>(Direction::N)
+        | h2.masked_shift::<1>(Direction::S)
+}
+
+pub fn king_attacks_all(kings: BitBoard) -> BitBoard {
+    let l = kings.masked_shift::<1>(Direction::W);
+    let r = kings.masked_shift::<1>(Direction::E);
+    let h = l | r;
+    let attacks = h | kings;
+
+    attacks.masked_shift::<1>(Direction::N) | attacks.masked_shift::<1>(Direction::S) | h
 }
 
 pub fn slider_horizontal(square: Square, blockers: BitBoard) -> BitBoard {

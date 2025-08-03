@@ -2,6 +2,8 @@ use std::fmt;
 use std::fmt::Formatter;
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not, Shl, Shr};
 
+use crate::types::color::Color;
+use crate::types::direction::{Direction, RelativeDir};
 use crate::types::square::{File, Rank, Square};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -69,6 +71,16 @@ impl BitBoard {
         BitBoard(Self::DIAGS[file + rank].0.swap_bytes())
     }
 
+    #[inline]
+    pub const fn masked_shift<const N: i8>(self, direction: Direction) -> BitBoard {
+        direction.repeated_masked_shift::<N>(self)
+    }
+
+    #[inline]
+    pub const fn masked_shift_oriented(self, direction: RelativeDir, color: Color) -> BitBoard {
+        direction.masked_shift(color, self)
+    }
+
     pub const EMPTY: BitBoard = BitBoard(0);
 
     pub const FULL: BitBoard = BitBoard(!0);
@@ -81,6 +93,9 @@ impl BitBoard {
 
     pub const NOT_A_FILE: BitBoard = BitBoard(18374403900871474942);
     pub const NOT_H_FILE: BitBoard = BitBoard(9187201950435737471);
+
+    pub const NOT_AB_FILE: BitBoard = BitBoard(18229723555195321596);
+    pub const NOT_GH_FILE: BitBoard = BitBoard(4557430888798830399);
 
     pub const DIAGS: [BitBoard; 15] = [
         BitBoard(0x0100_0000_0000_0000),

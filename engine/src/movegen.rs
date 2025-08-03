@@ -10,13 +10,12 @@ use slider::generate_slider_moves;
 use crate::Printer;
 use crate::board::Board;
 use crate::movegen::attacks::{
-    between, bishop_attacks, king_attacks, knight_attacks, pawn_attacks, queen_attacks,
-    rook_attacks,
+    between, bishop_attacks, king_attacks, knight_attacks, pawn_attacks, rook_attacks,
 };
 use crate::types::bitboard::BitBoard;
 use crate::types::chess_move::Move;
 use crate::types::color::Color;
-use crate::types::piece::{ALL_PIECES, PieceType};
+use crate::types::piece::PieceType;
 use crate::types::square::Square;
 
 pub(crate) mod attacks;
@@ -38,17 +37,15 @@ pub fn generate_moves<const CAPTURE_ONLY: bool>(board: &Board) -> MoveList {
     let PushCaptureMasks {
         push_mask,
         capture_mask,
-    } = compute_push_capture_mask::<CAPTURE_ONLY>(board);
-
-    let PushCaptureMasks {
-        push_mask: king_push_mask,
-        capture_mask: king_capture_mask,
-    } = compute_king_push_capture_masks::<CAPTURE_ONLY>(board);
+        king_push_mask,
+        king_capture_mask,
+        attacked,
+    } = compute_masks::<CAPTURE_ONLY>(board);
 
     if checkers.count() == 0 {
         if !CAPTURE_ONLY {
             generate_quiet_pawn_moves(board, &mut move_list, push_mask);
-            generate_castling_moves(board, &mut move_list);
+            generate_castling_moves(board, &mut move_list, attacked);
         }
 
         generate_pawn_capture_moves(board, &mut move_list, capture_mask);
@@ -74,87 +71,52 @@ pub fn generate_moves<const CAPTURE_ONLY: bool>(board: &Board) -> MoveList {
     move_list
 }
 
-pub fn generate_attack_bitboard(board: &Board, attacking_color: Color) -> BitBoard {
-    let mut attacked = BitBoard(0);
-
-    let king = board.pieces(PieceType::King) & board.occupancies(!attacking_color);
-
-    // remove opponent king from blockers to simulate xray attack
-    let blockers = board.combined() & !king;
-
-    for piece in ALL_PIECES {
-        let piece_bitboard = board.pieces(piece) & board.occupancies(attacking_color);
-        for square in piece_bitboard {
-            attacked |= match piece {
-                PieceType::Pawn => pawn_attacks(square, attacking_color),
-                PieceType::Knight => knight_attacks(square),
-                PieceType::Bishop => bishop_attacks(square, blockers),
-                PieceType::Rook => rook_attacks(square, blockers),
-                PieceType::Queen => queen_attacks(square, blockers),
-                PieceType::King => king_attacks(square),
-            };
-        }
-    }
-
-    attacked
-}
-
 pub struct PushCaptureMasks {
     pub push_mask: BitBoard,
     pub capture_mask: BitBoard,
+    pub king_push_mask: BitBoard,
+    pub king_capture_mask: BitBoard,
+    pub attacked: BitBoard,
 }
 
-pub fn compute_push_capture_mask<const CAPTURE_ONLY: bool>(board: &Board) -> PushCaptureMasks {
+pub fn compute_masks<const CAPTURE_ONLY: bool>(board: &Board) -> PushCaptureMasks {
     let checkers = board.checkers();
-
-    let mut push_mask = BitBoard::FULL;
-    let mut capture_mask = BitBoard::FULL;
+    let side_to_move = board.side_to_move();
 
     // limit captures to the opponent pieces
-    capture_mask &= board.occupancies(!board.side_to_move());
+    let mut capture_mask = board.occupancies(!side_to_move);
     // avoid opponent pieces on quiet moves
-    push_mask &= !board.occupancies(!board.side_to_move());
+    let mut push_mask = !board.occupancies(!side_to_move);
 
     if checkers.count() == 1 {
         let king_square =
-            (board.pieces(PieceType::King) & board.occupancies(board.side_to_move())).bit_scan();
+            (board.pieces(PieceType::King) & board.occupancies(side_to_move)).bit_scan();
 
         capture_mask = checkers;
         push_mask = between(king_square, checkers.bit_scan());
     }
 
-    if CAPTURE_ONLY {
-        push_mask &= BitBoard::EMPTY;
-    }
+    let attacked = generate_attack_bitboard(board, !side_to_move);
 
-    PushCaptureMasks {
-        push_mask,
-        capture_mask,
-    }
-}
-
-pub fn compute_king_push_capture_masks<const CAPTURE_ONLY: bool>(
-    board: &Board,
-) -> PushCaptureMasks {
-    let side_to_move = board.side_to_move();
-
-    let attacked = attacked_unguarded_king_neighbors(board, !side_to_move);
-
-    let mut push_mask = !attacked;
-    let mut capture_mask = !attacked;
+    let mut king_push_mask = !attacked;
+    let mut king_capture_mask = !attacked;
 
     // limit captures to the opponent pieces
-    capture_mask &= board.occupancies(!side_to_move);
+    king_capture_mask &= board.occupancies(!side_to_move);
     // avoid opponent pieces on quiet moves
-    push_mask &= !board.occupancies(!side_to_move);
+    king_push_mask &= !board.occupancies(!side_to_move);
 
     if CAPTURE_ONLY {
         push_mask &= BitBoard::EMPTY;
+        king_push_mask &= BitBoard::EMPTY;
     }
 
     PushCaptureMasks {
         push_mask,
         capture_mask,
+        king_push_mask,
+        king_capture_mask,
+        attacked,
     }
 }
 
@@ -216,29 +178,38 @@ pub fn sq_attacked_given_blockers(
     false
 }
 
-pub fn attacked_unguarded_king_neighbors(board: &Board, attacking_side: Color) -> BitBoard {
-    let mut bitboard = BitBoard(0);
-
+pub fn generate_attack_bitboard(board: &Board, attacking_side: Color) -> BitBoard {
     let king_bb = board.pieces(PieceType::King) & board.occupancies(!attacking_side);
 
     // remove opponent king from blockers to simulate xray attack
     let blockers = board.combined() ^ king_bb;
 
-    let mut near_king_bb = king_bb // center
-        | (king_bb & BitBoard::NOT_A_FILE) >> 1 // left
-        | (king_bb & BitBoard::NOT_H_FILE) << 1; // right
+    let pawns = board.pieces(PieceType::Pawn) & board.occupancies(attacking_side);
+    let pawn_attacks = attacks::pawn_attacks_all(pawns, attacking_side);
 
-    near_king_bb |= near_king_bb << 8 // up
-        | near_king_bb >> 8; // down
+    let knights = board.pieces(PieceType::Knight) & board.occupancies(attacking_side);
+    let knight_attacks = attacks::knight_attacks_all(knights);
 
-    let unguarded = near_king_bb & !board.occupancies(!attacking_side);
+    let kings = board.pieces(PieceType::King) & board.occupancies(attacking_side);
+    let king_attacks = attacks::king_attacks_all(kings);
 
-    for square in unguarded {
-        if sq_attacked_given_blockers(board, square, attacking_side, blockers) {
-            bitboard |= square;
-        }
+    let mut attacked = pawn_attacks | knight_attacks | king_attacks;
+
+    let rook_sliders = (board.pieces(PieceType::Rook) | board.pieces(PieceType::Queen))
+        & board.occupancies(attacking_side);
+
+    for square in rook_sliders {
+        attacked |= rook_attacks(square, blockers);
     }
-    bitboard
+
+    let bishop_sliders = (board.pieces(PieceType::Bishop) | board.pieces(PieceType::Queen))
+        & board.occupancies(attacking_side);
+
+    for square in bishop_sliders {
+        attacked |= bishop_attacks(square, blockers);
+    }
+
+    attacked
 }
 
 pub fn perf_test<P: Printer>(board: &mut Board, depth: u8) {
@@ -284,27 +255,25 @@ mod test {
 
     use crate::board::Board;
     use crate::movegen::{
-        MoveList, PushCaptureMasks, attacked_unguarded_king_neighbors, generate_attack_bitboard,
-        generate_moves, sq_attacked,
+        MoveList, PushCaptureMasks, compute_masks, generate_attack_bitboard, generate_moves,
+        sq_attacked,
     };
     use crate::types::bitboard::BitBoard;
     use crate::types::chess_move::Move;
     use crate::types::color::Color;
     use crate::types::square::Square;
 
-    pub fn test_move_generator<F, M, const CAPTURES_ONLY: bool>(
+    pub fn test_move_generator<F, const CAPTURES_ONLY: bool>(
         generator: F,
-        mask_fn: M,
         fen: &str,
         expected_moves: &[Move],
     ) where
         F: Fn(&Board, &mut MoveList, &PushCaptureMasks),
-        M: Fn(&Board) -> PushCaptureMasks,
     {
         let board = Board::from_str(fen).unwrap();
         let mut move_list = MoveList::new();
 
-        let masks = mask_fn(&board);
+        let masks = compute_masks::<CAPTURES_ONLY>(&board);
         generator(&board, &mut move_list, &masks);
 
         println!("{move_list:#?}");
@@ -386,30 +355,16 @@ mod test {
     }
 
     #[test]
-    fn test_attacked_unguarded_king_neighbors() {
+    fn test_attack_bitboard() {
         let board =
-            Board::from_str("rnb1kbnr/pppp1ppp/4p3/8/5P1q/2N5/PPPPP1PP/R1BQKBNR w KQkq - 0 1")
+            Board::from_str("2r1k2r/pp3p2/1n2bq1p/2bp2p1/8/2NBP1P1/PPQN1PP1/1KR4R w k - 0 1")
                 .unwrap();
-        let attacked = attacked_unguarded_king_neighbors(&board, Color::Black);
+        let attacked = generate_attack_bitboard(&board, Color::Black);
         println!("{attacked}");
 
-        let expected = BitBoard(8192);
+        let expected = BitBoard(0xfffcdf7cffb52000);
         println!("expected: {expected}");
         assert_eq!(attacked, expected);
-    }
-
-    #[test]
-    fn test_generate_attack_bitboard() {
-        let board = Board::default();
-        let attacked = generate_attack_bitboard(&board, Color::White);
-
-        println!("{}", board.combined());
-        println!("{attacked}");
-
-        // attacked_unguarded_king_neighbors should be subset of full attack bitboard
-        let test = attacked | attacked_unguarded_king_neighbors(&board, Color::White);
-        println!("{test}");
-        assert_eq!(attacked, test);
     }
 
     #[test]

@@ -25,6 +25,15 @@ impl Direction {
         }
     }
 
+    pub const fn repeated_masked_shift<const N: i8>(self, mut bb: BitBoard) -> BitBoard {
+        let mut i = N;
+        while i > 0 {
+            bb = self.masked_shift(bb);
+            i -= 1;
+        }
+        bb
+    }
+
     pub const fn horizontal_flip(self) -> Direction {
         match self {
             Direction::N => Direction::S,
@@ -53,14 +62,9 @@ impl Direction {
 
     pub const fn mask(self) -> BitBoard {
         match self {
-            Direction::N => BitBoard::NOT_8TH_RANK,
-            Direction::NE => BitBoard::NOT_8TH_RANK.intersect(BitBoard::NOT_H_FILE),
-            Direction::E => BitBoard::NOT_H_FILE,
-            Direction::SE => BitBoard::NOT_1ST_RANK.intersect(BitBoard::NOT_H_FILE),
-            Direction::S => BitBoard::NOT_1ST_RANK,
-            Direction::SW => BitBoard::NOT_1ST_RANK.intersect(BitBoard::NOT_A_FILE),
-            Direction::W => BitBoard::NOT_A_FILE,
-            Direction::NW => BitBoard::NOT_8TH_RANK.intersect(BitBoard::NOT_A_FILE),
+            Direction::N | Direction::S => BitBoard::FULL,
+            Direction::E | Direction::NE | Direction::SE => BitBoard::NOT_H_FILE,
+            Direction::W | Direction::NW | Direction::SW => BitBoard::NOT_A_FILE,
         }
     }
 }
@@ -93,5 +97,10 @@ impl RelativeDir {
             Color::White => dir,
             Color::Black => dir.horizontal_flip(),
         }
+    }
+
+    #[inline]
+    pub const fn masked_shift(self, color: Color, bb: BitBoard) -> BitBoard {
+        self.to_absolute(color).masked_shift(bb)
     }
 }

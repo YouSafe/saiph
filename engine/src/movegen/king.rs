@@ -34,16 +34,20 @@ mod test {
     use crate::board::Board;
     use crate::movegen::king::generate_king_moves;
     use crate::movegen::test::test_move_generator;
-    use crate::movegen::{MoveList, PushCaptureMasks, compute_king_push_capture_masks};
+    use crate::movegen::{MoveList, PushCaptureMasks};
     use crate::types::chess_move::{Move, MoveFlag};
     use crate::types::square::Square;
 
     fn test_king_moves(fen: &str, expected_moves: &[Move]) {
-        test_move_generator::<_, _, false>(
+        test_move_generator::<_, false>(
             |board: &Board, moves_list: &mut MoveList, masks: &PushCaptureMasks| {
-                generate_king_moves(board, moves_list, masks.capture_mask, masks.push_mask)
+                generate_king_moves(
+                    board,
+                    moves_list,
+                    masks.king_capture_mask,
+                    masks.king_push_mask,
+                )
             },
-            compute_king_push_capture_masks::<false>,
             fen,
             expected_moves,
         )

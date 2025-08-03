@@ -80,16 +80,15 @@ mod test {
     use crate::board::Board;
     use crate::movegen::en_passant::generate_en_passant_move;
     use crate::movegen::test::test_move_generator;
-    use crate::movegen::{MoveList, PushCaptureMasks, compute_push_capture_mask};
+    use crate::movegen::{MoveList, PushCaptureMasks};
     use crate::types::chess_move::{Move, MoveFlag};
     use crate::types::square::Square;
 
     fn test_en_passant_moves(fen: &str, expected_moves: &[Move]) {
-        test_move_generator::<_, _, false>(
+        test_move_generator::<_, false>(
             |board: &Board, moves_list: &mut MoveList, masks: &PushCaptureMasks| {
                 generate_en_passant_move(board, moves_list, masks.push_mask)
             },
-            compute_push_capture_mask::<false>,
             fen,
             expected_moves,
         )

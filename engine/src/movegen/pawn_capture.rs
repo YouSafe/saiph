@@ -77,16 +77,15 @@ mod test {
     use crate::board::Board;
     use crate::movegen::pawn_capture::generate_pawn_capture_moves;
     use crate::movegen::test::test_move_generator;
-    use crate::movegen::{MoveList, PushCaptureMasks, compute_push_capture_mask};
+    use crate::movegen::{MoveList, PushCaptureMasks};
     use crate::types::chess_move::{Move, MoveFlag};
     use crate::types::square::Square::*;
 
     fn test_pawn_capture_moves(fen: &str, expected_moves: &[Move]) {
-        test_move_generator::<_, _, false>(
+        test_move_generator::<_, false>(
             |board: &Board, moves_list: &mut MoveList, masks: &PushCaptureMasks| {
                 generate_pawn_capture_moves(board, moves_list, masks.capture_mask)
             },
-            compute_push_capture_mask::<false>,
             fen,
             expected_moves,
         )
