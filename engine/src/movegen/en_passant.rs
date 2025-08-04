@@ -6,31 +6,6 @@ use crate::types::chess_move::MoveFlag;
 use crate::types::color::Color;
 use crate::types::direction::RelativeDir;
 use crate::types::piece::PieceType;
-use crate::types::square::Square;
-
-fn horizontal_pin_test(
-    board: &Board,
-    capture: Square,
-    source: Square,
-    destination: Square,
-) -> bool {
-    // create combined bitboard of board with both source and capture removed.
-    // removing the squares simulates the move
-    let combined =
-        board.combined() & !BitBoard::from_square(capture) & !BitBoard::from_square(source)
-            | BitBoard::from_square(destination);
-
-    let king_square =
-        (board.pieces(PieceType::King) & board.occupancies(board.side_to_move())).bit_scan();
-
-    let mut attack = BitBoard(0);
-
-    attack |= slider_horizontal(king_square, combined)
-        & (board.pieces(PieceType::Rook) | board.pieces(PieceType::Queen))
-        & board.occupancies(!board.side_to_move());
-
-    attack == BitBoard::EMPTY
-}
 
 pub fn generate_en_passant_move(board: &Board, move_list: &mut MoveList, push_mask: BitBoard) {
     if let Some(ep_square) = board.en_passant_target() {
@@ -59,17 +34,25 @@ pub fn generate_en_passant_move(board: &Board, move_list: &mut MoveList, push_ma
         let right_source = right.masked_shift(destination_bb) & (!pinned | (pinned & anti));
         let left_source = left.masked_shift(destination_bb) & (!pinned | (pinned & main));
 
-        let mut sources = current_sides_pawns & (right_source | left_source);
+        let sources = current_sides_pawns & (right_source | left_source);
 
-        if sources.count() == 1 {
-            let source = sources.bit_scan();
+        // Insight: It does not matter, which source square is selected for the horizontal pin test
+        let one_source = sources.lsb();
 
-            if !horizontal_pin_test(board, capture, source, destination) {
-                sources = BitBoard::EMPTY;
-            }
-        }
+        // create combined bitboard of board with one source square and capture square removed.
+        // removing the squares simulates the move
+        let combined = board.combined() & !BitBoard::from_square(capture) & !one_source;
+        let king_attacked = slider_horizontal(king_square, combined)
+            & (board.pieces(PieceType::Rook) | board.pieces(PieceType::Queen))
+            & board.occupancies(!board.side_to_move());
 
-        for source in sources {
+        let mask = if king_attacked.is_empty() {
+            BitBoard::FULL
+        } else {
+            BitBoard::EMPTY
+        };
+
+        for source in (sources & mask).into_iter() {
             move_list.push_move(source, destination, MoveFlag::EnPassant);
         }
     }
@@ -147,5 +130,10 @@ mod test {
             "k7/7q/8/6pP/8/8/8/1K6 w - g6 0 1",
             &[Move::new(Square::H5, Square::G6, MoveFlag::EnPassant)],
         );
+    }
+
+    #[test]
+    fn test_target_but_no_capturer() {
+        test_en_passant_moves("k7/8/8/8/6P1/8/8/K7 b - g3 0 1", &[]);
     }
 }
