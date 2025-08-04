@@ -13,7 +13,7 @@ use crate::movegen::attacks::{
     between, bishop_attacks, king_attacks, knight_attacks, pawn_attacks, rook_attacks,
 };
 use crate::types::bitboard::BitBoard;
-use crate::types::chess_move::Move;
+use crate::types::chess_move::{Move, MoveFlag};
 use crate::types::color::Color;
 use crate::types::piece::PieceType;
 use crate::types::square::Square;
@@ -69,6 +69,16 @@ pub fn generate_moves<const CAPTURE_ONLY: bool>(board: &Board) -> MoveList {
     }
 
     move_list
+}
+
+pub trait MoveListExt {
+    fn push_move(&mut self, from: Square, to: Square, flag: MoveFlag);
+}
+
+impl MoveListExt for MoveList {
+    fn push_move(&mut self, from: Square, to: Square, flag: MoveFlag) {
+        self.push(Move::new(from, to, flag));
+    }
 }
 
 pub struct PushCaptureMasks {

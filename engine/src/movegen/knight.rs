@@ -1,8 +1,8 @@
 use crate::board::Board;
-use crate::movegen::MoveList;
 use crate::movegen::attacks::knight_attacks;
+use crate::movegen::{MoveList, MoveListExt};
 use crate::types::bitboard::BitBoard;
-use crate::types::chess_move::{Move, MoveFlag};
+use crate::types::chess_move::MoveFlag;
 use crate::types::piece::PieceType;
 
 pub fn generate_knight_moves(
@@ -22,12 +22,12 @@ pub fn generate_knight_moves(
 
         // captures
         for target in (attacks & capture_mask).into_iter() {
-            move_list.push(Move::new(source, target, MoveFlag::Capture))
+            move_list.push_move(source, target, MoveFlag::Capture)
         }
 
         // quiet
         for target in (attacks & push_mask).into_iter() {
-            move_list.push(Move::new(source, target, MoveFlag::Normal));
+            move_list.push_move(source, target, MoveFlag::Normal);
         }
     }
 }

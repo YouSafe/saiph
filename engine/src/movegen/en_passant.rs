@@ -1,8 +1,8 @@
 use crate::board::Board;
-use crate::movegen::MoveList;
 use crate::movegen::attacks::slider_horizontal;
+use crate::movegen::{MoveList, MoveListExt};
 use crate::types::bitboard::BitBoard;
-use crate::types::chess_move::{Move, MoveFlag};
+use crate::types::chess_move::MoveFlag;
 use crate::types::color::Color;
 use crate::types::direction::RelativeDir;
 use crate::types::piece::PieceType;
@@ -70,7 +70,7 @@ pub fn generate_en_passant_move(board: &Board, move_list: &mut MoveList, push_ma
         }
 
         for source in sources {
-            move_list.push(Move::new(source, destination, MoveFlag::EnPassant));
+            move_list.push_move(source, destination, MoveFlag::EnPassant);
         }
     }
 }

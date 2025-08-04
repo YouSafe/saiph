@@ -1,7 +1,7 @@
 use crate::board::Board;
-use crate::movegen::MoveList;
+use crate::movegen::{MoveList, MoveListExt};
 use crate::types::bitboard::BitBoard;
-use crate::types::chess_move::{Move, MoveFlag};
+use crate::types::chess_move::MoveFlag;
 use crate::types::piece::PieceType;
 
 pub fn generate_quiet_pawn_moves(board: &Board, move_list: &mut MoveList, push_mask: BitBoard) {
@@ -41,22 +41,22 @@ pub fn generate_quiet_pawn_moves(board: &Board, move_list: &mut MoveList, push_m
     for target in promotions {
         let source = target.forward(!side_to_move);
 
-        move_list.push(Move::new(source, target, MoveFlag::KnightPromotion));
-        move_list.push(Move::new(source, target, MoveFlag::BishopPromotion));
-        move_list.push(Move::new(source, target, MoveFlag::RookPromotion));
-        move_list.push(Move::new(source, target, MoveFlag::QueenPromotion));
+        move_list.push_move(source, target, MoveFlag::KnightPromotion);
+        move_list.push_move(source, target, MoveFlag::BishopPromotion);
+        move_list.push_move(source, target, MoveFlag::RookPromotion);
+        move_list.push_move(source, target, MoveFlag::QueenPromotion);
     }
 
     for target in double_push_targets {
         let source = target.forward(!side_to_move).forward(!side_to_move);
 
-        move_list.push(Move::new(source, target, MoveFlag::DoublePawnPush));
+        move_list.push_move(source, target, MoveFlag::DoublePawnPush);
     }
 
     for target in non_promotions {
         let source = target.forward(!side_to_move);
 
-        move_list.push(Move::new(source, target, MoveFlag::Normal));
+        move_list.push_move(source, target, MoveFlag::Normal);
     }
 }
 

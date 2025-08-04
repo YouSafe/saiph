@@ -12,7 +12,7 @@ struct CastlingConfig {
     required_rights: CastlingRights,
     king_target: Square,
     safe_squares: BitBoard,
-    cleared_squares: BitBoard,
+    cleared_squares_bb: BitBoard,
 }
 
 static CASTLING_CONFIGS: [[CastlingConfig; 2]; NUM_COLORS] = [
@@ -22,13 +22,13 @@ static CASTLING_CONFIGS: [[CastlingConfig; 2]; NUM_COLORS] = [
             required_rights: CastlingRights::WHITE_KING_SIDE,
             king_target: Square::G1,
             safe_squares: between(Square::E1, Square::H1),
-            cleared_squares: between(Square::E1, Square::H1),
+            cleared_squares_bb: between(Square::E1, Square::H1),
         },
         CastlingConfig {
             required_rights: CastlingRights::WHITE_QUEEN_SIDE,
             king_target: Square::C1,
             safe_squares: between(Square::E1, Square::B1),
-            cleared_squares: between(Square::E1, Square::A1),
+            cleared_squares_bb: between(Square::E1, Square::A1),
         },
     ],
     // black: king side, queen side
@@ -37,13 +37,13 @@ static CASTLING_CONFIGS: [[CastlingConfig; 2]; NUM_COLORS] = [
             required_rights: CastlingRights::BLACK_KING_SIDE,
             king_target: Square::G8,
             safe_squares: between(Square::E8, Square::H8),
-            cleared_squares: between(Square::E8, Square::H8),
+            cleared_squares_bb: between(Square::E8, Square::H8),
         },
         CastlingConfig {
             required_rights: CastlingRights::BLACK_QUEEN_SIDE,
             king_target: Square::C8,
             safe_squares: between(Square::E8, Square::B8),
-            cleared_squares: between(Square::E8, Square::A8),
+            cleared_squares_bb: between(Square::E8, Square::A8),
         },
     ],
 ];
@@ -56,7 +56,7 @@ pub fn generate_castling_moves(board: &Board, move_list: &mut MoveList, attacked
 
     for config in &CASTLING_CONFIGS[side_to_move as usize] {
         if castling_rights.contains(config.required_rights)
-            && (board.combined() & config.cleared_squares) == BitBoard::EMPTY
+            && (board.combined() & config.cleared_squares_bb) == BitBoard::EMPTY
             && (attacked & config.safe_squares) == BitBoard::EMPTY
         {
             move_list.push(Move::new(

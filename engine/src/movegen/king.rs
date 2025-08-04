@@ -1,8 +1,8 @@
 use crate::board::Board;
-use crate::movegen::MoveList;
 use crate::movegen::attacks::king_attacks;
+use crate::movegen::{MoveList, MoveListExt};
 use crate::types::bitboard::BitBoard;
-use crate::types::chess_move::{Move, MoveFlag};
+use crate::types::chess_move::MoveFlag;
 use crate::types::piece::PieceType;
 
 pub fn generate_king_moves(
@@ -20,12 +20,12 @@ pub fn generate_king_moves(
 
     // quiet
     for target in (attacks & push_mask).into_iter() {
-        move_list.push(Move::new(king_square, target, MoveFlag::Normal));
+        move_list.push_move(king_square, target, MoveFlag::Normal);
     }
 
     // capture
     for target in (attacks & capture_mask).into_iter() {
-        move_list.push(Move::new(king_square, target, MoveFlag::Capture));
+        move_list.push_move(king_square, target, MoveFlag::Capture);
     }
 }
 

@@ -1,7 +1,7 @@
 use crate::board::Board;
-use crate::movegen::MoveList;
+use crate::movegen::{MoveList, MoveListExt};
 use crate::types::bitboard::BitBoard;
-use crate::types::chess_move::{Move, MoveFlag};
+use crate::types::chess_move::MoveFlag;
 use crate::types::color::Color;
 use crate::types::direction::RelativeDir;
 use crate::types::piece::PieceType;
@@ -45,31 +45,31 @@ pub fn generate_pawn_capture_moves(
     for target in (right_targets & promotion_rank).into_iter() {
         let source = target.shift(right_flip_shift);
 
-        move_list.push(Move::new(source, target, MoveFlag::KnightPromotionCapture));
-        move_list.push(Move::new(source, target, MoveFlag::BishopPromotionCapture));
-        move_list.push(Move::new(source, target, MoveFlag::RookPromotionCapture));
-        move_list.push(Move::new(source, target, MoveFlag::QueenPromotionCapture));
+        move_list.push_move(source, target, MoveFlag::KnightPromotionCapture);
+        move_list.push_move(source, target, MoveFlag::BishopPromotionCapture);
+        move_list.push_move(source, target, MoveFlag::RookPromotionCapture);
+        move_list.push_move(source, target, MoveFlag::QueenPromotionCapture);
     }
 
     for target in (left_targets & promotion_rank).into_iter() {
         let source = target.shift(left_flip_shift);
 
-        move_list.push(Move::new(source, target, MoveFlag::KnightPromotionCapture));
-        move_list.push(Move::new(source, target, MoveFlag::BishopPromotionCapture));
-        move_list.push(Move::new(source, target, MoveFlag::RookPromotionCapture));
-        move_list.push(Move::new(source, target, MoveFlag::QueenPromotionCapture));
+        move_list.push_move(source, target, MoveFlag::KnightPromotionCapture);
+        move_list.push_move(source, target, MoveFlag::BishopPromotionCapture);
+        move_list.push_move(source, target, MoveFlag::RookPromotionCapture);
+        move_list.push_move(source, target, MoveFlag::QueenPromotionCapture);
     }
 
     for target in (right_targets & !promotion_rank).into_iter() {
         let source = target.shift(right_flip_shift);
 
-        move_list.push(Move::new(source, target, MoveFlag::Capture));
+        move_list.push_move(source, target, MoveFlag::Capture);
     }
 
     for target in (left_targets & !promotion_rank).into_iter() {
         let source = target.shift(left_flip_shift);
 
-        move_list.push(Move::new(source, target, MoveFlag::Capture));
+        move_list.push_move(source, target, MoveFlag::Capture);
     }
 }
 
