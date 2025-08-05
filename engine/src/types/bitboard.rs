@@ -62,7 +62,7 @@ impl BitBoard {
     pub const fn mask_main_diagonal(square: Square) -> BitBoard {
         let file = square.file() as usize;
         let rank = square.rank() as usize;
-        Self::DIAGS[7 + file - rank]
+        Self::DIAGS[file + (rank ^ 7)]
     }
 
     pub const fn mask_anti_diagonal(square: Square) -> BitBoard {

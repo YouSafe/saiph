@@ -12,14 +12,16 @@ pub fn bishop_attacks(square: Square, blockers: BitBoard) -> BitBoard {
     let magic = &internal::BISHOP_MAGICS[square as usize];
     let magic_index =
         ((blockers.0 & magic.mask).wrapping_mul(magic.magic) >> (64 - 9)) + magic.offset;
-    BitBoard(unsafe { *internal::SLIDER_ATTACKS.get_unchecked(magic_index as usize) })
+    unsafe { std::hint::assert_unchecked((magic_index as usize) < internal::SLIDER_ATTACKS.len()) };
+    BitBoard(internal::SLIDER_ATTACKS[magic_index as usize])
 }
 
 pub fn rook_attacks(square: Square, blockers: BitBoard) -> BitBoard {
     let magic = &internal::ROOK_MAGICS[square as usize];
     let magic_index =
         ((blockers.0 & magic.mask).wrapping_mul(magic.magic) >> (64 - 12)) + magic.offset;
-    BitBoard(unsafe { *internal::SLIDER_ATTACKS.get_unchecked(magic_index as usize) })
+    unsafe { std::hint::assert_unchecked((magic_index as usize) < internal::SLIDER_ATTACKS.len()) };
+    BitBoard(internal::SLIDER_ATTACKS[magic_index as usize])
 }
 
 pub fn pawn_attacks(square: Square, color: Color) -> BitBoard {

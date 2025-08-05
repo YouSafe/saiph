@@ -21,6 +21,7 @@ pub fn en_passant_keys(file: File) -> u64 {
 
 #[inline(always)]
 pub fn castle_keys(castling_rights: CastlingRights) -> u64 {
+    unsafe { std::hint::assert_unchecked(usize::from(castling_rights) < 16) };
     internal::CASTLE_KEYS[usize::from(castling_rights)]
 }
 
