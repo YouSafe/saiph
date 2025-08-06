@@ -51,6 +51,21 @@ impl BitBoard {
         })
     }
 
+    pub const fn contains_mask(self, square: Square) -> BitBoard {
+        if !(self.intersect(BitBoard::from_square(square))).is_empty() {
+            BitBoard::FULL
+        } else {
+            BitBoard::EMPTY
+        }
+    }
+
+    pub const fn bool_mask(val: bool) -> BitBoard {
+        match val {
+            true => BitBoard::FULL,
+            false => BitBoard::EMPTY,
+        }
+    }
+
     pub const fn mask_rank(rank: Rank) -> BitBoard {
         Self::ALL_RANKS[rank as usize]
     }

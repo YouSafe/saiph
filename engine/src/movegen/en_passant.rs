@@ -1,59 +1,26 @@
 use crate::board::Board;
-use crate::movegen::attacks::slider_horizontal;
+use crate::movegen::attacks::pawn_attacks;
 use crate::movegen::{MoveList, MoveListExt};
-use crate::types::bitboard::BitBoard;
 use crate::types::chess_move::MoveFlag;
-use crate::types::color::Color;
-use crate::types::direction::RelativeDir;
 use crate::types::piece::PieceType;
 
-pub fn generate_en_passant_move(board: &Board, move_list: &mut MoveList, push_mask: BitBoard) {
+pub fn generate_en_passant_move(board: &Board, move_list: &mut MoveList) {
     if let Some(ep_square) = board.en_passant_target() {
         let side_to_move = board.side_to_move();
-
-        let capture = ep_square.forward(!side_to_move);
-        let destination = ep_square;
-
-        let right = RelativeDir::BackwardRight.to_absolute(side_to_move);
-        let left = RelativeDir::BackwardLeft.to_absolute(side_to_move);
-
-        let destination_bb = BitBoard::from_square(ep_square) & push_mask;
-
-        let current_sides_pawns = board.pieces(PieceType::Pawn) & board.occupancies(side_to_move);
 
         let king_square =
             (board.pieces(PieceType::King) & board.occupancies(board.side_to_move())).bit_scan();
 
-        let (main, anti) = match side_to_move {
-            Color::White => (king_square.main_diagonal(), king_square.anti_diagonal()),
-            Color::Black => (king_square.anti_diagonal(), king_square.main_diagonal()),
-        };
+        let king_diagonals = king_square.main_diagonal() | king_square.anti_diagonal();
+        let dest_safe_mask = king_diagonals.contains_mask(ep_square);
 
+        let pawns = board.pieces(PieceType::Pawn) & board.occupancies(side_to_move);
         let pinned = board.pinned();
+        let potential_sources = pawn_attacks(ep_square, !side_to_move) & pawns;
+        let sources = potential_sources & (!pinned | (pinned & king_diagonals & dest_safe_mask));
 
-        let right_source = right.masked_shift(destination_bb) & (!pinned | (pinned & anti));
-        let left_source = left.masked_shift(destination_bb) & (!pinned | (pinned & main));
-
-        let sources = current_sides_pawns & (right_source | left_source);
-
-        // Insight: It does not matter, which source square is selected for the horizontal pin test
-        let one_source = sources.lsb();
-
-        // create combined bitboard of board with one source square and capture square removed.
-        // removing the squares simulates the move
-        let combined = board.combined() & !BitBoard::from_square(capture) & !one_source;
-        let king_attacked = slider_horizontal(king_square, combined)
-            & (board.pieces(PieceType::Rook) | board.pieces(PieceType::Queen))
-            & board.occupancies(!board.side_to_move());
-
-        let mask = if king_attacked.is_empty() {
-            BitBoard::FULL
-        } else {
-            BitBoard::EMPTY
-        };
-
-        for source in (sources & mask).into_iter() {
-            move_list.push_move(source, destination, MoveFlag::EnPassant);
+        for source in sources.into_iter() {
+            move_list.push_move(source, ep_square, MoveFlag::EnPassant);
         }
     }
 }
@@ -69,8 +36,8 @@ mod test {
 
     fn test_en_passant_moves(fen: &str, expected_moves: &[Move]) {
         test_move_generator::<_, false>(
-            |board: &Board, moves_list: &mut MoveList, masks: &PushCaptureMasks| {
-                generate_en_passant_move(board, moves_list, masks.push_mask)
+            |board: &Board, moves_list: &mut MoveList, _masks: &PushCaptureMasks| {
+                generate_en_passant_move(board, moves_list)
             },
             fen,
             expected_moves,
@@ -126,14 +93,20 @@ mod test {
 
     #[test]
     fn test_en_passsant_block_check() {
-        test_en_passant_moves(
-            "k7/7q/8/6pP/8/8/8/1K6 w - g6 0 1",
-            &[Move::new(Square::H5, Square::G6, MoveFlag::EnPassant)],
-        );
+        // En passant can not block checks
+        test_en_passant_moves("k7/7q/8/6pP/8/8/8/1K6 w - g6 0 1", &[]);
     }
 
     #[test]
     fn test_target_but_no_capturer() {
         test_en_passant_moves("k7/8/8/8/6P1/8/8/K7 b - g3 0 1", &[]);
+    }
+
+    #[test]
+    fn test_capture_checker() {
+        test_en_passant_moves(
+            "8/8/8/4kp1p/5PpP/3B2K1/8/8 b - f3 0 1",
+            &[Move::new(Square::G4, Square::F3, MoveFlag::EnPassant)],
+        );
     }
 }

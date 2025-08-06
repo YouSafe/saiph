@@ -1,11 +1,12 @@
 use crate::movegen::attacks::{
-    between, bishop_attacks, knight_attacks, pawn_attacks, rook_attacks,
+    between, bishop_attacks, knight_attacks, pawn_attacks, rook_attacks, slider_horizontal,
 };
 use crate::movegen::{MoveList, generate_moves};
 use crate::types::bitboard::BitBoard;
 use crate::types::castling_rights::{CastlingRights, UPDATE_CASTLING_RIGHT_TABLE};
 use crate::types::chess_move::{Move, MoveFlag};
 use crate::types::color::{Color, PerColor};
+use crate::types::direction::RelativeDir;
 use crate::types::piece::{ALL_PIECES, PerPieceType, Piece, PieceType};
 use crate::types::square::{File, PerSquare, Square};
 use crate::zobrist::{self};
@@ -76,13 +77,13 @@ impl Board {
         new_state.hash ^= zobrist::piece_keys(self.side_to_move, source_piece.ty(), from);
 
         let mut capture_target: Option<(Square, Piece)> = None;
+        let mut ep_target = None;
 
         let flag = mv.flag();
         match flag {
             MoveFlag::Normal => (),
             MoveFlag::DoublePawnPush => {
-                new_state.en_passant_target = Some(to.forward(!self.side_to_move));
-                new_state.hash ^= zobrist::en_passant_keys(to.file());
+                ep_target = Some(to.forward(!self.side_to_move));
             }
             MoveFlag::Castling => {
                 const CASTLE_CONFIG: [(File, File); 2] = [(File::A, File::D), (File::H, File::F)];
@@ -194,6 +195,14 @@ impl Board {
         new_state.hash ^= zobrist::side_key();
 
         self.update_checker_info(&mut new_state);
+
+        if let Some(target) = ep_target {
+            // from the perspective of already having played a double pawn push
+            if self.check_en_passant_target(target, &new_state) {
+                new_state.hash ^= zobrist::en_passant_keys(to.file());
+                new_state.en_passant_target = ep_target;
+            }
+        }
 
         let old_state = std::mem::replace(&mut self.state, new_state);
         self.history.push(old_state);
@@ -320,6 +329,69 @@ impl Board {
 
         new_state.checkers = checkers;
         new_state.pinned = pinned;
+    }
+
+    fn check_en_passant_target(&self, target: Square, new_state: &BoardState) -> bool {
+        Self::is_valid_en_passant_target(
+            &self.pieces,
+            &self.occupancies,
+            self.combined,
+            self.side_to_move,
+            new_state.pinned,
+            new_state.checkers,
+            target,
+        )
+    }
+
+    #[inline]
+    fn is_valid_en_passant_target(
+        pieces: &PerPieceType<BitBoard>,
+        occupancies: &PerColor<BitBoard>,
+        combined: BitBoard,
+        side_to_move: Color,
+        pinned: BitBoard,
+        checkers: BitBoard,
+        target: Square,
+    ) -> bool {
+        // from the perspective of already having played a double pawn push
+        let pawns = pieces[PieceType::Pawn] & occupancies[side_to_move];
+        let potential_sources = pawn_attacks(target, !side_to_move) & pawns;
+
+        // no pawns available can capture
+        if potential_sources.is_empty() {
+            return false;
+        }
+
+        let capture = BitBoard::from_square(target)
+            .masked_shift_oriented(RelativeDir::Backward, side_to_move);
+
+        // en passant can not block checks but could capture the target square (if not pinned)
+        if (checkers & !capture) != BitBoard::EMPTY {
+            return false;
+        }
+
+        let king_square = (pieces[PieceType::King] & occupancies[side_to_move]).bit_scan();
+        let king_diagonals = king_square.anti_diagonal() | king_square.main_diagonal();
+
+        let dest_safe_mask = king_diagonals.contains_mask(target);
+
+        let sources = potential_sources & (!pinned | (pinned & king_diagonals & dest_safe_mask));
+
+        if sources.is_empty() {
+            return false;
+        }
+
+        // Insight: It does not matter, which source square is selected for the horizontal pin test
+        let one_source = sources.lsb();
+
+        // create combined bitboard of board with one source square and capture square removed.
+        // removing the squares simulates the move
+        let combined = combined & !capture & !one_source;
+        let king_attacked = slider_horizontal(king_square, combined)
+            & (pieces[PieceType::Rook] | pieces[PieceType::Queen])
+            & occupancies[!side_to_move];
+
+        king_attacked.is_empty()
     }
 
     fn compute_checker_info(
@@ -581,7 +653,7 @@ impl FromStr for Board {
             .parse::<CastlingRights>()
             .map_err(|_| ParseFenError::BadCastlingRights)?;
 
-        let en_passant_target = match parts
+        let mut en_passant_target = match parts
             .next()
             .ok_or(ParseFenError::PartMissing("en passant target"))?
         {
@@ -605,10 +677,6 @@ impl FromStr for Board {
             .parse::<u16>()
             .map_err(|_| ParseFenError::BadFullMoveNumber)?;
 
-        if let Some(en_passant_target) = en_passant_target {
-            hash ^= zobrist::en_passant_keys(en_passant_target.file());
-        }
-
         hash ^= zobrist::castle_keys(castling_rights);
 
         if side_to_move == Color::Black {
@@ -617,6 +685,22 @@ impl FromStr for Board {
 
         let CheckerInfo { checkers, pinned } =
             Self::compute_checker_info(&pieces, &occupancies, combined, side_to_move);
+
+        if let Some(target) = en_passant_target {
+            if Self::is_valid_en_passant_target(
+                &pieces,
+                &occupancies,
+                combined,
+                side_to_move,
+                pinned,
+                checkers,
+                target,
+            ) {
+                hash ^= zobrist::en_passant_keys(target.file());
+            } else {
+                en_passant_target = None;
+            }
+        }
 
         let board = Board {
             pieces,
