@@ -81,7 +81,7 @@ pub fn slider_horizontal(square: Square, blockers: BitBoard) -> BitBoard {
     let occupancy = (blockers & mask) >> rankx8;
     let exclude_edges = (occupancy.0 >> 1) & 0x3F;
 
-    let attacks = internal::FIRST_RANK_ATTACKS[mapped as usize][exclude_edges as usize] as u64;
+    let attacks = internal::FIRST_RANK_ATTACKS[mapped][exclude_edges as usize] as u64;
 
     // unmap from first rank
     BitBoard(attacks << rankx8)

@@ -26,6 +26,11 @@ impl BitBoard {
     }
 
     #[inline]
+    pub const fn union(self, other: BitBoard) -> BitBoard {
+        BitBoard(self.0 | other.0)
+    }
+
+    #[inline]
     pub const fn from_square(square: Square) -> BitBoard {
         BitBoard(1 << square.to_index())
     }

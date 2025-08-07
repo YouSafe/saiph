@@ -3,7 +3,6 @@ use crate::movegen::attacks::{bishop_attacks, rook_attacks};
 use crate::movegen::{MoveList, MoveListExt};
 use crate::types::bitboard::BitBoard;
 use crate::types::chess_move::MoveFlag;
-use crate::types::line::LineType;
 use crate::types::piece::PieceType;
 
 pub fn generate_slider_moves(
@@ -24,10 +23,11 @@ pub fn generate_slider_moves(
     let queens = board.pieces(PieceType::Queen) & board.occupancies(side_to_move);
 
     let combined = board.combined();
+    let non_friendly_squares = !board.occupancies(side_to_move);
 
     // diagonal attackers
     for source in ((bishops | queens) & !pinned).into_iter() {
-        let attacks = bishop_attacks(source, combined) & !board.occupancies(side_to_move);
+        let attacks = bishop_attacks(source, combined) & non_friendly_squares;
 
         // captures
         for target in (attacks & capture_mask).into_iter() {
@@ -41,10 +41,16 @@ pub fn generate_slider_moves(
     }
 
     for source in ((bishops | queens) & pinned).into_iter() {
-        // SAFETY: pinned piece and king must share a line
-        let line = unsafe { LineType::shared(king_square, source).unwrap_unchecked() }.mask(source);
-
-        let attacks = bishop_attacks(source, combined) & line & !board.occupancies(side_to_move);
+        // At most 4 pieces can be diagonally pinned to the king.
+        // Since this is a cold path, recomputing the king's diagonals in each
+        // iteration is faster than prefiltering sources that lie on a
+        // diagonal with the king.
+        let king_diagonals = king_square.anti_diagonal() | king_square.main_diagonal();
+        let src_safe_mask = king_diagonals.contains_mask(source);
+        let attacks = bishop_attacks(source, combined)
+            & king_diagonals
+            & non_friendly_squares
+            & src_safe_mask;
 
         // captures
         for target in (attacks & capture_mask).into_iter() {
@@ -59,7 +65,7 @@ pub fn generate_slider_moves(
 
     // orthogonal attackers
     for source in ((rooks | queens) & !pinned).into_iter() {
-        let attacks = rook_attacks(source, combined) & !board.occupancies(side_to_move);
+        let attacks = rook_attacks(source, combined) & non_friendly_squares;
 
         // captures
         for target in (attacks & capture_mask).into_iter() {
@@ -73,10 +79,16 @@ pub fn generate_slider_moves(
     }
 
     for source in ((rooks | queens) & pinned).into_iter() {
-        // SAFETY: pinned piece and king must share a line
-        let line = unsafe { LineType::shared(king_square, source).unwrap_unchecked() }.mask(source);
-
-        let attacks = rook_attacks(source, combined) & line & !board.occupancies(side_to_move);
+        // At most 4 pieces can be orthogonally pinned to the king.
+        // Since this is such a path, recomputing the king's rank and file
+        // in each iteration is faster than prefiltering sources that lie on
+        // the same rank or file.
+        let king_orthogonals = king_square.file().mask() | king_square.rank().mask();
+        let src_safe_mask = king_orthogonals.contains_mask(source);
+        let attacks = rook_attacks(source, combined)
+            & king_orthogonals
+            & src_safe_mask
+            & non_friendly_squares;
 
         // captures
         for target in (attacks & capture_mask).into_iter() {
@@ -135,5 +147,40 @@ mod test {
     #[test]
     fn test_pinned_queen_captures() {
         test_slider_moves("8/2p5/3p4/KP5r/1R4qk/6P1/4P3/8 b - - 0 1", &[]);
+    }
+
+    #[test]
+    fn test_wtf() {
+        let mut kiwi = <Board as std::str::FromStr>::from_str(
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+        )
+        .unwrap();
+
+        let boards = [
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/1R2K2R b Kkq - 1 1",
+            "r3k2r/p1ppqpb1/1n2pnp1/1b1PN3/1p2P3/2N2Q1p/PPPBBPPP/1R2K2R w Kkq - 2 2",
+            "r3k2r/p1ppqpb1/1n2pnp1/1B1PN3/1p2P3/2N2Q1p/PPPB1PPP/1R2K2R b Kkq - 0 2",
+            "r3k2r/2ppqpb1/1n2pnp1/pB1PN3/1p2P3/2N2Q1p/PPPB1PPP/1R2K2R w Kkq - 0 3",
+        ]
+        .map(|fen| <Board as std::str::FromStr>::from_str(fen).unwrap());
+
+        let moves = ["a1b1", "a6b5", "e2b5", "a7a5"]
+            .map(|s| <crate::types::uci_move::UCIMove as std::str::FromStr>::from_str(s).unwrap());
+        for (i, mv) in moves.iter().enumerate() {
+            println!("{i}: {mv:?}");
+            let chess_move = kiwi
+                .generate_moves()
+                .into_iter()
+                .find(|m| *mv == m)
+                .unwrap();
+            kiwi.apply_move(chess_move);
+            assert_eq!(boards[i].hash(), kiwi.hash());
+        }
+
+        let expected = <Board as std::str::FromStr>::from_str(
+            "r3k2r/2ppqpb1/1n2pnp1/pB1PN3/1p2P3/2N2Q1p/PPPB1PPP/1R2K2R w Kkq - 0 3",
+        )
+        .unwrap();
+        assert_eq!(kiwi.generate_moves(), expected.generate_moves());
     }
 }
