@@ -45,6 +45,7 @@ pub fn generate_pawn_capture_moves(
     for target in (right_targets & promotion_rank).into_iter() {
         let source = target.shift(right_flip_shift);
 
+        assert!(move_list.len() + 4 <= move_list.capacity());
         move_list.push_move(source, target, MoveFlag::KnightPromotionCapture);
         move_list.push_move(source, target, MoveFlag::BishopPromotionCapture);
         move_list.push_move(source, target, MoveFlag::RookPromotionCapture);
@@ -54,6 +55,7 @@ pub fn generate_pawn_capture_moves(
     for target in (left_targets & promotion_rank).into_iter() {
         let source = target.shift(left_flip_shift);
 
+        assert!(move_list.len() + 4 <= move_list.capacity());
         move_list.push_move(source, target, MoveFlag::KnightPromotionCapture);
         move_list.push_move(source, target, MoveFlag::BishopPromotionCapture);
         move_list.push_move(source, target, MoveFlag::RookPromotionCapture);

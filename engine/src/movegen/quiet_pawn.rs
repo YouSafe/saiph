@@ -41,6 +41,7 @@ pub fn generate_quiet_pawn_moves(board: &Board, move_list: &mut MoveList, push_m
     for target in promotions {
         let source = target.forward(!side_to_move);
 
+        assert!(move_list.len() + 4 <= move_list.capacity());
         move_list.push_move(source, target, MoveFlag::KnightPromotion);
         move_list.push_move(source, target, MoveFlag::BishopPromotion);
         move_list.push_move(source, target, MoveFlag::RookPromotion);
