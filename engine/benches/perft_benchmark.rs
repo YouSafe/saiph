@@ -35,8 +35,13 @@ fn perft_benchmark(c: &mut Criterion) {
     group.measurement_time(Duration::new(10, 0));
     group.sample_size(10);
 
+    group.throughput(criterion::Throughput::Elements(193690690));
     group.bench_function("kiwipete", |b| b.iter(perft_kiwipete));
+
+    group.throughput(criterion::Throughput::Elements(197281));
     group.bench_function("startpos", |b| b.iter(perft_startpos));
+
+    group.throughput(criterion::Throughput::Elements(92683));
     group.bench_function("king vs pawn", |b| b.iter(perft_king_vs_pawn));
 }
 
