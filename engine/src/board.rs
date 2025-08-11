@@ -7,7 +7,7 @@ use crate::types::castling_rights::{CastlingRights, UPDATE_CASTLING_RIGHT_TABLE}
 use crate::types::chess_move::{Move, MoveFlag};
 use crate::types::color::{Color, PerColor};
 use crate::types::direction::RelativeDir;
-use crate::types::piece::{ALL_PIECES, PerPieceType, Piece, PieceType};
+use crate::types::piece::{PerPieceType, Piece, PieceType};
 use crate::types::square::{File, PerSquare, Square};
 use crate::zobrist::{self};
 use std::fmt;
@@ -122,9 +122,7 @@ impl Board {
             | MoveFlag::BishopPromotion
             | MoveFlag::RookPromotion
             | MoveFlag::QueenPromotion => {
-                source_piece = ALL_PIECES
-                    [(flag as usize) - (MoveFlag::KnightPromotion as usize) + 1]
-                    .to_piece(self.side_to_move);
+                source_piece = unsafe { flag.promotion_type() }.to_piece(self.side_to_move);
 
                 // reset early since moved piece was originally a pawn
                 new_state.rule50 = 0;
@@ -139,9 +137,7 @@ impl Board {
                     target_piece.expect("target square should not be empty upon promotion capture"),
                 ));
 
-                source_piece = ALL_PIECES
-                    [(flag as usize) - (MoveFlag::KnightPromotionCapture as usize) + 1]
-                    .to_piece(self.side_to_move);
+                source_piece = unsafe { flag.promotion_type() }.to_piece(self.side_to_move);
 
                 // reset early since moved piece was originally a pawn
                 new_state.rule50 = 0;

@@ -2,6 +2,7 @@ use std::fmt;
 use std::fmt::Formatter;
 
 use crate::types::color::Color;
+use crate::types::piece::PieceType;
 use crate::types::promotion::Promotion;
 use crate::types::square::Square;
 
@@ -23,6 +24,14 @@ pub enum MoveFlag {
     BishopPromotionCapture = 0b1101,
     RookPromotionCapture = 0b1110,
     QueenPromotionCapture = 0b1111,
+}
+
+impl MoveFlag {
+    /// # Safety
+    // Caller must ensure that `self` encodes a promotion
+    pub const unsafe fn promotion_type(self) -> PieceType {
+        unsafe { std::mem::transmute((self as u8 & 0x3) + PieceType::Knight as u8) }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
