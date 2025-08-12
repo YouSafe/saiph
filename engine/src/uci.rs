@@ -170,7 +170,8 @@ impl<S: ThreadSpawner, P: Printer> EngineUCI<S, P> {
                 _ => eprintln!("invalid option"),
             },
             Command::NewGame => {
-                self.threadpool.clear_tt(self.transposition_table.clone());
+                self.transposition_table =
+                    Arc::new(TranspositionTable::new(self.transposition_table.size_mb()));
             }
             Command::Position(start_pos, moves) => {
                 let mut board = match start_pos {

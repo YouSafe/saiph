@@ -80,12 +80,8 @@ impl TranspositionTable {
         Some(entry)
     }
 
-    pub fn chunk(&self, chunk_index: usize, num_chunks: usize) -> &[AtomicU64] {
-        let stride = self.inner.len() / num_chunks;
-        let start = stride * chunk_index;
-        let end = (start + stride).min(self.inner.len());
-
-        &self.inner[start..end]
+    pub fn size_mb(&self) -> usize {
+        self.inner.len() * std::mem::size_of::<AtomicU64>() / 0x100000
     }
 }
 
