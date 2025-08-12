@@ -308,7 +308,15 @@ impl Search {
             return self.local_stop;
         }
 
-        self.call_cnt = 4096;
+        self.call_cnt = 512;
+
+        if let Some(maximum) = self.clock.maximum {
+            if maximum < Instant::now() {
+                self.local_stop = true;
+            }
+        } else if self.stop_sync.stop.load(Ordering::Relaxed) {
+            self.local_stop = true;
+        }
 
         let nodes = self.nodes_buffer.accumulate();
 
@@ -316,14 +324,6 @@ impl Search {
             if nodes >= max_nodes {
                 self.local_stop = true;
                 return true;
-            }
-        }
-
-        if self.stop_sync.stop.load(Ordering::Relaxed) {
-            self.local_stop = true;
-        } else if let Some(maximum) = self.clock.maximum {
-            if maximum < Instant::now() {
-                self.local_stop = true;
             }
         }
 
