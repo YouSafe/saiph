@@ -40,12 +40,14 @@ impl Clock {
 
                 let allocated_time = time_left / mtg + 3 * inc / 4;
 
-                let optimum_time = (allocated_time - MOVE_OVERHEAD).max(MIN_TIME);
+                let optimum_time = allocated_time.saturating_sub(MOVE_OVERHEAD).max(MIN_TIME);
 
                 let max_scale = (4.0 + game_ply as f64 / 12.0).min(7.0);
 
-                let maximum_time = ((optimum_time as f64 * max_scale) as u64)
-                    .clamp(MIN_TIME, (time_left - MOVE_OVERHEAD).max(MIN_TIME));
+                let maximum_time = ((optimum_time as f64 * max_scale) as u64).clamp(
+                    MIN_TIME,
+                    time_left.saturating_sub(MOVE_OVERHEAD).max(MIN_TIME),
+                );
 
                 Self {
                     start,
