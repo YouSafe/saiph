@@ -143,7 +143,9 @@ impl Search {
         mut depth: u8,
         ply: u8,
     ) -> Evaluation {
-        self.pv_table.clear(ply as usize);
+        if PV {
+            self.pv_table.clear(ply as usize);
+        }
 
         if self.should_interrupt() {
             return Evaluation::INVALID;
@@ -229,7 +231,9 @@ impl Search {
                 if score > alpha {
                     alpha = score;
 
-                    self.pv_table.update(ply as usize, chess_move);
+                    if PV {
+                        self.pv_table.update(ply as usize, chess_move);
+                    }
                 }
             }
 
