@@ -116,23 +116,7 @@ impl Search {
             }
 
             if is_main {
-                let line = self.pv_table.variation();
-
-                let output = format!(
-                    "info depth {} score {} time {} nodes {} pv {}",
-                    depth,
-                    if evaluation.is_mate() {
-                        format!("mate {}", evaluation.mate_full_moves())
-                    } else {
-                        format!("cp {evaluation}")
-                    },
-                    self.clock.start.elapsed().as_millis(),
-                    self.nodes_buffer.accumulate(),
-                    line.iter()
-                        .map(|mov| mov.to_string())
-                        .collect::<Vec<_>>()
-                        .join(" ")
-                );
+                let output = self.info_string(evaluation, depth).unwrap();
 
                 self.engine_tx
                     .send(EngineMessage::Response(output))
@@ -344,6 +328,30 @@ impl Search {
         }
 
         self.local_stop
+    }
+
+    fn info_string(
+        &mut self,
+        evaluation: Evaluation,
+        depth: u8,
+    ) -> Result<String, std::fmt::Error> {
+        use std::fmt::Write;
+
+        let mut output = String::with_capacity(120);
+
+        write!(output, "info depth {} score ", depth)?;
+        if evaluation.is_mate() {
+            write!(output, "mate {}", evaluation.mate_full_moves())?;
+        } else {
+            write!(output, "cp {}", evaluation)?;
+        }
+        write!(output, " time {}", self.clock.start.elapsed().as_millis())?;
+        write!(output, " nodes {} pv", self.nodes_buffer.accumulate())?;
+        for mov in self.pv_table.variation() {
+            write!(output, " {}", mov)?;
+        }
+
+        Ok(output)
     }
 
     pub fn limits(&self) -> &SearchLimits {
