@@ -54,6 +54,7 @@ pub struct Search {
     thread_id: u8,
     nodes_buffer: Arc<NodeCountBuffer>,
     call_cnt: i16,
+    completed_depth: u8,
 }
 
 impl Search {
@@ -82,6 +83,7 @@ impl Search {
             thread_id,
             nodes_buffer,
             call_cnt: 0,
+            completed_depth: 0,
         }
     }
 
@@ -132,6 +134,8 @@ impl Search {
                     break;
                 }
             }
+
+            self.completed_depth += 1;
         }
     }
 
@@ -307,6 +311,10 @@ impl Search {
     }
 
     fn should_interrupt(&mut self) -> bool {
+        if self.completed_depth == 0 {
+            return false;
+        }
+
         self.call_cnt -= 1;
         if self.call_cnt > 0 {
             return self.local_stop;
