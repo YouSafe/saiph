@@ -20,6 +20,9 @@ const DEFAULT_HASH_SIZE: usize = 1;
 /// Default number of threads
 const DEFAULT_THREADS: u8 = 1;
 
+/// Default number of principle variations
+const DEFAULT_MULTIPV: u8 = 1;
+
 #[derive(Debug)]
 pub enum EngineMessage {
     Command(String),
@@ -33,6 +36,7 @@ pub struct EngineUCI<S: ThreadSpawner, P: Printer> {
     threadpool: ThreadPool<S>,
     transposition_table: Arc<TranspositionTable>,
     ignore_commands: bool,
+    multipv: u8,
     _marker: PhantomData<P>,
 }
 
@@ -82,6 +86,7 @@ impl<S: ThreadSpawner, P: Printer> EngineUCI<S, P> {
             threadpool: ThreadPool::<S>::new(DEFAULT_THREADS),
             transposition_table: Arc::new(TranspositionTable::new(DEFAULT_HASH_SIZE)),
             ignore_commands: false,
+            multipv: DEFAULT_MULTIPV,
             _marker: Default::default(),
         }
     }
@@ -147,6 +152,11 @@ impl<S: ThreadSpawner, P: Printer> EngineUCI<S, P> {
                 P::println(&format!(
                     "option name Threads type spin default {DEFAULT_THREADS} min 1 max 255"
                 ));
+
+                P::println(&format!(
+                    "option name MultiPV type spin default {DEFAULT_MULTIPV} min 1 max 255"
+                ));
+
                 P::println("uciok");
             }
             Command::IsReady => {
@@ -163,6 +173,13 @@ impl<S: ThreadSpawner, P: Printer> EngineUCI<S, P> {
                 "Hash" => {
                     if let Some(size_mb) = value.and_then(|v| v.parse::<usize>().ok()) {
                         self.transposition_table = Arc::new(TranspositionTable::new(size_mb));
+                    } else {
+                        eprintln!("invalid value");
+                    }
+                }
+                "MultiPV" => {
+                    if let Some(multipv) = value.and_then(|v| v.parse::<u8>().ok()) {
+                        self.multipv = multipv;
                     } else {
                         eprintln!("invalid value");
                     }
@@ -203,6 +220,7 @@ impl<S: ThreadSpawner, P: Printer> EngineUCI<S, P> {
                     self.board.clone(),
                     limits,
                     clock,
+                    self.multipv,
                     self.engine_tx.clone(),
                     self.transposition_table.clone(),
                 );

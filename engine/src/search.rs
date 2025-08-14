@@ -2,9 +2,8 @@ use crate::board::Board;
 use crate::clock::Clock;
 use crate::evaluation::Evaluation;
 use crate::evaluation::hce::board_value;
-use crate::movegen::MoveList;
 use crate::moveord::mmv_lva;
-use crate::pv_table::PrincipleVariationTable;
+use crate::pv::PrincipleVariation;
 use crate::threadpool::StopSync;
 use crate::transposition::{Entry, TranspositionTable, ValueType};
 use crate::types::chess_move::Move;
@@ -16,40 +15,20 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::Sender;
 use web_time::Instant;
 
-pub struct NodeCountBuffer {
-    inner: Vec<AtomicU64>,
-}
-
-impl NodeCountBuffer {
-    pub fn new(num_threads: u8) -> Self {
-        Self {
-            inner: vec![0u64; num_threads as usize]
-                .into_iter()
-                .map(AtomicU64::new)
-                .collect(),
-        }
-    }
-
-    pub fn get(&self, thread_id: u8) -> &AtomicU64 {
-        &self.inner[thread_id as usize]
-    }
-
-    pub fn accumulate(&self) -> u64 {
-        self.inner.iter().map(|v| v.load(Ordering::Relaxed)).sum()
-    }
-}
-
 pub struct Search {
     board: Board,
     limits: SearchLimits,
-    pv_table: PrincipleVariationTable,
     local_stop: bool,
     clock: Clock,
-    root_moves: MoveList,
+    root_moves: Vec<RootMove>,
+    multipv: u8,
 
     engine_tx: Sender<EngineMessage>,
     tt: Arc<TranspositionTable>,
     stop_sync: Arc<StopSync>,
+
+    pv_index: usize,
+    pv_last: usize,
 
     thread_id: u8,
     nodes_buffer: Arc<NodeCountBuffer>,
@@ -62,7 +41,8 @@ impl Search {
         board: Board,
         limits: SearchLimits,
         clock: Clock,
-        root_moves: MoveList,
+        multipv: u8,
+        root_moves: Vec<RootMove>,
         engine_tx: Sender<EngineMessage>,
         tt: Arc<TranspositionTable>,
         stop_sync: Arc<StopSync>,
@@ -72,10 +52,13 @@ impl Search {
         Search {
             board,
             limits,
-            pv_table: PrincipleVariationTable::new(),
             local_stop: false,
             clock,
             root_moves,
+            multipv,
+
+            pv_index: 0,
+            pv_last: 0,
 
             engine_tx,
             tt,
@@ -95,7 +78,7 @@ impl Search {
             |wait_for_stop| *wait_for_stop,
         );
 
-        let best_move = self.pv_table.best_move();
+        let best_move = self.root_moves[0].pv.best_move();
 
         if is_main {
             self.engine_tx
@@ -107,22 +90,40 @@ impl Search {
     }
 
     fn iterative_deepening(&mut self, is_main: bool) {
-        let mut evaluation;
-
         for depth in 1..u8::MAX {
-            evaluation =
-                self.negamax_search::<true, true>(Evaluation::MIN, Evaluation::MAX, depth, 0);
+            for pv_index in 0..self.multipv {
+                self.pv_index = pv_index as usize;
+                self.pv_last = self.root_moves.len() - 1;
+
+                let mut pv = PrincipleVariation::default();
+
+                self.negamax_search::<true, true>(
+                    Evaluation::MIN,
+                    Evaluation::MAX,
+                    depth,
+                    0,
+                    &mut pv,
+                );
+
+                self.root_moves[(self.pv_index)..=(self.pv_last)].sort();
+
+                if self.local_stop {
+                    break;
+                }
+
+                if is_main {
+                    let output = self
+                        .info_string(depth, pv_index, &self.root_moves[pv_index as usize])
+                        .unwrap();
+
+                    self.engine_tx
+                        .send(EngineMessage::Response(output))
+                        .unwrap();
+                }
+            }
 
             if self.local_stop {
                 break;
-            }
-
-            if is_main {
-                let output = self.info_string(evaluation, depth).unwrap();
-
-                self.engine_tx
-                    .send(EngineMessage::Response(output))
-                    .unwrap();
             }
 
             if depth >= self.limits.depth.unwrap_or(u8::MAX) {
@@ -146,9 +147,12 @@ impl Search {
         mut beta: Evaluation,
         mut depth: u8,
         ply: u8,
+        pv: &mut PrincipleVariation,
     ) -> Evaluation {
+        let mut child_pv = PrincipleVariation::default();
+
         if PV {
-            self.pv_table.clear(ply as usize);
+            pv.clear();
         }
 
         if self.should_interrupt() {
@@ -215,17 +219,34 @@ impl Search {
             0
         });
 
+        let mut move_count = 0;
         for chess_move in moves {
-            if ROOT && !self.root_moves.contains(&chess_move) {
+            if ROOT && !self.root_moves[self.pv_index..=self.pv_last].includes_root(chess_move) {
                 continue;
             }
 
+            move_count += 1;
+
             self.board.apply_move(chess_move);
-            let score = -self.negamax_search::<PV, false>(-beta, -alpha, depth - 1, ply + 1);
+            let score =
+                -self.negamax_search::<PV, false>(-beta, -alpha, depth - 1, ply + 1, &mut child_pv);
             self.board.undo_move();
 
             if self.local_stop {
                 return Evaluation::INVALID;
+            }
+
+            if ROOT {
+                let root_move = self.root_moves.find_root_mut(chess_move).unwrap();
+
+                if move_count == 1 || score > alpha {
+                    root_move.score = score;
+                    root_move.pv.load_from(chess_move, &child_pv);
+                } 
+                else {
+                    root_move.score = Evaluation::MIN;
+                    root_move.pv.truncate_to_root();
+                }
             }
 
             if score > best_score {
@@ -235,8 +256,8 @@ impl Search {
                 if score > alpha {
                     alpha = score;
 
-                    if PV {
-                        self.pv_table.update(ply as usize, chess_move);
+                    if !ROOT && PV {
+                        pv.load_from(chess_move, &child_pv);
                     }
                 }
             }
@@ -343,15 +364,19 @@ impl Search {
     }
 
     fn info_string(
-        &mut self,
-        evaluation: Evaluation,
+        &self,
         depth: u8,
+        pv_index: u8,
+        root_move: &RootMove,
     ) -> Result<String, std::fmt::Error> {
         use std::fmt::Write;
 
         let mut output = String::with_capacity(120);
 
-        write!(output, "info depth {} score ", depth)?;
+        let pv = &root_move.pv;
+        let evaluation = root_move.score;
+
+        write!(output, "info depth {} multipv {} score ", depth, pv_index)?;
         if evaluation.is_mate() {
             write!(output, "mate {}", evaluation.mate_full_moves())?;
         } else {
@@ -359,7 +384,7 @@ impl Search {
         }
         write!(output, " time {}", self.clock.start.elapsed().as_millis())?;
         write!(output, " nodes {} pv", self.nodes_buffer.accumulate())?;
-        for mov in self.pv_table.variation() {
+        for mov in pv.line() {
             write!(output, " {}", mov)?;
         }
 
@@ -386,5 +411,69 @@ fn tt_cutoff(entry: &Entry, alpha: Evaluation, beta: Evaluation) -> bool {
         ValueType::Exact => true,
         ValueType::Lowerbound => entry.value >= beta,
         ValueType::Upperbound => entry.value <= alpha,
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct RootMove {
+    pub score: Evaluation,
+    pub pv: PrincipleVariation,
+}
+
+impl PartialEq for RootMove {
+    fn eq(&self, other: &Self) -> bool {
+        self.score == other.score
+    }
+}
+
+impl Eq for RootMove {}
+
+impl PartialOrd for RootMove {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for RootMove {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.score.cmp(&other.score).reverse()
+    }
+}
+
+trait RootMovesExt {
+    fn includes_root(&self, mv: Move) -> bool;
+    fn find_root_mut(&mut self, mv: Move) -> Option<&mut RootMove>;
+}
+
+impl RootMovesExt for [RootMove] {
+    fn includes_root(&self, mv: Move) -> bool {
+        self.iter().any(|r| r.pv.line().starts_with(&[mv]))
+    }
+
+    fn find_root_mut(&mut self, mv: Move) -> Option<&mut RootMove> {
+        self.iter_mut().find(|r| r.pv.line().starts_with(&[mv]))
+    }
+}
+
+pub struct NodeCountBuffer {
+    inner: Vec<AtomicU64>,
+}
+
+impl NodeCountBuffer {
+    pub fn new(num_threads: u8) -> Self {
+        Self {
+            inner: vec![0u64; num_threads as usize]
+                .into_iter()
+                .map(AtomicU64::new)
+                .collect(),
+        }
+    }
+
+    pub fn get(&self, thread_id: u8) -> &AtomicU64 {
+        &self.inner[thread_id as usize]
+    }
+
+    pub fn accumulate(&self) -> u64 {
+        self.inner.iter().map(|v| v.load(Ordering::Relaxed)).sum()
     }
 }

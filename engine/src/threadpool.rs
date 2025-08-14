@@ -11,7 +11,9 @@ use crate::{
     ThreadSpawner,
     board::Board,
     clock::Clock,
-    search::{NodeCountBuffer, Search},
+    evaluation::Evaluation,
+    pv::PrincipleVariation,
+    search::{NodeCountBuffer, RootMove, Search},
     transposition::TranspositionTable,
     types::search_limits::{SearchLimits, TimeLimit},
     uci::EngineMessage,
@@ -62,6 +64,7 @@ impl<S: ThreadSpawner> ThreadPool<S> {
         board: Board,
         limits: SearchLimits,
         clock: Clock,
+        multipv: u8,
         engine_tx: Sender<EngineMessage>,
         tt: Arc<TranspositionTable>,
     ) {
@@ -101,6 +104,14 @@ impl<S: ThreadSpawner> ThreadPool<S> {
 
         let nodes_buffer = Arc::new(NodeCountBuffer::new(self.workers.len() as u8));
 
+        let root_moves: Vec<RootMove> = root_moves
+            .into_iter()
+            .map(|m| RootMove {
+                score: Evaluation::MIN,
+                pv: PrincipleVariation::from_root(m),
+            })
+            .collect();
+
         // assign workers search job
         for worker in &self.workers {
             worker
@@ -109,6 +120,7 @@ impl<S: ThreadSpawner> ThreadPool<S> {
                     board.clone(),
                     limits.clone(),
                     clock,
+                    multipv.min(root_moves.len().min(u8::MAX as usize) as u8),
                     root_moves.clone(),
                     engine_tx.clone(),
                     tt.clone(),

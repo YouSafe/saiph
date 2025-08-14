@@ -3,12 +3,12 @@ pub mod clock;
 pub mod evaluation;
 pub mod movegen;
 pub mod moveord;
-pub mod pv_table;
 pub mod search;
 pub mod threadpool;
 pub mod transposition;
 pub mod types;
 pub mod uci;
+pub mod pv;
 
 mod zobrist;
 
