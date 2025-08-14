@@ -25,7 +25,8 @@ impl Evaluation {
     const MAX_MATE_DEPTH: i16 = 100;
 
     pub const fn is_mate(&self) -> bool {
-        self.0.abs() > (Evaluation::IMMEDIATE_MATE_SCORE - Evaluation::MAX_MATE_DEPTH)
+        self.0.abs() < Evaluation::MAX.0
+            && self.0.abs() > (Evaluation::IMMEDIATE_MATE_SCORE - Evaluation::MAX_MATE_DEPTH)
     }
 
     pub const fn mate_num_ply(&self) -> i8 {
@@ -93,6 +94,15 @@ impl fmt::Display for Evaluation {
 mod test {
     use crate::evaluation::Evaluation;
     use crate::types::color::Color;
+
+    #[test]
+    fn test_is_mate() {
+        assert!(!Evaluation::MIN.is_mate());
+        assert!(!Evaluation::INVALID.is_mate());
+        assert!(!Evaluation::EQUALITY.is_mate());
+        assert!(Evaluation::mate_in(5).is_mate());
+        assert!(Evaluation::mated_in(5).is_mate());
+    }
 
     #[test]
     fn test_adjust_mate_ply() {
