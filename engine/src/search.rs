@@ -375,7 +375,7 @@ impl Search {
         let pv = &root_move.pv;
         let evaluation = root_move.score;
 
-        write!(output, "info depth {depth} multipv {pv_index} score ")?;
+        write!(output, "info depth {depth} multipv {} score ", pv_index + 1)?;
         if evaluation.is_mate() {
             write!(output, "mate {}", evaluation.mate_full_moves())?;
         } else {
