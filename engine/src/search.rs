@@ -242,8 +242,7 @@ impl Search {
                 if move_count == 1 || score > alpha {
                     root_move.score = score;
                     root_move.pv.load_from(chess_move, &child_pv);
-                } 
-                else {
+                } else {
                     root_move.score = Evaluation::MIN;
                     root_move.pv.truncate_to_root();
                 }
@@ -376,16 +375,16 @@ impl Search {
         let pv = &root_move.pv;
         let evaluation = root_move.score;
 
-        write!(output, "info depth {} multipv {} score ", depth, pv_index)?;
+        write!(output, "info depth {depth} multipv {pv_index} score ")?;
         if evaluation.is_mate() {
             write!(output, "mate {}", evaluation.mate_full_moves())?;
         } else {
-            write!(output, "cp {}", evaluation)?;
+            write!(output, "cp {evaluation}")?;
         }
         write!(output, " time {}", self.clock.start.elapsed().as_millis())?;
         write!(output, " nodes {} pv", self.nodes_buffer.accumulate())?;
         for mov in pv.line() {
-            write!(output, " {}", mov)?;
+            write!(output, " {mov}")?;
         }
 
         Ok(output)
