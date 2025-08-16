@@ -32,7 +32,7 @@ pub struct Search {
 
     thread_id: u8,
     nodes_buffer: Arc<NodeCountBuffer>,
-    call_cnt: i16,
+    calls_until_stop_check: i16,
     completed_depth: u8,
 }
 
@@ -65,7 +65,7 @@ impl Search {
             stop_sync,
             thread_id,
             nodes_buffer,
-            call_cnt: 0,
+            calls_until_stop_check: 0,
             completed_depth: 0,
         }
     }
@@ -155,7 +155,7 @@ impl Search {
             pv.clear();
         }
 
-        if self.should_interrupt() {
+        if self.should_stop() {
             return Evaluation::INVALID;
         }
 
@@ -330,17 +330,16 @@ impl Search {
         best_score
     }
 
-    fn should_interrupt(&mut self) -> bool {
+    fn should_stop(&mut self) -> bool {
+        self.calls_until_stop_check -= 1;
+        if self.calls_until_stop_check > 0 {
+            return self.local_stop;
+        }
+        self.calls_until_stop_check = 512;
+
         if self.completed_depth == 0 {
             return false;
         }
-
-        self.call_cnt -= 1;
-        if self.call_cnt > 0 {
-            return self.local_stop;
-        }
-
-        self.call_cnt = 512;
 
         if let Some(maximum) = self.clock.maximum {
             if maximum < Instant::now() {
