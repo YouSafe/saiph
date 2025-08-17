@@ -8,7 +8,7 @@ use crate::types::chess_move::Move;
 
 #[derive()]
 pub struct TranspositionTable {
-    inner: Vec<AtomicU64>,
+    inner: zeroed_slice::CacheAlignedZeroedSlice<AtomicU64>,
 }
 
 impl TranspositionTable {
@@ -16,10 +16,7 @@ impl TranspositionTable {
         let table_size = 0x100000 * size_mb;
         let num_entries = table_size / std::mem::size_of::<AtomicU64>();
 
-        let inner = vec![0u64; num_entries]
-            .into_iter()
-            .map(AtomicU64::new)
-            .collect();
+        let inner = zeroed_slice::CacheAlignedZeroedSlice::new(num_entries);
 
         Self { inner }
     }
@@ -128,4 +125,92 @@ pub enum ValueType {
     Upperbound,
     /// Beta
     Lowerbound,
+}
+
+mod zeroed_slice {
+    use std::alloc::{Layout, alloc, dealloc};
+    use std::ops::{Index, IndexMut};
+    use std::ptr::{self, NonNull};
+    use std::sync::atomic::AtomicU64;
+
+    pub unsafe trait Zeroable: Sized {}
+
+    unsafe impl Zeroable for AtomicU64 {}
+
+    pub struct CacheAlignedZeroedSlice<T: Zeroable> {
+        ptr: NonNull<T>,
+        len: usize,
+        layout: Layout,
+    }
+
+    impl<T: Zeroable> CacheAlignedZeroedSlice<T> {
+        pub fn new(len: usize) -> Self {
+            const { assert!(!std::mem::needs_drop::<T>()) };
+
+            let elem_size = std::mem::size_of::<T>();
+            let align = 64.max(std::mem::align_of::<T>());
+
+            let layout = Layout::from_size_align(len * elem_size, align).unwrap();
+
+            // The usage of `alloc` instead of `alloc_zeroed` is intentional.
+            // `alloc_zeroed` would return zeroed memory, but pages may be left
+            // in an uncommited state (only lazily mapped by the OS). To avoid
+            // first-access latency, we clear the memory manually and use `alloc`
+            // since it is faster.
+            let ptr = unsafe { alloc(layout) as *mut T };
+
+            unsafe { ptr::write_bytes(ptr, 0, len) };
+
+            let ptr = NonNull::new(ptr)
+                .unwrap_or_else(|| panic!("allocation failed for {} bytes", layout.size()));
+
+            Self { ptr, len, layout }
+        }
+
+        pub fn len(&self) -> usize {
+            self.len
+        }
+
+        pub fn as_ptr(&self) -> *const T {
+            self.ptr.as_ptr()
+        }
+    }
+
+    impl<T: Zeroable> Index<usize> for CacheAlignedZeroedSlice<T> {
+        type Output = T;
+        #[inline]
+        #[track_caller]
+        fn index(&self, idx: usize) -> &Self::Output {
+            assert!(
+                idx < self.len,
+                "index out of bounds: the len is {} but the index is {}",
+                self.len,
+                idx
+            );
+            unsafe { &*self.ptr.as_ptr().add(idx) }
+        }
+    }
+
+    impl<T: Zeroable> IndexMut<usize> for CacheAlignedZeroedSlice<T> {
+        #[inline]
+        #[track_caller]
+        fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
+            assert!(
+                idx < self.len,
+                "index out of bounds: the len is {} but the index is {}",
+                self.len,
+                idx
+            );
+            unsafe { &mut *self.ptr.as_ptr().add(idx) }
+        }
+    }
+
+    impl<T: Zeroable> Drop for CacheAlignedZeroedSlice<T> {
+        fn drop(&mut self) {
+            unsafe { dealloc(self.ptr.as_ptr() as *mut u8, self.layout) };
+        }
+    }
+
+    unsafe impl<T: Zeroable + Sync> Sync for CacheAlignedZeroedSlice<T> {}
+    unsafe impl<T: Zeroable + Send> Send for CacheAlignedZeroedSlice<T> {}
 }
