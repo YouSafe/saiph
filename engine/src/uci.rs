@@ -28,6 +28,7 @@ pub enum EngineMessage {
     Command(String),
     Response(String),
     Terminate,
+    Ready,
 }
 
 pub struct EngineUCI<S: ThreadSpawner, P: Printer> {
@@ -105,6 +106,9 @@ impl<S: ThreadSpawner, P: Printer> EngineUCI<S, P> {
                 }
                 EngineMessage::Response(message) => P::println(&message),
                 EngineMessage::Terminate => break,
+                EngineMessage::Ready => {
+                    P::println("readyok");
+                }
             }
         }
     }
@@ -160,7 +164,7 @@ impl<S: ThreadSpawner, P: Printer> EngineUCI<S, P> {
                 P::println("uciok");
             }
             Command::IsReady => {
-                P::println("readyok");
+                self.threadpool.ready(self.engine_tx.clone());
             }
             Command::SetOption { name, value } => match name.as_str() {
                 "Threads" => {
@@ -187,8 +191,7 @@ impl<S: ThreadSpawner, P: Printer> EngineUCI<S, P> {
                 _ => eprintln!("invalid option"),
             },
             Command::NewGame => {
-                self.transposition_table =
-                    Arc::new(TranspositionTable::new(self.transposition_table.size_mb()));
+                self.threadpool.reset_data(self.transposition_table.clone());
             }
             Command::Position(start_pos, moves) => {
                 let mut board = match start_pos {

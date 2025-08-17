@@ -1,4 +1,5 @@
 use std::fmt::Debug;
+use std::ptr;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::board::Board;
@@ -78,6 +79,28 @@ impl TranspositionTable {
         }
 
         Some(entry)
+    }
+
+    /// # Safety
+    ///
+    /// Caller must ensure exclusive access to this chunk
+    pub unsafe fn clear_chunk(&self, chunk_index: usize, num_chunks: usize) {
+        let len = self.inner.len();
+
+        let stride = len / num_chunks;
+        let start = stride * chunk_index;
+        let end = if chunk_index != num_chunks - 1 {
+            (start + stride).min(len)
+        } else {
+            len
+        };
+
+        let start_ptr = unsafe { self.inner.as_ptr().add(start) } as *mut AtomicU64;
+        let count = end - start;
+
+        unsafe {
+            ptr::write_bytes(start_ptr, 0, count);
+        }
     }
 
     pub fn size_mb(&self) -> usize {

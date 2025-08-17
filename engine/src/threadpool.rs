@@ -169,6 +169,15 @@ impl<S: ThreadSpawner> ThreadPool<S> {
         });
     }
 
+    pub fn reset_data(&self, tt: Arc<TranspositionTable>) {
+        for worker in &self.workers {
+            worker
+                .worker_tx
+                .send(Job::ResetData { tt: tt.clone() })
+                .unwrap();
+        }
+    }
+
     pub fn quit(&self, engine_tx: Sender<EngineMessage>, stop_search: bool) {
         let active_threads = Arc::new(AtomicU8::new(self.workers.len() as u8));
 
@@ -186,6 +195,17 @@ impl<S: ThreadSpawner> ThreadPool<S> {
             self.stop_search();
         }
     }
+
+    pub fn ready(&self, engine_tx: Sender<EngineMessage>) {
+        for worker in &self.workers {
+            worker
+                .worker_tx
+                .send(Job::Ready {
+                    engine_tx: engine_tx.clone(),
+                })
+                .unwrap();
+        }
+    }
 }
 
 enum Job {
@@ -196,6 +216,12 @@ enum Job {
     },
     Quit {
         active_threads: Arc<AtomicU8>,
+        engine_tx: Sender<EngineMessage>,
+    },
+    ResetData {
+        tt: Arc<TranspositionTable>,
+    },
+    Ready {
         engine_tx: Sender<EngineMessage>,
     },
 }
@@ -243,6 +269,11 @@ impl Worker {
                         _num_threads = new_num_threads;
                         barrier = new_barrier
                     }
+                    Job::ResetData { tt } => {
+                        // SAFETY: synchronisation and unique threads ensure that each thread
+                        // has exclusive access on their respective chunk
+                        unsafe { tt.clear_chunk(thread_id as usize, num_threads as usize) };
+                    }
                     Job::Quit {
                         active_threads,
                         engine_tx,
@@ -252,6 +283,12 @@ impl Worker {
                             engine_tx.send(EngineMessage::Terminate).unwrap();
                         }
                         break;
+                    }
+                    Job::Ready { engine_tx } => {
+                        let result = barrier.wait();
+                        if result.is_leader() {
+                            engine_tx.send(EngineMessage::Ready).unwrap();
+                        }
                     }
                 }
             }
