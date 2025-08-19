@@ -242,7 +242,7 @@ impl Worker {
 
         S::spawn(move || {
             let mut barrier = barrier;
-            let mut _num_threads = num_threads;
+            let mut num_threads = num_threads;
 
             while let Ok(job) = worker_rx.recv() {
                 match job {
@@ -266,7 +266,7 @@ impl Worker {
                         new_num_threads,
                         new_barrier,
                     } => {
-                        _num_threads = new_num_threads;
+                        num_threads = new_num_threads;
                         barrier = new_barrier
                     }
                     Job::ResetData { tt } => {
