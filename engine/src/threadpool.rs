@@ -230,9 +230,10 @@ fn worker_loop(
     mut thread_data: ThreadData,
 ) {
     while let Ok(job) = worker_rx.recv() {
+        // Wait for previous job to finish on all workers
+        let wait = barrier.wait();
         match job {
             Job::Search(search) => {
-                let wait = barrier.wait();
                 if wait.is_leader() {
                     thread_data.nodes_buffer.clear();
 
@@ -246,8 +247,6 @@ fn worker_loop(
 
                 let wait = barrier.wait();
                 search.run(&mut thread_data, wait.is_leader());
-
-                barrier.wait();
             }
             Job::Resize {
                 new_num_threads,
@@ -289,8 +288,7 @@ fn worker_loop(
                 break;
             }
             Job::Ready => {
-                let result = barrier.wait();
-                if result.is_leader() {
+                if wait.is_leader() {
                     thread_data.engine_tx.send(EngineMessage::Ready).unwrap();
                 }
             }
