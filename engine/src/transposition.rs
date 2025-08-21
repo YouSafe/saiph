@@ -145,7 +145,12 @@ mod zeroed_slice {
 
     impl<T: Zeroable> CacheAlignedZeroedSlice<T> {
         pub fn new(len: usize) -> Self {
+            // We do not handle types that need to be dropped
             const { assert!(!std::mem::needs_drop::<T>()) };
+
+            // Only types sizes that divide the cache line size are valid
+            // to enable easy chunking
+            const { assert!(64 % std::mem::align_of::<T>() == 0) }
 
             let elem_size = std::mem::size_of::<T>();
             let align = 64.max(std::mem::align_of::<T>());
@@ -154,7 +159,7 @@ mod zeroed_slice {
 
             // The usage of `alloc` instead of `alloc_zeroed` is intentional.
             // `alloc_zeroed` would return zeroed memory, but pages may be left
-            // in an uncommited state (only lazily mapped by the OS). To avoid
+            // in an uncommitted state (only lazily mapped by the OS). To avoid
             // first-access latency, we clear the memory manually and use `alloc`
             // since it is faster.
             let ptr = unsafe { alloc(layout) as *mut T };
