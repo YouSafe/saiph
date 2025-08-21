@@ -71,12 +71,36 @@ impl Search {
     }
 
     pub fn search(mut self, is_main: bool) -> Move {
-        self.iterative_deepening(is_main);
+        if !self.root_moves.is_empty() {
+            self.iterative_deepening(is_main);
+        } else if is_main {
+            let legal_moves = self.board.generate_moves();
+            let info_str = if !legal_moves.is_empty() {
+                "info depth 0"
+            } else if !self.board.checkers().is_empty() {
+                "info depth 0 score mate 0"
+            } else {
+                "info depth 0 score cp 0"
+            };
+
+            self.engine_tx
+                .send(EngineMessage::Response(info_str.to_owned()))
+                .unwrap();
+        }
 
         let _guard = self.stop_sync.cond_var.wait_while(
             self.stop_sync.wait_for_stop.lock().unwrap(),
             |wait_for_stop| *wait_for_stop,
         );
+
+        if self.root_moves.is_empty() {
+            if is_main {
+                self.engine_tx
+                    .send(EngineMessage::Response(format!("bestmove (none)")))
+                    .unwrap();
+            }
+            return Move::NULL;
+        }
 
         let best_move = self.root_moves[0].pv.best_move();
 

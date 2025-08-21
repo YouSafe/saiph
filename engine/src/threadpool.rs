@@ -68,23 +68,7 @@ impl<S: ThreadSpawner> ThreadPool<S> {
         engine_tx: Sender<EngineMessage>,
         tt: Arc<TranspositionTable>,
     ) {
-        fn send_response(engine_tx: &Sender<EngineMessage>, message: &str) {
-            engine_tx
-                .send(EngineMessage::Response(message.to_owned()))
-                .unwrap();
-        }
-
         let legal_moves = board.generate_moves();
-        if legal_moves.is_empty() {
-            if !board.checkers().is_empty() {
-                send_response(&engine_tx, "info depth 0 score mate 0");
-            } else {
-                send_response(&engine_tx, "info depth 0 score cp 0");
-            }
-            send_response(&engine_tx, "bestmove (none)");
-            return;
-        }
-
         let root_moves = if !limits.search_moves.is_empty() {
             limits
                 .search_moves
@@ -95,12 +79,6 @@ impl<S: ThreadSpawner> ThreadPool<S> {
         } else {
             legal_moves
         };
-
-        if root_moves.is_empty() {
-            send_response(&engine_tx, "info depth 0");
-            send_response(&engine_tx, "bestmove (none)");
-            return;
-        }
 
         let nodes_buffer = Arc::new(NodeCountBuffer::new(self.workers.len() as u8));
 
