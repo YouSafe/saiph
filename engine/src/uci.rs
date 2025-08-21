@@ -81,16 +81,22 @@ enum StartingPosition {
 
 impl<S: ThreadSpawner, P: Printer> EngineUCI<S, P> {
     pub fn new(engine_tx: Sender<EngineMessage>) -> Self {
-        let transposition_table = Arc::new(TranspositionTable::new(DEFAULT_HASH_SIZE));
+        // SAFETY: threadpool workers clear the transposition table before its first usage
+        let transposition_table =
+            Arc::new(unsafe { TranspositionTable::new_uninitialized(DEFAULT_HASH_SIZE) });
+
+        let threadpool = ThreadPool::<S>::new(
+            DEFAULT_THREADS,
+            engine_tx.clone(),
+            transposition_table.clone(),
+        );
+
+        threadpool.update_tt(transposition_table.clone());
 
         Self {
             board: Default::default(),
             engine_tx: engine_tx.clone(),
-            threadpool: ThreadPool::<S>::new(
-                DEFAULT_THREADS,
-                engine_tx.clone(),
-                transposition_table.clone(),
-            ),
+            threadpool,
             transposition_table,
             ignore_commands: false,
             multipv: DEFAULT_MULTIPV,
@@ -186,7 +192,9 @@ impl<S: ThreadSpawner, P: Printer> EngineUCI<S, P> {
                 }
                 "Hash" => {
                     if let Some(size_mb) = value.and_then(|v| v.parse::<usize>().ok()) {
-                        self.transposition_table = Arc::new(TranspositionTable::new(size_mb));
+                        // SAFETY: threadpool workers clear the transposition table before its first usage
+                        self.transposition_table =
+                            Arc::new(unsafe { TranspositionTable::new_uninitialized(size_mb) });
                         self.threadpool.update_tt(self.transposition_table.clone());
                     } else {
                         eprintln!("invalid value");

@@ -8,15 +8,19 @@ use crate::types::chess_move::Move;
 
 #[derive()]
 pub struct TranspositionTable {
-    inner: zeroed_slice::CacheAlignedZeroedSlice<AtomicU64>,
+    inner: slice::CacheAlignedSlice<AtomicU64>,
 }
 
 impl TranspositionTable {
-    pub fn new(size_mb: usize) -> Self {
+    /// Create an uninitialized transposition table
+    ///
+    /// # Safety
+    /// Caller must ensure that the table is initialized before the first store/probe
+    pub unsafe fn new_uninitialized(size_mb: usize) -> Self {
         let table_size = 0x100000 * size_mb;
         let num_entries = table_size / std::mem::size_of::<AtomicU64>();
 
-        let inner = zeroed_slice::CacheAlignedZeroedSlice::new(num_entries);
+        let inner = unsafe { slice::CacheAlignedSlice::new_uninitialized(num_entries) };
 
         Self { inner }
     }
@@ -95,9 +99,7 @@ impl TranspositionTable {
         let start_ptr = unsafe { self.inner.as_ptr().add(start) } as *mut AtomicU64;
         let count = end - start;
 
-        unsafe {
-            ptr::write_bytes(start_ptr, 0, count);
-        }
+        unsafe { ptr::write_bytes(start_ptr, 0, count) };
     }
 
     pub fn size_mb(&self) -> usize {
@@ -127,24 +129,19 @@ pub enum ValueType {
     Lowerbound,
 }
 
-mod zeroed_slice {
+mod slice {
     use std::alloc::{Layout, alloc, dealloc};
     use std::ops::{Index, IndexMut};
-    use std::ptr::{self, NonNull};
-    use std::sync::atomic::AtomicU64;
+    use std::ptr::NonNull;
 
-    pub unsafe trait Zeroable: Sized {}
-
-    unsafe impl Zeroable for AtomicU64 {}
-
-    pub struct CacheAlignedZeroedSlice<T: Zeroable> {
+    pub struct CacheAlignedSlice<T> {
         ptr: NonNull<T>,
         len: usize,
         layout: Layout,
     }
 
-    impl<T: Zeroable> CacheAlignedZeroedSlice<T> {
-        pub fn new(len: usize) -> Self {
+    impl<T> CacheAlignedSlice<T> {
+        pub unsafe fn new_uninitialized(len: usize) -> Self {
             // We do not handle types that need to be dropped
             const { assert!(!std::mem::needs_drop::<T>()) };
 
@@ -164,8 +161,6 @@ mod zeroed_slice {
             // since it is faster.
             let ptr = unsafe { alloc(layout) as *mut T };
 
-            unsafe { ptr::write_bytes(ptr, 0, len) };
-
             let ptr = NonNull::new(ptr)
                 .unwrap_or_else(|| panic!("allocation failed for {} bytes", layout.size()));
 
@@ -181,7 +176,7 @@ mod zeroed_slice {
         }
     }
 
-    impl<T: Zeroable> Index<usize> for CacheAlignedZeroedSlice<T> {
+    impl<T> Index<usize> for CacheAlignedSlice<T> {
         type Output = T;
         #[inline]
         #[track_caller]
@@ -196,7 +191,7 @@ mod zeroed_slice {
         }
     }
 
-    impl<T: Zeroable> IndexMut<usize> for CacheAlignedZeroedSlice<T> {
+    impl<T> IndexMut<usize> for CacheAlignedSlice<T> {
         #[inline]
         #[track_caller]
         fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
@@ -210,12 +205,12 @@ mod zeroed_slice {
         }
     }
 
-    impl<T: Zeroable> Drop for CacheAlignedZeroedSlice<T> {
+    impl<T> Drop for CacheAlignedSlice<T> {
         fn drop(&mut self) {
             unsafe { dealloc(self.ptr.as_ptr() as *mut u8, self.layout) };
         }
     }
 
-    unsafe impl<T: Zeroable + Sync> Sync for CacheAlignedZeroedSlice<T> {}
-    unsafe impl<T: Zeroable + Send> Send for CacheAlignedZeroedSlice<T> {}
+    unsafe impl<T: Sync> Sync for CacheAlignedSlice<T> {}
+    unsafe impl<T: Send> Send for CacheAlignedSlice<T> {}
 }
