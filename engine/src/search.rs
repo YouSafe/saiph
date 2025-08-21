@@ -15,23 +15,24 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::Sender;
 use web_time::Instant;
 
+pub struct ThreadData {
+    pub engine_tx: Sender<EngineMessage>,
+    pub tt: Arc<TranspositionTable>,
+    pub stop_sync: Arc<StopSync>,
+    pub nodes_buffer: Arc<NodeCountBuffer>,
+    pub thread_id: u8,
+}
+
 pub struct Search {
-    board: Board,
-    limits: SearchLimits,
+    pub board: Board,
+    pub limits: SearchLimits,
+    pub clock: Clock,
+    pub root_moves: Vec<RootMove>,
+    pub multipv: u8,
+
     local_stop: bool,
-    clock: Clock,
-    root_moves: Vec<RootMove>,
-    multipv: u8,
-
-    engine_tx: Sender<EngineMessage>,
-    tt: Arc<TranspositionTable>,
-    stop_sync: Arc<StopSync>,
-
     pv_index: usize,
     pv_last: usize,
-
-    thread_id: u8,
-    nodes_buffer: Arc<NodeCountBuffer>,
     calls_until_stop_check: i16,
     completed_depth: u8,
 }
@@ -41,38 +42,27 @@ impl Search {
         board: Board,
         limits: SearchLimits,
         clock: Clock,
-        multipv: u8,
         root_moves: Vec<RootMove>,
-        engine_tx: Sender<EngineMessage>,
-        tt: Arc<TranspositionTable>,
-        stop_sync: Arc<StopSync>,
-        thread_id: u8,
-        nodes_buffer: Arc<NodeCountBuffer>,
+        multipv: u8,
     ) -> Self {
-        Search {
+        Self {
             board,
             limits,
-            local_stop: false,
             clock,
             root_moves,
             multipv,
 
+            local_stop: false,
             pv_index: 0,
             pv_last: 0,
-
-            engine_tx,
-            tt,
-            stop_sync,
-            thread_id,
-            nodes_buffer,
             calls_until_stop_check: 0,
             completed_depth: 0,
         }
     }
 
-    pub fn search(mut self, is_main: bool) -> Move {
+    pub fn run(mut self, td: &mut ThreadData, is_main: bool) -> Move {
         if !self.root_moves.is_empty() {
-            self.iterative_deepening(is_main);
+            self.iterative_deepening(td, is_main);
         } else if is_main {
             let legal_moves = self.board.generate_moves();
             let info_str = if !legal_moves.is_empty() {
@@ -83,20 +73,20 @@ impl Search {
                 "info depth 0 score cp 0"
             };
 
-            self.engine_tx
+            td.engine_tx
                 .send(EngineMessage::Response(info_str.to_owned()))
                 .unwrap();
         }
 
-        let _guard = self.stop_sync.cond_var.wait_while(
-            self.stop_sync.wait_for_stop.lock().unwrap(),
+        let _guard = td.stop_sync.cond_var.wait_while(
+            td.stop_sync.wait_for_stop.lock().unwrap(),
             |wait_for_stop| *wait_for_stop,
         );
 
         if self.root_moves.is_empty() {
             if is_main {
-                self.engine_tx
-                    .send(EngineMessage::Response(format!("bestmove (none)")))
+                td.engine_tx
+                    .send(EngineMessage::Response("bestmove (none)".to_owned()))
                     .unwrap();
             }
             return Move::NULL;
@@ -105,7 +95,7 @@ impl Search {
         let best_move = self.root_moves[0].pv.best_move();
 
         if is_main {
-            self.engine_tx
+            td.engine_tx
                 .send(EngineMessage::Response(format!("bestmove {best_move}")))
                 .unwrap();
         }
@@ -113,7 +103,7 @@ impl Search {
         best_move
     }
 
-    fn iterative_deepening(&mut self, is_main: bool) {
+    fn iterative_deepening(&mut self, td: &mut ThreadData, is_main: bool) {
         for depth in 1..u8::MAX {
             for pv_index in 0..self.multipv {
                 self.pv_index = pv_index as usize;
@@ -122,6 +112,7 @@ impl Search {
                 let mut pv = PrincipleVariation::default();
 
                 self.negamax_search::<true, true>(
+                    td,
                     Evaluation::MIN,
                     Evaluation::MAX,
                     depth,
@@ -136,13 +127,9 @@ impl Search {
                 }
 
                 if is_main {
-                    let output = self
-                        .info_string(depth, pv_index, &self.root_moves[pv_index as usize])
-                        .unwrap();
+                    let output = self.info_string(td, depth).unwrap();
 
-                    self.engine_tx
-                        .send(EngineMessage::Response(output))
-                        .unwrap();
+                    td.engine_tx.send(EngineMessage::Response(output)).unwrap();
                 }
             }
 
@@ -167,6 +154,7 @@ impl Search {
     /// Fail soft variant of negamax search
     fn negamax_search<const PV: bool, const ROOT: bool>(
         &mut self,
+        td: &mut ThreadData,
         mut alpha: Evaluation,
         mut beta: Evaluation,
         mut depth: u8,
@@ -179,7 +167,7 @@ impl Search {
             pv.clear();
         }
 
-        if self.should_stop() {
+        if self.should_stop(td) {
             return Evaluation::INVALID;
         }
 
@@ -201,14 +189,14 @@ impl Search {
         }
 
         if depth == 0 {
-            return self.quiescence(alpha, beta, ply);
+            return self.quiescence(td, alpha, beta, ply);
         }
 
-        self.nodes_buffer
-            .get(self.thread_id)
+        td.nodes_buffer
+            .get(td.thread_id)
             .fetch_add(1, Ordering::Relaxed);
 
-        let entry = self.tt.probe(&self.board, ply);
+        let entry = td.tt.probe(&self.board, ply);
         if let Some(entry) = &entry {
             if !PV && entry.depth >= depth && tt_cutoff(entry, alpha, beta) {
                 return entry.value;
@@ -252,8 +240,14 @@ impl Search {
             move_count += 1;
 
             self.board.apply_move(chess_move);
-            let score =
-                -self.negamax_search::<PV, false>(-beta, -alpha, depth - 1, ply + 1, &mut child_pv);
+            let score = -self.negamax_search::<PV, false>(
+                td,
+                -beta,
+                -alpha,
+                depth - 1,
+                ply + 1,
+                &mut child_pv,
+            );
             self.board.undo_move();
 
             if self.local_stop {
@@ -292,15 +286,21 @@ impl Search {
 
         let value_type = get_value_type(best_score, original_alpha, beta);
 
-        self.tt
+        td.tt
             .store(&self.board, best_move, depth, best_score, value_type, ply);
 
         best_score
     }
 
-    fn quiescence(&mut self, mut alpha: Evaluation, beta: Evaluation, ply: u8) -> Evaluation {
-        self.nodes_buffer
-            .get(self.thread_id)
+    fn quiescence(
+        &mut self,
+        td: &mut ThreadData,
+        mut alpha: Evaluation,
+        beta: Evaluation,
+        ply: u8,
+    ) -> Evaluation {
+        td.nodes_buffer
+            .get(td.thread_id)
             .fetch_add(1, Ordering::Relaxed);
 
         let mut moves = self.board.generate_moves();
@@ -337,7 +337,7 @@ impl Search {
         let mut best_score = evaluation;
         for chess_move in moves {
             self.board.apply_move(chess_move);
-            let score = -self.quiescence(-beta, -alpha, ply + 1);
+            let score = -self.quiescence(td, -beta, -alpha, ply + 1);
             self.board.undo_move();
 
             if score > best_score {
@@ -354,7 +354,7 @@ impl Search {
         best_score
     }
 
-    fn should_stop(&mut self) -> bool {
+    fn should_stop(&mut self, td: &mut ThreadData) -> bool {
         self.calls_until_stop_check -= 1;
         if self.calls_until_stop_check > 0 {
             return self.local_stop;
@@ -369,11 +369,11 @@ impl Search {
             if maximum < Instant::now() {
                 self.local_stop = true;
             }
-        } else if self.stop_sync.stop.load(Ordering::Relaxed) {
+        } else if td.stop_sync.stop.load(Ordering::Relaxed) {
             self.local_stop = true;
         }
 
-        let nodes = self.nodes_buffer.accumulate();
+        let nodes = td.nodes_buffer.accumulate();
 
         if let Some(max_nodes) = self.limits.nodes {
             if nodes >= max_nodes {
@@ -385,36 +385,32 @@ impl Search {
         self.local_stop
     }
 
-    fn info_string(
-        &self,
-        depth: u8,
-        pv_index: u8,
-        root_move: &RootMove,
-    ) -> Result<String, std::fmt::Error> {
+    fn info_string(&self, td: &mut ThreadData, depth: u8) -> Result<String, std::fmt::Error> {
         use std::fmt::Write;
 
         let mut output = String::with_capacity(120);
 
+        let root_move = &self.root_moves[self.pv_index];
         let pv = &root_move.pv;
         let evaluation = root_move.score;
 
-        write!(output, "info depth {depth} multipv {} score ", pv_index + 1)?;
+        write!(
+            output,
+            "info depth {depth} multipv {} score ",
+            self.pv_index + 1
+        )?;
         if evaluation.is_mate() {
             write!(output, "mate {}", evaluation.mate_full_moves())?;
         } else {
             write!(output, "cp {evaluation}")?;
         }
         write!(output, " time {}", self.clock.start.elapsed().as_millis())?;
-        write!(output, " nodes {} pv", self.nodes_buffer.accumulate())?;
+        write!(output, " nodes {} pv", td.nodes_buffer.accumulate())?;
         for mov in pv.line() {
             write!(output, " {mov}")?;
         }
 
         Ok(output)
-    }
-
-    pub fn limits(&self) -> &SearchLimits {
-        &self.limits
     }
 }
 
@@ -497,5 +493,11 @@ impl NodeCountBuffer {
 
     pub fn accumulate(&self) -> u64 {
         self.inner.iter().map(|v| v.load(Ordering::Relaxed)).sum()
+    }
+
+    pub fn clear(&self) {
+        for val in &self.inner {
+            val.store(0, Ordering::SeqCst);
+        }
     }
 }

@@ -13,7 +13,7 @@ use crate::{
     clock::Clock,
     evaluation::Evaluation,
     pv::PrincipleVariation,
-    search::{NodeCountBuffer, RootMove, Search},
+    search::{NodeCountBuffer, RootMove, Search, ThreadData},
     transposition::TranspositionTable,
     types::search_limits::{SearchLimits, TimeLimit},
     uci::EngineMessage,
@@ -31,24 +31,32 @@ pub struct StopSync {
 }
 
 pub struct ThreadPool<S: ThreadSpawner> {
-    workers: Vec<Worker>,
+    workers: Vec<WorkerHandle>,
     stop_sync: Arc<StopSync>,
     _marker: PhantomData<S>,
 }
 
 impl<S: ThreadSpawner> ThreadPool<S> {
-    pub fn new(num_threads: u8) -> Self {
+    pub fn new(
+        num_threads: u8,
+        engine_tx: Sender<EngineMessage>,
+        tt: Arc<TranspositionTable>,
+    ) -> Self {
         let mut workers = Vec::with_capacity(num_threads as usize);
 
         let stop_sync = Arc::new(StopSync::default());
         let barrier = Arc::new(Barrier::new(num_threads as usize));
+        let nodes_buffer = Arc::new(NodeCountBuffer::new(num_threads));
 
         for id in 0..num_threads {
-            workers.push(Worker::new::<S>(
+            workers.push(Self::spawn_worker(
                 stop_sync.clone(),
                 barrier.clone(),
                 num_threads,
                 id,
+                engine_tx.clone(),
+                tt.clone(),
+                nodes_buffer.clone(),
             ));
         }
 
@@ -59,15 +67,7 @@ impl<S: ThreadSpawner> ThreadPool<S> {
         }
     }
 
-    pub fn search(
-        &self,
-        board: Board,
-        limits: SearchLimits,
-        clock: Clock,
-        multipv: u8,
-        engine_tx: Sender<EngineMessage>,
-        tt: Arc<TranspositionTable>,
-    ) {
+    pub fn search(&self, board: Board, limits: SearchLimits, clock: Clock, multipv: u8) {
         let legal_moves = board.generate_moves();
         let root_moves = if !limits.search_moves.is_empty() {
             limits
@@ -79,8 +79,6 @@ impl<S: ThreadSpawner> ThreadPool<S> {
         } else {
             legal_moves
         };
-
-        let nodes_buffer = Arc::new(NodeCountBuffer::new(self.workers.len() as u8));
 
         let root_moves: Vec<RootMove> = root_moves
             .into_iter()
@@ -98,13 +96,8 @@ impl<S: ThreadSpawner> ThreadPool<S> {
                     board.clone(),
                     limits.clone(),
                     clock,
-                    multipv.min(root_moves.len().min(u8::MAX as usize) as u8),
                     root_moves.clone(),
-                    engine_tx.clone(),
-                    tt.clone(),
-                    self.stop_sync.clone(),
-                    worker.thread_id,
-                    nodes_buffer.clone(),
+                    multipv.min(root_moves.len().min(u8::MAX as usize) as u8),
                 )))
                 .unwrap();
         }
@@ -119,8 +112,14 @@ impl<S: ThreadSpawner> ThreadPool<S> {
         self.stop_sync.stop.store(true, Ordering::SeqCst);
     }
 
-    pub fn resize(&mut self, num_threads: u8) {
+    pub fn resize(
+        &mut self,
+        num_threads: u8,
+        engine_tx: Sender<EngineMessage>,
+        tt: Arc<TranspositionTable>,
+    ) {
         let new_barrier = Arc::new(Barrier::new(num_threads as usize));
+        let new_nodes_buffer = Arc::new(NodeCountBuffer::new(num_threads));
 
         for worker in &self.workers {
             worker
@@ -128,17 +127,21 @@ impl<S: ThreadSpawner> ThreadPool<S> {
                 .send(Job::Resize {
                     new_num_threads: num_threads,
                     new_barrier: new_barrier.clone(),
+                    new_nodes_buffer: new_nodes_buffer.clone(),
                 })
                 .unwrap();
         }
 
         let mut thread_id = self.workers.len() as u8;
         self.workers.resize_with(num_threads as usize, || {
-            let worker = Worker::new::<S>(
+            let worker = Self::spawn_worker(
                 self.stop_sync.clone(),
                 new_barrier.clone(),
                 num_threads,
                 thread_id,
+                engine_tx.clone(),
+                tt.clone(),
+                new_nodes_buffer.clone(),
             );
 
             thread_id += 1;
@@ -147,16 +150,22 @@ impl<S: ThreadSpawner> ThreadPool<S> {
         });
     }
 
-    pub fn reset_data(&self, tt: Arc<TranspositionTable>) {
+    pub fn update_tt(&self, tt: Arc<TranspositionTable>) {
         for worker in &self.workers {
             worker
                 .worker_tx
-                .send(Job::ResetData { tt: tt.clone() })
+                .send(Job::UpdateTT { tt: tt.clone() })
                 .unwrap();
         }
     }
 
-    pub fn quit(&self, engine_tx: Sender<EngineMessage>, stop_search: bool) {
+    pub fn reset_data(&self) {
+        for worker in &self.workers {
+            worker.worker_tx.send(Job::ResetData).unwrap();
+        }
+    }
+
+    pub fn quit(&self, stop_search: bool) {
         let active_threads = Arc::new(AtomicU8::new(self.workers.len() as u8));
 
         for worker in &self.workers {
@@ -164,7 +173,6 @@ impl<S: ThreadSpawner> ThreadPool<S> {
                 .worker_tx
                 .send(Job::Quit {
                     active_threads: active_threads.clone(),
-                    engine_tx: engine_tx.clone(),
                 })
                 .unwrap();
         }
@@ -174,14 +182,118 @@ impl<S: ThreadSpawner> ThreadPool<S> {
         }
     }
 
-    pub fn ready(&self, engine_tx: Sender<EngineMessage>) {
+    pub fn ready(&self) {
         for worker in &self.workers {
-            worker
-                .worker_tx
-                .send(Job::Ready {
-                    engine_tx: engine_tx.clone(),
-                })
-                .unwrap();
+            worker.worker_tx.send(Job::Ready {}).unwrap();
+        }
+    }
+
+    fn spawn_worker(
+        stop_sync: Arc<StopSync>,
+        barrier: Arc<Barrier>,
+        num_threads: u8,
+        thread_id: u8,
+        engine_tx: Sender<EngineMessage>,
+        tt: Arc<TranspositionTable>,
+        nodes_buffer: Arc<NodeCountBuffer>,
+    ) -> WorkerHandle {
+        let (worker_tx, worker_rx) = channel();
+        S::spawn(move || {
+            let thread_data = ThreadData {
+                engine_tx,
+                tt,
+                stop_sync: stop_sync.clone(),
+                nodes_buffer,
+                thread_id,
+            };
+
+            worker_loop(
+                stop_sync,
+                thread_id,
+                worker_rx,
+                barrier,
+                num_threads,
+                thread_data,
+            );
+        });
+
+        WorkerHandle { worker_tx }
+    }
+}
+
+fn worker_loop(
+    stop_sync: Arc<StopSync>,
+    thread_id: u8,
+    worker_rx: std::sync::mpsc::Receiver<Job>,
+    mut barrier: Arc<Barrier>,
+    mut num_threads: u8,
+    mut thread_data: ThreadData,
+) {
+    while let Ok(job) = worker_rx.recv() {
+        match job {
+            Job::Search(search) => {
+                let wait = barrier.wait();
+                if wait.is_leader() {
+                    thread_data.nodes_buffer.clear();
+
+                    stop_sync.stop.store(false, Ordering::SeqCst);
+
+                    let mut wait_for_stop = stop_sync.wait_for_stop.lock().unwrap();
+                    // set to false if not infinite search or ponder
+                    *wait_for_stop = search.limits.time == TimeLimit::Infinite;
+                    drop(wait_for_stop);
+                }
+
+                let wait = barrier.wait();
+                search.run(&mut thread_data, wait.is_leader());
+
+                barrier.wait();
+            }
+            Job::Resize {
+                new_num_threads,
+                new_barrier,
+                new_nodes_buffer,
+            } => {
+                num_threads = new_num_threads;
+                barrier = new_barrier;
+                thread_data.nodes_buffer = new_nodes_buffer;
+            }
+            Job::ResetData => {
+                // SAFETY: synchronisation and unique threads ensure that each thread
+                // has exclusive access on their respective chunk
+                unsafe {
+                    thread_data
+                        .tt
+                        .clear_chunk(thread_id as usize, num_threads as usize)
+                };
+            }
+            Job::UpdateTT { tt } => {
+                thread_data.tt = tt;
+
+                // SAFETY: synchronisation and unique threads ensure that each thread
+                // has exclusive access on their respective chunk
+                unsafe {
+                    thread_data
+                        .tt
+                        .clear_chunk(thread_id as usize, num_threads as usize)
+                };
+            }
+            Job::Quit { active_threads } => {
+                let previous_value = active_threads.fetch_sub(1, Ordering::SeqCst);
+                if previous_value == 1 {
+                    thread_data
+                        .engine_tx
+                        .send(EngineMessage::Terminate)
+                        .unwrap();
+                }
+                break;
+            }
+            Job::Ready => {
+                let result = barrier.wait();
+                if result.is_leader() {
+                    thread_data.engine_tx.send(EngineMessage::Ready).unwrap();
+                }
+            }
         }
     }
 }
@@ -191,90 +303,18 @@ enum Job {
     Resize {
         new_num_threads: u8,
         new_barrier: Arc<Barrier>,
+        new_nodes_buffer: Arc<NodeCountBuffer>,
     },
     Quit {
         active_threads: Arc<AtomicU8>,
-        engine_tx: Sender<EngineMessage>,
     },
-    ResetData {
+    ResetData,
+    Ready,
+    UpdateTT {
         tt: Arc<TranspositionTable>,
     },
-    Ready {
-        engine_tx: Sender<EngineMessage>,
-    },
 }
 
-struct Worker {
+struct WorkerHandle {
     worker_tx: Sender<Job>,
-    thread_id: u8,
-}
-
-impl Worker {
-    pub fn new<S: ThreadSpawner>(
-        stop_sync: Arc<StopSync>,
-        barrier: Arc<Barrier>,
-        num_threads: u8,
-        thread_id: u8,
-    ) -> Self {
-        let (worker_tx, worker_rx) = channel();
-
-        S::spawn(move || {
-            let mut barrier = barrier;
-            let mut num_threads = num_threads;
-
-            while let Ok(job) = worker_rx.recv() {
-                match job {
-                    Job::Search(search) => {
-                        let wait = barrier.wait();
-                        if wait.is_leader() {
-                            stop_sync.stop.store(false, Ordering::SeqCst);
-
-                            let mut wait_for_stop = stop_sync.wait_for_stop.lock().unwrap();
-                            // set to false if not infinite search or ponder
-                            *wait_for_stop = search.limits().time == TimeLimit::Infinite;
-                            drop(wait_for_stop);
-                        }
-
-                        let wait = barrier.wait();
-                        search.search(wait.is_leader());
-
-                        barrier.wait();
-                    }
-                    Job::Resize {
-                        new_num_threads,
-                        new_barrier,
-                    } => {
-                        num_threads = new_num_threads;
-                        barrier = new_barrier
-                    }
-                    Job::ResetData { tt } => {
-                        // SAFETY: synchronisation and unique threads ensure that each thread
-                        // has exclusive access on their respective chunk
-                        unsafe { tt.clear_chunk(thread_id as usize, num_threads as usize) };
-                    }
-                    Job::Quit {
-                        active_threads,
-                        engine_tx,
-                    } => {
-                        let previous_value = active_threads.fetch_sub(1, Ordering::SeqCst);
-                        if previous_value == 1 {
-                            engine_tx.send(EngineMessage::Terminate).unwrap();
-                        }
-                        break;
-                    }
-                    Job::Ready { engine_tx } => {
-                        let result = barrier.wait();
-                        if result.is_leader() {
-                            engine_tx.send(EngineMessage::Ready).unwrap();
-                        }
-                    }
-                }
-            }
-        });
-
-        Self {
-            worker_tx,
-            thread_id,
-        }
-    }
 }

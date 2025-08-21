@@ -81,11 +81,17 @@ enum StartingPosition {
 
 impl<S: ThreadSpawner, P: Printer> EngineUCI<S, P> {
     pub fn new(engine_tx: Sender<EngineMessage>) -> Self {
+        let transposition_table = Arc::new(TranspositionTable::new(DEFAULT_HASH_SIZE));
+
         Self {
             board: Default::default(),
-            engine_tx,
-            threadpool: ThreadPool::<S>::new(DEFAULT_THREADS),
-            transposition_table: Arc::new(TranspositionTable::new(DEFAULT_HASH_SIZE)),
+            engine_tx: engine_tx.clone(),
+            threadpool: ThreadPool::<S>::new(
+                DEFAULT_THREADS,
+                engine_tx.clone(),
+                transposition_table.clone(),
+            ),
+            transposition_table,
             ignore_commands: false,
             multipv: DEFAULT_MULTIPV,
             _marker: Default::default(),
@@ -164,12 +170,16 @@ impl<S: ThreadSpawner, P: Printer> EngineUCI<S, P> {
                 P::println("uciok");
             }
             Command::IsReady => {
-                self.threadpool.ready(self.engine_tx.clone());
+                self.threadpool.ready();
             }
             Command::SetOption { name, value } => match name.as_str() {
                 "Threads" => {
                     if let Some(num_threads) = value.and_then(|v| v.parse::<u8>().ok()) {
-                        self.threadpool.resize(num_threads)
+                        self.threadpool.resize(
+                            num_threads,
+                            self.engine_tx.clone(),
+                            self.transposition_table.clone(),
+                        );
                     } else {
                         eprintln!("invalid value");
                     }
@@ -177,6 +187,7 @@ impl<S: ThreadSpawner, P: Printer> EngineUCI<S, P> {
                 "Hash" => {
                     if let Some(size_mb) = value.and_then(|v| v.parse::<usize>().ok()) {
                         self.transposition_table = Arc::new(TranspositionTable::new(size_mb));
+                        self.threadpool.update_tt(self.transposition_table.clone());
                     } else {
                         eprintln!("invalid value");
                     }
@@ -191,7 +202,7 @@ impl<S: ThreadSpawner, P: Printer> EngineUCI<S, P> {
                 _ => eprintln!("invalid option"),
             },
             Command::NewGame => {
-                self.threadpool.reset_data(self.transposition_table.clone());
+                self.threadpool.reset_data();
             }
             Command::Position(start_pos, moves) => {
                 let mut board = match start_pos {
@@ -219,14 +230,8 @@ impl<S: ThreadSpawner, P: Printer> EngineUCI<S, P> {
                     self.board.side_to_move(),
                 );
 
-                self.threadpool.search(
-                    self.board.clone(),
-                    limits,
-                    clock,
-                    self.multipv,
-                    self.engine_tx.clone(),
-                    self.transposition_table.clone(),
-                );
+                self.threadpool
+                    .search(self.board.clone(), limits, clock, self.multipv);
             }
             Command::Debug => {
                 P::println(self.board.to_string().as_str());
@@ -236,11 +241,11 @@ impl<S: ThreadSpawner, P: Printer> EngineUCI<S, P> {
             }
             Command::Quit => {
                 self.ignore_commands = true;
-                self.threadpool.quit(self.engine_tx.clone(), true);
+                self.threadpool.quit(true);
             }
             Command::SoftQuit => {
                 self.ignore_commands = true;
-                self.threadpool.quit(self.engine_tx.clone(), false);
+                self.threadpool.quit(false);
             }
             Command::Perft { depth } => {
                 perf_test::<P>(&mut self.board, depth);
