@@ -385,7 +385,7 @@ fn parse_go(mut parts: Peekable<SplitAsciiWhitespace<'_>>) -> Result<Command, Pa
         TimeLimit::Infinite
     } else if let Some(move_time) = move_time {
         TimeLimit::Fixed { move_time }
-    } else if !time_left.contains(&Duration::ZERO) {
+    } else if time_left != PerColor::default() {
         TimeLimit::Dynamic {
             time_left,
             increment,
