@@ -21,7 +21,7 @@ pub struct State {
 
 trait FormattedWriter {
     fn typename() -> String;
-    fn write(self, file: &mut impl Write, state: State) -> std::io::Result<()>;
+    fn write(&self, file: &mut impl Write, state: State) -> std::io::Result<()>;
     fn is_primitive() -> bool {
         true
     }
@@ -36,7 +36,7 @@ impl<const N: usize, T: FormattedWriter> FormattedWriter for [T; N] {
         false
     }
 
-    fn write(self, file: &mut impl Write, state: State) -> std::io::Result<()> {
+    fn write(&self, file: &mut impl Write, state: State) -> std::io::Result<()> {
         writeln!(file, "[")?;
 
         fn indentation(file: &mut impl Write, indentation: usize) -> std::io::Result<()> {
@@ -90,7 +90,7 @@ impl FormattedWriter for u64 {
         "u64".to_owned()
     }
 
-    fn write(self, file: &mut impl Write, _state: State) -> std::io::Result<()> {
+    fn write(&self, file: &mut impl Write, _state: State) -> std::io::Result<()> {
         write!(file, "{self}")
     }
 }
@@ -100,7 +100,7 @@ impl FormattedWriter for u8 {
         "u8".to_owned()
     }
 
-    fn write(self, file: &mut impl Write, _state: State) -> std::io::Result<()> {
+    fn write(&self, file: &mut impl Write, _state: State) -> std::io::Result<()> {
         write!(file, "{self}")
     }
 }
@@ -110,7 +110,7 @@ impl FormattedWriter for Magic {
         "Magic".to_owned()
     }
 
-    fn write(self, file: &mut impl Write, _state: State) -> std::io::Result<()> {
+    fn write(&self, file: &mut impl Write, _state: State) -> std::io::Result<()> {
         write!(
             file,
             "Magic {{ magic: {}, offset: {}, mask: {} }}",
