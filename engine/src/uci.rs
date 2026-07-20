@@ -2,7 +2,7 @@ use crate::board::Board;
 use crate::clock::Clock;
 use crate::movegen::perf_test;
 use crate::threadpool::ThreadPool;
-use crate::transposition::TranspositionTable;
+use crate::transposition::MaybeUninitTT;
 use crate::types::color::{Color, PerColor};
 use crate::types::search_limits::{SearchLimits, TimeLimit};
 use crate::types::uci_move::UCIMove;
@@ -10,7 +10,6 @@ use crate::{Printer, ThreadSpawner};
 use std::iter::Peekable;
 use std::marker::PhantomData;
 use std::str::{FromStr, SplitAsciiWhitespace};
-use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender};
 use web_time::{Duration, Instant};
 
@@ -35,7 +34,7 @@ pub struct EngineUCI<S: ThreadSpawner, P: Printer> {
     board: Board,
     engine_tx: Sender<EngineMessage>,
     threadpool: ThreadPool<S>,
-    transposition_table: Arc<TranspositionTable>,
+    transposition_table: MaybeUninitTT,
     ignore_commands: bool,
     multipv: u8,
     _marker: PhantomData<P>,
@@ -81,23 +80,14 @@ enum StartingPosition {
 
 impl<S: ThreadSpawner, P: Printer> EngineUCI<S, P> {
     pub fn new(engine_tx: Sender<EngineMessage>) -> Self {
-        // SAFETY: threadpool workers clear the transposition table before its first usage
-        let transposition_table =
-            Arc::new(unsafe { TranspositionTable::new_uninitialized(DEFAULT_HASH_SIZE) });
-
-        let threadpool = ThreadPool::<S>::new(
-            DEFAULT_THREADS,
-            engine_tx.clone(),
-            transposition_table.clone(),
-        );
-
-        threadpool.update_tt(transposition_table.clone());
+        let tt = MaybeUninitTT::new(DEFAULT_HASH_SIZE);
+        let threadpool = ThreadPool::<S>::new(DEFAULT_THREADS, engine_tx.clone(), tt.clone());
 
         Self {
             board: Default::default(),
             engine_tx: engine_tx.clone(),
             threadpool,
-            transposition_table,
+            transposition_table: tt,
             ignore_commands: false,
             multipv: DEFAULT_MULTIPV,
             _marker: Default::default(),
@@ -192,10 +182,9 @@ impl<S: ThreadSpawner, P: Printer> EngineUCI<S, P> {
                 }
                 "Hash" => {
                     if let Some(size_mb) = value.and_then(|v| v.parse::<usize>().ok()) {
-                        // SAFETY: threadpool workers clear the transposition table before its first usage
-                        self.transposition_table =
-                            Arc::new(unsafe { TranspositionTable::new_uninitialized(size_mb) });
-                        self.threadpool.update_tt(self.transposition_table.clone());
+                        let tt = MaybeUninitTT::new(size_mb);
+                        self.threadpool.update_tt(tt.clone());
+                        self.transposition_table = tt;
                     } else {
                         eprintln!("invalid value");
                     }

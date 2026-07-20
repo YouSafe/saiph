@@ -14,7 +14,7 @@ use crate::{
     evaluation::Evaluation,
     pv::PrincipleVariation,
     search::{NodeCountBuffer, RootMove, Search, ThreadData},
-    transposition::TranspositionTable,
+    transposition::MaybeUninitTT,
     types::search_limits::{SearchLimits, TimeLimit},
     uci::EngineMessage,
 };
@@ -37,11 +37,7 @@ pub struct ThreadPool<S: ThreadSpawner> {
 }
 
 impl<S: ThreadSpawner> ThreadPool<S> {
-    pub fn new(
-        num_threads: u8,
-        engine_tx: Sender<EngineMessage>,
-        tt: Arc<TranspositionTable>,
-    ) -> Self {
+    pub fn new(num_threads: u8, engine_tx: Sender<EngineMessage>, tt: MaybeUninitTT) -> Self {
         let mut workers = Vec::with_capacity(num_threads as usize);
 
         let stop_sync = Arc::new(StopSync::default());
@@ -57,6 +53,7 @@ impl<S: ThreadSpawner> ThreadPool<S> {
                 engine_tx.clone(),
                 tt.clone(),
                 nodes_buffer.clone(),
+                true,
             ));
         }
 
@@ -112,12 +109,7 @@ impl<S: ThreadSpawner> ThreadPool<S> {
         self.stop_sync.stop.store(true, Ordering::SeqCst);
     }
 
-    pub fn resize(
-        &mut self,
-        num_threads: u8,
-        engine_tx: Sender<EngineMessage>,
-        tt: Arc<TranspositionTable>,
-    ) {
+    pub fn resize(&mut self, num_threads: u8, engine_tx: Sender<EngineMessage>, tt: MaybeUninitTT) {
         let new_barrier = Arc::new(Barrier::new(num_threads as usize));
         let new_nodes_buffer = Arc::new(NodeCountBuffer::new(num_threads));
 
@@ -142,6 +134,7 @@ impl<S: ThreadSpawner> ThreadPool<S> {
                 engine_tx.clone(),
                 tt.clone(),
                 new_nodes_buffer.clone(),
+                false,
             );
 
             thread_id += 1;
@@ -150,7 +143,7 @@ impl<S: ThreadSpawner> ThreadPool<S> {
         });
     }
 
-    pub fn update_tt(&self, tt: Arc<TranspositionTable>) {
+    pub fn update_tt(&self, tt: MaybeUninitTT) {
         for worker in &self.workers {
             worker
                 .worker_tx
@@ -184,7 +177,7 @@ impl<S: ThreadSpawner> ThreadPool<S> {
 
     pub fn ready(&self) {
         for worker in &self.workers {
-            worker.worker_tx.send(Job::Ready {}).unwrap();
+            worker.worker_tx.send(Job::Ready).unwrap();
         }
     }
 
@@ -194,11 +187,21 @@ impl<S: ThreadSpawner> ThreadPool<S> {
         num_threads: u8,
         thread_id: u8,
         engine_tx: Sender<EngineMessage>,
-        tt: Arc<TranspositionTable>,
+        tt: MaybeUninitTT,
         nodes_buffer: Arc<NodeCountBuffer>,
+        clear_data: bool,
     ) -> WorkerHandle {
         let (worker_tx, worker_rx) = channel();
         S::spawn(move || {
+            if clear_data {
+                unsafe { tt.clear_chunk(thread_id as usize, num_threads as usize) };
+
+                // Just for safety...
+                barrier.wait();
+            }
+
+            let tt = unsafe { tt.assume_init() };
+
             let thread_data = ThreadData {
                 engine_tx,
                 tt,
@@ -267,15 +270,11 @@ fn worker_loop(
                 };
             }
             Job::UpdateTT { tt } => {
-                thread_data.tt = tt;
-
                 // SAFETY: synchronisation and unique threads ensure that each thread
                 // has exclusive access on their respective chunk
-                unsafe {
-                    thread_data
-                        .tt
-                        .clear_chunk(thread_id as usize, num_threads as usize)
-                };
+                unsafe { tt.clear_chunk(thread_id as usize, num_threads as usize) };
+
+                thread_data.tt = unsafe { tt.assume_init() };
             }
             Job::Quit { active_threads } => {
                 let previous_value = active_threads.fetch_sub(1, Ordering::SeqCst);
@@ -309,7 +308,7 @@ enum Job {
     ResetData,
     Ready,
     UpdateTT {
-        tt: Arc<TranspositionTable>,
+        tt: MaybeUninitTT,
     },
 }
 

@@ -1,30 +1,53 @@
 use std::fmt::Debug;
+use std::mem::MaybeUninit;
 use std::ptr;
+use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::board::Board;
 use crate::evaluation::Evaluation;
 use crate::types::chess_move::Move;
 
-#[derive()]
-pub struct TranspositionTable {
-    inner: slice::CacheAlignedSlice<AtomicU64>,
+#[derive(Clone)]
+pub struct MaybeUninitTT {
+    inner: Arc<[MaybeUninit<AtomicU64>]>,
 }
 
-impl TranspositionTable {
-    /// Create an uninitialized transposition table
-    ///
-    /// # Safety
-    /// Caller must ensure that the table is initialized before the first store/probe
-    pub unsafe fn new_uninitialized(size_mb: usize) -> Self {
+impl MaybeUninitTT {
+    pub fn new(size_mb: usize) -> Self {
         let table_size = 0x100000 * size_mb;
         let num_entries = table_size / std::mem::size_of::<AtomicU64>();
 
-        let inner = unsafe { slice::CacheAlignedSlice::new_uninitialized(num_entries) };
-
-        Self { inner }
+        Self {
+            inner: Arc::new_uninit_slice(num_entries),
+        }
     }
 
+    /// # Safety
+    ///
+    /// Caller must ensure exclusive access to this chunk
+    pub unsafe fn clear_chunk(&self, chunk_index: usize, num_chunks: usize) {
+        let range = chunk_range(self.inner.len(), chunk_index, num_chunks);
+
+        let start_ptr =
+            unsafe { self.inner.as_ptr().add(range.start) } as *mut MaybeUninit<AtomicU64>;
+
+        unsafe { ptr::write_bytes(start_ptr, 0, range.len()) };
+    }
+
+    pub unsafe fn assume_init(self) -> TranspositionTable {
+        TranspositionTable {
+            inner: unsafe { self.inner.assume_init() },
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct TranspositionTable {
+    inner: Arc<[AtomicU64]>,
+}
+
+impl TranspositionTable {
     pub fn store(
         &self,
         board: &Board,
@@ -86,25 +109,28 @@ impl TranspositionTable {
     ///
     /// Caller must ensure exclusive access to this chunk
     pub unsafe fn clear_chunk(&self, chunk_index: usize, num_chunks: usize) {
-        let len = self.inner.len();
+        let range = chunk_range(self.inner.len(), chunk_index, num_chunks);
 
-        let stride = len / num_chunks;
-        let start = stride * chunk_index;
-        let end = if chunk_index != num_chunks - 1 {
-            (start + stride).min(len)
-        } else {
-            len
-        };
+        let start_ptr = unsafe { self.inner.as_ptr().add(range.start) } as *mut AtomicU64;
 
-        let start_ptr = unsafe { self.inner.as_ptr().add(start) } as *mut AtomicU64;
-        let count = end - start;
-
-        unsafe { ptr::write_bytes(start_ptr, 0, count) };
+        unsafe { ptr::write_bytes(start_ptr, 0, range.len()) };
     }
 
     pub fn size_mb(&self) -> usize {
         self.inner.len() * std::mem::size_of::<AtomicU64>() / 0x100000
     }
+}
+
+fn chunk_range(len: usize, chunk_index: usize, num_chunks: usize) -> std::ops::Range<usize> {
+    let stride = len / num_chunks;
+    let start = stride * chunk_index;
+    let end = if chunk_index != num_chunks - 1 {
+        (start + stride).min(len)
+    } else {
+        // last chunk has to account for the remainder
+        len
+    };
+    start..end
 }
 
 #[derive(Debug, Clone)]
@@ -127,90 +153,4 @@ pub enum ValueType {
     Upperbound,
     /// Beta
     Lowerbound,
-}
-
-mod slice {
-    use std::alloc::{Layout, alloc, dealloc};
-    use std::ops::{Index, IndexMut};
-    use std::ptr::NonNull;
-
-    pub struct CacheAlignedSlice<T> {
-        ptr: NonNull<T>,
-        len: usize,
-        layout: Layout,
-    }
-
-    impl<T> CacheAlignedSlice<T> {
-        pub unsafe fn new_uninitialized(len: usize) -> Self {
-            // We do not handle types that need to be dropped
-            const { assert!(!std::mem::needs_drop::<T>()) };
-
-            // Only types sizes that divide the cache line size are valid
-            // to enable easy chunking
-            const { assert!(64 % std::mem::align_of::<T>() == 0) }
-
-            let elem_size = std::mem::size_of::<T>();
-            let align = 64.max(std::mem::align_of::<T>());
-
-            let layout = Layout::from_size_align(len * elem_size, align).unwrap();
-
-            // The usage of `alloc` instead of `alloc_zeroed` is intentional.
-            // `alloc_zeroed` would return zeroed memory, but pages may be left
-            // in an uncommitted state (only lazily mapped by the OS). To avoid
-            // first-access latency, we clear the memory manually and use `alloc`
-            // since it is faster.
-            let ptr = unsafe { alloc(layout) as *mut T };
-
-            let ptr = NonNull::new(ptr)
-                .unwrap_or_else(|| panic!("allocation failed for {} bytes", layout.size()));
-
-            Self { ptr, len, layout }
-        }
-
-        pub fn len(&self) -> usize {
-            self.len
-        }
-
-        pub fn as_ptr(&self) -> *const T {
-            self.ptr.as_ptr()
-        }
-    }
-
-    impl<T> Index<usize> for CacheAlignedSlice<T> {
-        type Output = T;
-        #[inline]
-        #[track_caller]
-        fn index(&self, idx: usize) -> &Self::Output {
-            assert!(
-                idx < self.len,
-                "index out of bounds: the len is {} but the index is {}",
-                self.len,
-                idx
-            );
-            unsafe { &*self.ptr.as_ptr().add(idx) }
-        }
-    }
-
-    impl<T> IndexMut<usize> for CacheAlignedSlice<T> {
-        #[inline]
-        #[track_caller]
-        fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
-            assert!(
-                idx < self.len,
-                "index out of bounds: the len is {} but the index is {}",
-                self.len,
-                idx
-            );
-            unsafe { &mut *self.ptr.as_ptr().add(idx) }
-        }
-    }
-
-    impl<T> Drop for CacheAlignedSlice<T> {
-        fn drop(&mut self) {
-            unsafe { dealloc(self.ptr.as_ptr() as *mut u8, self.layout) };
-        }
-    }
-
-    unsafe impl<T: Sync> Sync for CacheAlignedSlice<T> {}
-    unsafe impl<T: Send> Send for CacheAlignedSlice<T> {}
 }

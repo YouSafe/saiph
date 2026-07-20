@@ -17,7 +17,7 @@ use web_time::Instant;
 
 pub struct ThreadData {
     pub engine_tx: Sender<EngineMessage>,
-    pub tt: Arc<TranspositionTable>,
+    pub tt: TranspositionTable,
     pub stop_sync: Arc<StopSync>,
     pub nodes_buffer: Arc<NodeCountBuffer>,
     pub thread_id: u8,
