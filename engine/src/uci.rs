@@ -95,11 +95,7 @@ impl<S: ThreadSpawner, P: Printer> EngineUCI<S, P> {
     }
 
     pub fn run(mut self, engine_rx: Receiver<EngineMessage>) {
-        loop {
-            let Ok(input) = engine_rx.recv() else {
-                break;
-            };
-
+        while let Ok(input) = engine_rx.recv() {
             match input {
                 EngineMessage::Command(message) => {
                     if !self.ignore_commands {

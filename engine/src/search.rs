@@ -141,10 +141,10 @@ impl Search {
                 break;
             }
 
-            if let Some(optimum) = self.clock.optimum {
-                if optimum < Instant::now() {
-                    break;
-                }
+            if let Some(optimum) = self.clock.optimum
+                && optimum < Instant::now()
+            {
+                break;
             }
 
             self.completed_depth += 1;
@@ -197,10 +197,12 @@ impl Search {
             .fetch_add(1, Ordering::Relaxed);
 
         let entry = td.tt.probe(&self.board, ply);
-        if let Some(entry) = &entry {
-            if !PV && entry.depth >= depth && tt_cutoff(entry, alpha, beta) {
-                return entry.value;
-            }
+        if let Some(entry) = &entry
+            && !PV
+            && entry.depth >= depth
+            && tt_cutoff(entry, alpha, beta)
+        {
+            return entry.value;
         }
 
         let mut moves = self.board.generate_moves();
@@ -217,10 +219,10 @@ impl Search {
         let mut best_move = Move::NULL;
 
         moves.sort_by_key(|mov| {
-            if let Some(entry) = &entry {
-                if &entry.best_move == mov {
-                    return -200000;
-                }
+            if let Some(entry) = &entry
+                && &entry.best_move == mov
+            {
+                return -200000;
             }
 
             let src_piece = self.board.piece_at(mov.from()).unwrap();
@@ -375,11 +377,11 @@ impl Search {
 
         let nodes = td.nodes_buffer.accumulate();
 
-        if let Some(max_nodes) = self.limits.nodes {
-            if nodes >= max_nodes {
-                self.local_stop = true;
-                return true;
-            }
+        if let Some(max_nodes) = self.limits.nodes
+            && nodes >= max_nodes
+        {
+            self.local_stop = true;
+            return true;
         }
 
         self.local_stop
