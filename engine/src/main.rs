@@ -1,7 +1,7 @@
 use std::{
     io::{BufRead, stdin},
     sync::mpsc::channel,
-    thread::{self, spawn},
+    thread,
 };
 
 use engine::{
@@ -28,35 +28,32 @@ impl Printer for StdoutPrinter {
 
 fn main() {
     let (engine_tx, engine_rx) = channel();
+    let engine_tx_clone = engine_tx.clone();
 
-    spawn({
-        let engine_tx = engine_tx.clone();
+    thread::spawn(move || {
+        let mut input = String::new();
 
-        move || {
-            let mut input = String::new();
+        while input.trim() != "quit" {
+            input.clear();
 
-            while input.trim() != "quit" {
-                input.clear();
-
-                let bytes = stdin().lock().read_line(&mut input).unwrap();
-                if bytes == 0 {
-                    engine_tx
-                        .send(EngineMessage::Command("softquit".to_owned()))
-                        .unwrap();
-                    break;
-                }
-
-                while input.ends_with('\n') || input.ends_with('\r') {
-                    input.pop();
-                }
-
+            let bytes = stdin().lock().read_line(&mut input).unwrap();
+            if bytes == 0 {
                 engine_tx
-                    .send(EngineMessage::Command(input.clone()))
+                    .send(EngineMessage::Command("softquit".to_owned()))
                     .unwrap();
+                break;
             }
+
+            while input.ends_with('\n') || input.ends_with('\r') {
+                input.pop();
+            }
+
+            engine_tx
+                .send(EngineMessage::Command(input.clone()))
+                .unwrap();
         }
     });
 
-    let engine: EngineUCI<DefaultSpawner, StdoutPrinter> = EngineUCI::new(engine_tx);
+    let engine: EngineUCI<DefaultSpawner, StdoutPrinter> = EngineUCI::new(engine_tx_clone);
     engine.run(engine_rx);
 }
