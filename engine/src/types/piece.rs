@@ -86,26 +86,6 @@ impl Piece {
         }
     }
 
-    pub fn to_unicode(self) -> char {
-        use crate::types::color::Color::{Black, White};
-
-        match (self.color(), self.ty()) {
-            (White, Pawn) => '♙',
-            (White, Knight) => '♘',
-            (White, Bishop) => '♗',
-            (White, Rook) => '♖',
-            (White, Queen) => '♕',
-            (White, King) => '♔',
-
-            (Black, Pawn) => '♟',
-            (Black, Knight) => '♞',
-            (Black, Bishop) => '♝',
-            (Black, Rook) => '♜',
-            (Black, Queen) => '♛',
-            (Black, King) => '♚',
-        }
-    }
-
     pub fn to_ascii(self) -> char {
         use crate::types::color::Color::{Black, White};
         match (self.color(), self.ty()) {

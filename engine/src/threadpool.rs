@@ -3,7 +3,7 @@ use std::{
     sync::{
         Arc, Barrier, Condvar, Mutex,
         atomic::{AtomicBool, AtomicU8, Ordering},
-        mpsc::{Sender, channel},
+        mpsc::{Receiver, Sender, channel},
     },
 };
 
@@ -227,7 +227,7 @@ impl<S: ThreadSpawner> ThreadPool<S> {
 fn worker_loop(
     stop_sync: Arc<StopSync>,
     thread_id: u8,
-    worker_rx: std::sync::mpsc::Receiver<Job>,
+    worker_rx: Receiver<Job>,
     mut barrier: Arc<Barrier>,
     mut num_threads: u8,
     mut thread_data: ThreadData,

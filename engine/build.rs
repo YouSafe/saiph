@@ -52,7 +52,7 @@ impl<const N: usize, T: FormattedWriter> FormattedWriter for [T; N] {
 
         indentation(file, state.indentation + 1)?;
 
-        for (index, val) in self.into_iter().enumerate() {
+        for (index, val) in self.iter().enumerate() {
             let new_state = State {
                 indentation: state.indentation + 1,
             };
