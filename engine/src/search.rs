@@ -60,6 +60,7 @@ impl Search {
         }
     }
 
+    // TODO: I want to eventually move this to the threadpool
     pub fn run(mut self, td: &mut ThreadData, is_main: bool) -> Move {
         if !self.root_moves.is_empty() {
             self.iterative_deepening(td, is_main);
@@ -103,7 +104,7 @@ impl Search {
         best_move
     }
 
-    fn iterative_deepening(&mut self, td: &mut ThreadData, is_main: bool) {
+    pub fn iterative_deepening(&mut self, td: &mut ThreadData, is_main: bool) {
         for depth in 1..u8::MAX {
             for pv_index in 0..self.multipv {
                 self.pv_index = pv_index as usize;

@@ -1,3 +1,5 @@
+mod bench;
+
 use std::{
     io::{BufRead, stdin},
     sync::mpsc::channel,
@@ -27,6 +29,11 @@ impl Printer for StdoutPrinter {
 }
 
 fn main() {
+    if let Some("bench") = std::env::args().nth(1).as_deref() {
+        bench::bench(8);
+        return;
+    }
+
     let (engine_tx, engine_rx) = channel();
     let engine_tx_clone = engine_tx.clone();
 
